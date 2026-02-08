@@ -1,10 +1,20 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
+import { GodRaysPass } from './shaders/god-rays';
 
 export class Renderer {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   readonly webglRenderer: THREE.WebGLRenderer;
   readonly sunLight: THREE.DirectionalLight;
+  private composer: EffectComposer;
+  private fxaaPass: ShaderPass;
+  private ssaoPass: SSAOPass;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -67,11 +77,61 @@ export class Renderer {
     fill.position.set(-40, 30, -50);
     this.scene.add(fill);
 
+    // --- Post-processing pipeline ---
+
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const pixelRatio = this.webglRenderer.getPixelRatio();
+
+    this.composer = new EffectComposer(this.webglRenderer);
+
+    // 1. Render the scene
+    const renderPass = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(renderPass);
+
+    // 2. SSAO — darkens crevices between voxels
+    this.ssaoPass = new SSAOPass(this.scene, this.camera, w, h);
+    this.ssaoPass.kernelRadius = 4;
+    this.ssaoPass.minDistance = 0.001;
+    this.ssaoPass.maxDistance = 0.08;
+    this.ssaoPass.output = SSAOPass.OUTPUT.Default;
+    this.composer.addPass(this.ssaoPass);
+
+    // 3. God rays — volumetric light scattering from the sun
+    const godRaysPass = new GodRaysPass(this.camera, this.sunLight.position);
+    this.composer.addPass(godRaysPass);
+
+    // 4. FXAA — anti-aliasing to smooth voxel edges
+    this.fxaaPass = new ShaderPass(FXAAShader);
+    this.fxaaPass.uniforms['resolution'].value.set(
+      1 / (w * pixelRatio),
+      1 / (h * pixelRatio)
+    );
+    this.composer.addPass(this.fxaaPass);
+
+    // 5. Output pass — handles tone mapping and color space conversion
+    const outputPass = new OutputPass();
+    this.composer.addPass(outputPass);
+
     // Handle resize
     window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
+      const newW = window.innerWidth;
+      const newH = window.innerHeight;
+      const pr = this.webglRenderer.getPixelRatio();
+
+      this.camera.aspect = newW / newH;
       this.camera.updateProjectionMatrix();
-      this.webglRenderer.setSize(window.innerWidth, window.innerHeight);
+      this.webglRenderer.setSize(newW, newH);
+      this.composer.setSize(newW, newH);
+
+      // Update FXAA resolution uniform
+      this.fxaaPass.uniforms['resolution'].value.set(
+        1 / (newW * pr),
+        1 / (newH * pr)
+      );
+
+      // Update SSAO resolution
+      this.ssaoPass.setSize(newW, newH);
     });
   }
 
@@ -82,6 +142,6 @@ export class Renderer {
   }
 
   render(): void {
-    this.webglRenderer.render(this.scene, this.camera);
+    this.composer.render();
   }
 }
