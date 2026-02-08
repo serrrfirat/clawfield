@@ -1,35 +1,49 @@
 import * as THREE from 'three';
 import { PLAYER_WIDTH, PLAYER_HEIGHT, INTERPOLATION_DELAY, TEAM_COLORS, Team } from '@clawfield/shared';
 import type { PlayerState } from '@clawfield/shared';
+import { createSoldierInstance } from './model-loader';
 
 /**
- * Renders a remote player as a colored box with interpolation.
+ * Renders a remote player as a 3D soldier model (or colored box fallback).
  * Color is based on team. Hidden when dead.
  */
 export class RemotePlayer {
   readonly id: string;
   readonly name: string;
-  readonly mesh: THREE.Mesh;
+  /** Root container — position/rotation applied here */
+  readonly mesh: THREE.Object3D;
   team: number;
   alive: boolean = true;
 
   private states: { time: number; state: PlayerState }[] = [];
   private labelEl: HTMLDivElement;
+  /** Whether we're still using the fallback box (model not loaded yet) */
+  private usingFallback: boolean = false;
 
   constructor(id: string, name: string, scene: THREE.Scene, team: number) {
     this.id = id;
     this.name = name;
     this.team = team;
 
-    // Use team color; fall back to grey if team is unknown
     const color = TEAM_COLORS[team as Team] ?? 0x888888;
 
-    // Simple box mesh for the player body
-    const geometry = new THREE.BoxGeometry(PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_WIDTH);
-    const material = new THREE.MeshLambertMaterial({ color });
-    this.mesh = new THREE.Mesh(geometry, material);
-    // Offset geometry so position represents feet
-    geometry.translate(0, PLAYER_HEIGHT / 2, 0);
+    // Try to use the 3D soldier model
+    const modelInstance = createSoldierInstance(color, PLAYER_HEIGHT);
+
+    if (modelInstance) {
+      // Wrap in a Group so `.mesh.position` / `.mesh.rotation` work the same
+      this.mesh = new THREE.Group();
+      this.mesh.add(modelInstance);
+    } else {
+      // Fallback: simple box mesh (identical to old behavior)
+      this.usingFallback = true;
+      const geometry = new THREE.BoxGeometry(PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_WIDTH);
+      const material = new THREE.MeshLambertMaterial({ color });
+      const box = new THREE.Mesh(geometry, material);
+      geometry.translate(0, PLAYER_HEIGHT / 2, 0);
+      this.mesh = box;
+    }
+
     scene.add(this.mesh);
 
     // Name label
@@ -115,8 +129,15 @@ export class RemotePlayer {
   /** Clean up mesh and label */
   dispose(scene: THREE.Scene): void {
     scene.remove(this.mesh);
-    this.mesh.geometry.dispose();
-    (this.mesh.material as THREE.MeshLambertMaterial).dispose();
+    // Dispose geometry/materials recursively
+    this.mesh.traverse((child: THREE.Object3D) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const m = child as THREE.Mesh;
+        m.geometry.dispose();
+        const materials = Array.isArray(m.material) ? m.material : [m.material];
+        materials.forEach((mat: THREE.Material) => mat.dispose());
+      }
+    });
     this.labelEl.remove();
   }
 }
