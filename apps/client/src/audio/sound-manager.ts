@@ -1,16 +1,18 @@
 /**
- * SoundManager — programmatic placeholder sound system using Web Audio API.
+ * SoundManager — hybrid sound system using Web Audio API.
  *
- * Generates all sounds procedurally (no audio files required).
- * Provides 2D and 3D spatial playback with pooling to cap concurrent sounds.
+ * Supports loading external audio files via sound packs, with procedural
+ * generation as a fallback for any sounds not covered by the active pack.
  *
  * Usage:
  *   soundManager.init();         // call once after user gesture
+ *   await soundManager.loadPack('/sounds/my-pack/');  // optional
  *   soundManager.play(SoundId.ShootRifle);
  *   soundManager.play3D(SoundId.Explosion, { x: 10, y: 0, z: 5 });
  */
 
 import { SoundId, SOUND_CONFIGS } from './sounds';
+import { loadSoundPack } from './sound-pack-loader';
 
 export { SoundId } from './sounds';
 
@@ -28,6 +30,12 @@ class SoundManager {
   private activeCounts = new Map<SoundId, number>();
   private masterGain: GainNode | null = null;
 
+  /** File-based audio buffers loaded from a sound pack */
+  private packBuffers = new Map<SoundId, AudioBuffer>();
+
+  /** Name of the currently loaded sound pack, if any */
+  private packName: string | null = null;
+
   /** Create the AudioContext. Must be called after a user gesture (click/key). */
   init(): void {
     if (this.ctx) return;
@@ -41,13 +49,52 @@ class SoundManager {
     }
   }
 
+  /**
+   * Load a sound pack from a URL path. Sounds defined in the pack will
+   * override procedural generation. Sounds not in the pack still use
+   * the procedural fallback.
+   *
+   * @param baseUrl Path to sound pack directory (e.g. '/sounds/battlefield/')
+   */
+  async loadPack(baseUrl: string): Promise<void> {
+    if (!this.ctx) {
+      console.warn('SoundManager: Cannot load pack before init()');
+      return;
+    }
+    this.packBuffers = await loadSoundPack(baseUrl, this.ctx);
+
+    // Read pack name from manifest (re-fetch is cached by browser)
+    try {
+      const base = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+      const res = await fetch(base + 'pack.json');
+      if (res.ok) {
+        const manifest = await res.json();
+        this.packName = manifest.name ?? null;
+      }
+    } catch {
+      // Name is cosmetic, ignore errors
+    }
+  }
+
+  /** Unload the current sound pack and revert to procedural sounds. */
+  unloadPack(): void {
+    this.packBuffers.clear();
+    this.packName = null;
+    console.log('SoundManager: Sound pack unloaded, using procedural sounds');
+  }
+
+  /** Get the name of the currently loaded sound pack, or null. */
+  getPackName(): string | null {
+    return this.packName;
+  }
+
   /** Play a 2D (non-positional) sound. */
   play(soundId: SoundId): void {
     if (!this.ctx || !this.masterGain) return;
     if (!this.acquireSlot(soundId)) return;
 
     const config = SOUND_CONFIGS[soundId];
-    const nodes = this.generateSound(soundId);
+    const nodes = this.createSource(soundId);
     if (!nodes) {
       this.releaseSlot(soundId);
       return;
@@ -69,7 +116,7 @@ class SoundManager {
     if (!this.acquireSlot(soundId)) return;
 
     const config = SOUND_CONFIGS[soundId];
-    const nodes = this.generateSound(soundId);
+    const nodes = this.createSource(soundId);
     if (!nodes) {
       this.releaseSlot(soundId);
       return;
@@ -124,6 +171,43 @@ class SoundManager {
   }
 
   // ── Private helpers ─────────────────────────────────────────────
+
+  /**
+   * Create a source node for a sound. If the sound pack has a buffer for this
+   * sound, use it. Otherwise fall back to procedural generation.
+   */
+  private createSource(
+    soundId: SoundId,
+  ): { source: AudioBufferSourceNode; gainNode: GainNode; duration: number } | null {
+    if (!this.ctx) return null;
+
+    // Try file-based buffer first
+    const packBuffer = this.packBuffers.get(soundId);
+    if (packBuffer) {
+      return this.makeFromBuffer(packBuffer, soundId);
+    }
+
+    // Fall back to procedural generation
+    return this.generateSound(soundId);
+  }
+
+  /** Create source nodes from a pre-decoded AudioBuffer. */
+  private makeFromBuffer(
+    buffer: AudioBuffer,
+    soundId: SoundId,
+  ): { source: AudioBufferSourceNode; gainNode: GainNode; duration: number } {
+    const ctx = this.ctx!;
+    const config = SOUND_CONFIGS[soundId];
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = config.loop;
+
+    const gainNode = ctx.createGain();
+    source.connect(gainNode);
+
+    return { source, gainNode, duration: buffer.duration };
+  }
 
   /** Check if we can play another instance of this sound, and reserve a slot. */
   private acquireSlot(soundId: SoundId): boolean {

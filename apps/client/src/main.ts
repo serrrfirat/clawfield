@@ -478,8 +478,13 @@ console.log('Clawfield client starting...');
 network.connect();
 
 // Init sound on first user click (browser requires user gesture for AudioContext)
+// If a sound pack exists at /sounds/default/, it will be loaded asynchronously.
+// Any sounds not covered by the pack fall back to procedural generation.
 document.addEventListener('click', () => {
   soundManager.init();
+  soundManager.loadPack('/sounds/default/').catch(() => {
+    // No sound pack found — procedural fallback is used for all sounds
+  });
 }, { once: true });
 
 // Start game loop

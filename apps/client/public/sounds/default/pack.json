@@ -1,0 +1,19 @@
+{
+  "name": "Default Sound Pack",
+  "sounds": {
+    "shoot_rifle": "rifle_fire.ogg",
+    "shoot_smg": "smg_fire.ogg",
+    "shoot_shotgun": "shotgun_fire.ogg",
+    "shoot_sniper": "sniper_fire.ogg",
+    "reload": "reload.ogg",
+    "footstep_grass": "footstep_grass.ogg",
+    "footstep_stone": "footstep_stone.ogg",
+    "jump": "jump.ogg",
+    "land": "land.ogg",
+    "explosion": "explosion.ogg",
+    "grenade_bounce": "grenade_bounce.ogg",
+    "hit_confirm_ding": "hit_confirm.ogg",
+    "capture_tick": "capture_tick.ogg",
+    "ambient_wind": "ambient_wind.ogg"
+  }
+}

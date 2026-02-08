@@ -29,6 +29,17 @@ export interface SoundConfig {
   spatial: boolean;
 }
 
+/**
+ * A sound pack maps SoundIds to audio file paths relative to the pack's base URL.
+ * When loaded, file-based sounds override the procedural fallbacks.
+ */
+export interface SoundPackManifest {
+  /** Display name of the sound pack */
+  name: string;
+  /** Sound files keyed by SoundId value (e.g. "shoot_rifle": "rifle_fire.ogg") */
+  sounds: Partial<Record<SoundId, string>>;
+}
+
 export const SOUND_CONFIGS: Record<SoundId, SoundConfig> = {
   // Weapons: volume 0.5, no loop, spatial
   [SoundId.ShootRifle]: { volume: 0.5, loop: false, spatial: true },
