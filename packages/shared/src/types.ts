@@ -135,10 +135,20 @@ export interface KillEntry {
   weapon: string;
 }
 
+/** Spawn point option sent to clients for the deploy screen */
+export interface SpawnPointOption {
+  id: string;
+  name: string;
+  position: Vec3;
+  /** 'base' = team home spawn, 'flag' = captured point */
+  type: 'base' | 'flag';
+}
+
 export type ClientMessage =
   | { type: 'join'; name: string; classId: string }
   | { type: 'input'; seq: number; input: InputState; dt: number }
-  | { type: 'select_class'; classId: string };
+  | { type: 'select_class'; classId: string }
+  | { type: 'deploy'; classId: string; weaponId: string; spawnPointId: string };
 
 export type ServerMessage =
   | {
@@ -157,6 +167,7 @@ export type ServerMessage =
   | { type: 'kill'; entry: KillEntry }
   | { type: 'death'; killerId: string; respawnTime: number; killerPos: Vec3 }
   | { type: 'respawn'; position: Vec3 }
+  | { type: 'available_spawns'; spawns: SpawnPointOption[] }
   | { type: 'tickets'; alpha: number; bravo: number }
   | { type: 'projectiles'; projectiles: ProjectileState[] }
   | { type: 'grenades'; grenades: GrenadeState[] }

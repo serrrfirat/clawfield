@@ -47,6 +47,8 @@ export class PlayerSim {
   reloadTimer: number = 0;
   lastFireTime: number = 0; // timestamp in ms
   deathTime: number = 0; // timestamp in ms when player died
+  /** When true, player is on the deploy screen and won't auto-respawn */
+  waitingToDeploy: boolean = false;
 
   /** Time remaining before firing is allowed after sprint (seconds) */
   sprintFireTimer: number = 0;
@@ -235,11 +237,16 @@ export class PlayerSim {
   }
 
   /** Change class and update weapon accordingly */
-  selectClass(classId: ClassId): void {
+  selectClass(classId: ClassId, weaponId?: string): void {
     const classDef = CLASSES[classId];
     if (!classDef) return;
     this.classId = classId;
-    this.weapon = WEAPONS[classDef.defaultPrimary];
+    // Use requested weapon if it belongs to this class, otherwise default
+    if (weaponId && (weaponId === classDef.defaultPrimary || weaponId === classDef.altPrimary)) {
+      this.weapon = WEAPONS[weaponId as import('@clawfield/shared').WeaponId];
+    } else {
+      this.weapon = WEAPONS[classDef.defaultPrimary];
+    }
     this.ammo = this.weapon.magSize;
     this.reloading = false;
     this.reloadTimer = 0;
