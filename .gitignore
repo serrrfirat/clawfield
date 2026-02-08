@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.venv/
+
+# MCP config (contains absolute paths)
+.mcp.json
+
+# Tools (cloned repos)
+tools/
+
+# Build output
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Vox assets (binary, tracked separately or via LFS)
+# assets/vox/*.vox
+
+# Environment
+.env
+.env.local
