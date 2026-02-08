@@ -28,54 +28,58 @@ const FACE_INFO: [number, number, number, number][] = [
 ];
 
 /** Get voxel from flat array, returns 0 for out-of-bounds */
-function getLocal(voxels: Uint8Array, x: number, y: number, z: number): number {
-  if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) {
+function getLocal(voxels: Uint8Array, x: number, y: number, z: number, gridSize: number = CHUNK_SIZE): number {
+  if (x < 0 || x >= gridSize || y < 0 || y >= gridSize || z < 0 || z >= gridSize) {
     return 0;
   }
-  return voxels[x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE];
+  return voxels[x + y * gridSize + z * gridSize * gridSize];
 }
 
 /**
  * Greedy meshing: produces merged quads for a chunk.
  * For each of 6 face directions, sweeps through slices and merges
  * adjacent same-material faces into larger quads.
+ *
+ * @param voxels - Flat voxel array (gridSize^3 elements)
+ * @param gridSize - Dimension of the grid (default CHUNK_SIZE=16, or 8/4 for LOD)
+ * @param scale - Multiplier for output quad positions/sizes (default 1, or 2/4 for LOD)
  */
-export function greedyMesh(voxels: Uint8Array): MeshQuad[] {
+export function greedyMesh(voxels: Uint8Array, gridSize: number = CHUNK_SIZE, scale: number = 1): MeshQuad[] {
   const quads: MeshQuad[] = [];
 
   for (let faceIdx = 0; faceIdx < 6; faceIdx++) {
     const [normalAxis, uAxis, vAxis, normalDir] = FACE_INFO[faceIdx];
 
     // Sweep through slices along the normal axis
-    for (let d = 0; d < CHUNK_SIZE; d++) {
+    for (let d = 0; d < gridSize; d++) {
       // Build a 2D mask of faces that need rendering
-      const mask = new Int32Array(CHUNK_SIZE * CHUNK_SIZE); // 0 = no face, >0 = material
+      const mask = new Int32Array(gridSize * gridSize); // 0 = no face, >0 = material
 
-      for (let v = 0; v < CHUNK_SIZE; v++) {
-        for (let u = 0; u < CHUNK_SIZE; u++) {
+      for (let v = 0; v < gridSize; v++) {
+        for (let u = 0; u < gridSize; u++) {
           const pos = [0, 0, 0];
           pos[normalAxis] = d;
           pos[uAxis] = u;
           pos[vAxis] = v;
 
-          const voxel = getLocal(voxels, pos[0], pos[1], pos[2]);
+          const voxel = getLocal(voxels, pos[0], pos[1], pos[2], gridSize);
 
           // Check neighbor in normal direction
           const nPos = [pos[0], pos[1], pos[2]];
           nPos[normalAxis] += normalDir > 0 ? 1 : -1;
-          const neighbor = getLocal(voxels, nPos[0], nPos[1], nPos[2]);
+          const neighbor = getLocal(voxels, nPos[0], nPos[1], nPos[2], gridSize);
 
           // Face exists when current voxel is solid and neighbor is air
           if (voxel !== 0 && neighbor === 0) {
-            mask[u + v * CHUNK_SIZE] = voxel;
+            mask[u + v * gridSize] = voxel;
           }
         }
       }
 
       // Greedy merge the mask into quads
-      for (let v = 0; v < CHUNK_SIZE; v++) {
-        for (let u = 0; u < CHUNK_SIZE;) {
-          const mat = mask[u + v * CHUNK_SIZE];
+      for (let v = 0; v < gridSize; v++) {
+        for (let u = 0; u < gridSize;) {
+          const mat = mask[u + v * gridSize];
           if (mat === 0) {
             u++;
             continue;
@@ -83,16 +87,16 @@ export function greedyMesh(voxels: Uint8Array): MeshQuad[] {
 
           // Find width: extend u while same material
           let w = 1;
-          while (u + w < CHUNK_SIZE && mask[(u + w) + v * CHUNK_SIZE] === mat) {
+          while (u + w < gridSize && mask[(u + w) + v * gridSize] === mat) {
             w++;
           }
 
           // Find height: extend v while entire row matches
           let h = 1;
           let done = false;
-          while (v + h < CHUNK_SIZE && !done) {
+          while (v + h < gridSize && !done) {
             for (let k = 0; k < w; k++) {
-              if (mask[(u + k) + (v + h) * CHUNK_SIZE] !== mat) {
+              if (mask[(u + k) + (v + h) * gridSize] !== mat) {
                 done = true;
                 break;
               }
@@ -100,18 +104,18 @@ export function greedyMesh(voxels: Uint8Array): MeshQuad[] {
             if (!done) h++;
           }
 
-          // Build the quad position
+          // Build the quad position (scaled to world space for LOD)
           const pos = [0, 0, 0];
-          pos[normalAxis] = normalDir > 0 ? d + 1 : d;
-          pos[uAxis] = u;
-          pos[vAxis] = v;
+          pos[normalAxis] = (normalDir > 0 ? d + 1 : d) * scale;
+          pos[uAxis] = u * scale;
+          pos[vAxis] = v * scale;
 
           const quad: MeshQuad = {
             x: pos[0],
             y: pos[1],
             z: pos[2],
-            w,
-            h,
+            w: w * scale,
+            h: h * scale,
             face: faceIdx,
             material: mat,
           };
@@ -120,7 +124,7 @@ export function greedyMesh(voxels: Uint8Array): MeshQuad[] {
           // Clear the mask
           for (let dv = 0; dv < h; dv++) {
             for (let du = 0; du < w; du++) {
-              mask[(u + du) + (v + dv) * CHUNK_SIZE] = 0;
+              mask[(u + du) + (v + dv) * gridSize] = 0;
             }
           }
 
