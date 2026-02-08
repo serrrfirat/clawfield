@@ -24,7 +24,7 @@ import {
   STREAM_RADIUS,
   STREAM_CHECK_INTERVAL,
 } from '@clawfield/shared';
-import type { ClientMessage, ChunkData, MapObjective, Vec3 } from '@clawfield/shared';
+import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
 import { PlayerSim } from './player-sim.js';
 import { DummyBot } from './bot.js';
@@ -439,6 +439,76 @@ export class GameLoop {
     return { ...spawns[idx] };
   }
 
+  /** Get all available spawn points for a team as options for the deploy screen */
+  private getAvailableSpawns(team: Team): SpawnPointOption[] {
+    const options: SpawnPointOption[] = [];
+
+    // Base spawns
+    if (this.usingBinaryMap) {
+      const baseSpawns = team === Team.Alpha ? this.mapSpawnsAlpha : this.mapSpawnsBravo;
+      if (baseSpawns.length > 0) {
+        options.push({
+          id: 'base',
+          name: team === Team.Alpha ? 'Alpha Base' : 'Bravo Base',
+          position: baseSpawns[Math.floor(Math.random() * baseSpawns.length)],
+          type: 'base',
+        });
+      }
+    } else {
+      const fallbackSpawns = SPAWN_POINTS[team];
+      if (fallbackSpawns.length > 0) {
+        options.push({
+          id: 'base',
+          name: team === Team.Alpha ? 'Alpha Base' : 'Bravo Base',
+          position: fallbackSpawns[Math.floor(Math.random() * fallbackSpawns.length)],
+          type: 'base',
+        });
+      }
+    }
+
+    // Capture point spawns (owned flags)
+    const captureStates = this.capturePointManager.getStates();
+    for (const cp of captureStates) {
+      if (cp.owner === team) {
+        options.push({
+          id: cp.id,
+          name: cp.id.toUpperCase(),
+          position: cp.position,
+          type: 'flag',
+        });
+      }
+    }
+
+    return options;
+  }
+
+  /** Resolve a spawn point ID to a position */
+  private resolveSpawnPoint(team: Team, spawnPointId: string): Vec3 {
+    if (spawnPointId === 'base') {
+      // Use base spawn
+      if (this.usingBinaryMap) {
+        const spawns = team === Team.Alpha ? this.mapSpawnsAlpha : this.mapSpawnsBravo;
+        if (spawns.length > 0) {
+          return { ...spawns[Math.floor(Math.random() * spawns.length)] };
+        }
+      }
+      const fallback = SPAWN_POINTS[team];
+      return { ...fallback[Math.floor(Math.random() * fallback.length)] };
+    }
+
+    // Try capture point
+    const captureSpawns = this.capturePointManager.getSpawnPoints(team);
+    // Find the matching capture point
+    const captureStates = this.capturePointManager.getStates();
+    const match = captureStates.find(cp => cp.id === spawnPointId && cp.owner === team);
+    if (match) {
+      return { ...match.position };
+    }
+
+    // Fallback to any available spawn
+    return this.getSpawnPoint(team);
+  }
+
   // --- Connection handlers ---
 
   private handleConnect(_client: Client): void {
@@ -458,17 +528,19 @@ export class GameLoop {
           ? msg.classId as ClassId
           : ClassId.Assault;
 
-        // Spawn at team spawn point
-        const spawnPos = this.getSpawnPoint(team);
-        const sim = new PlayerSim(client.id, msg.name, spawnPos);
+        // Create player in waiting-to-deploy state (no immediate spawn)
+        const tempPos = this.getSpawnPoint(team);
+        const sim = new PlayerSim(client.id, msg.name, tempPos);
         sim.team = team;
         sim.selectClass(classId);
+        sim.alive = false;
+        sim.waitingToDeploy = true;
         this.players.set(client.id, sim);
 
-        // Determine initial chunks to send (within STREAM_RADIUS of spawn)
-        const spawnCx = Math.floor(spawnPos.x / CHUNK_SIZE);
-        const spawnCy = Math.floor(spawnPos.y / CHUNK_SIZE);
-        const spawnCz = Math.floor(spawnPos.z / CHUNK_SIZE);
+        // Determine initial chunks to send (within STREAM_RADIUS of temp position)
+        const spawnCx = Math.floor(tempPos.x / CHUNK_SIZE);
+        const spawnCy = Math.floor(tempPos.y / CHUNK_SIZE);
+        const spawnCz = Math.floor(tempPos.z / CHUNK_SIZE);
         const nearbyKeys = getChunksInRadius(spawnCx, spawnCy, spawnCz, STREAM_RADIUS);
 
         const mapData: ChunkData[] = [];
@@ -492,6 +564,12 @@ export class GameLoop {
           palette: this.palette.length > 0 ? this.palette : undefined,
           mapName: this.mapDisplayName,
           objectives: this.mapObjectives,
+        });
+
+        // Send available spawns for the deploy screen
+        this.network.send(client, {
+          type: 'available_spawns',
+          spawns: this.getAvailableSpawns(team),
         });
 
         // Notify other players
@@ -554,6 +632,28 @@ export class GameLoop {
           sim.selectClass(classId);
           console.log(`Player ${sim.name} switched to ${classId}`);
         }
+        break;
+      }
+
+      case 'deploy': {
+        const sim = this.players.get(client.id);
+        if (!sim || !sim.waitingToDeploy) break;
+
+        const classId = (Object.values(ClassId).includes(msg.classId as ClassId))
+          ? msg.classId as ClassId
+          : ClassId.Assault;
+
+        sim.selectClass(classId, msg.weaponId);
+        const spawnPos = this.resolveSpawnPoint(sim.team, msg.spawnPointId);
+        sim.respawn(spawnPos);
+        sim.waitingToDeploy = false;
+
+        this.network.send(client, {
+          type: 'respawn',
+          position: spawnPos,
+        });
+
+        console.log(`DEPLOY: ${sim.name} as ${classId} with ${msg.weaponId} at ${msg.spawnPointId}`);
         break;
       }
     }
@@ -1040,22 +1140,27 @@ export class GameLoop {
   private processRespawns(now: number): void {
     for (const sim of this.players.values()) {
       if (sim.alive) continue;
+      if (sim.waitingToDeploy) continue; // Already sent to deploy screen
       if (now - sim.deathTime < RESPAWN_DELAY * 1000) continue;
 
-      // Respawn at a team spawn point
-      const spawnPos = this.getSpawnPoint(sim.team);
-      sim.respawn(spawnPos);
+      // Check if this is a bot — bots auto-respawn without deploy screen
+      const isBot = this.bots.some((b) => b.sim.id === sim.id);
+      if (isBot) {
+        const spawnPos = this.getSpawnPoint(sim.team);
+        sim.respawn(spawnPos);
+        console.log(`RESPAWN (bot): ${sim.name}`);
+        continue;
+      }
 
-      // Notify the player
+      // Human player: send available spawns and wait for deploy message
+      sim.waitingToDeploy = true;
       const client = this.network.getClients().get(sim.id);
       if (client) {
         this.network.send(client, {
-          type: 'respawn',
-          position: spawnPos,
+          type: 'available_spawns',
+          spawns: this.getAvailableSpawns(sim.team),
         });
       }
-
-      console.log(`RESPAWN: ${sim.name} at (${spawnPos.x}, ${spawnPos.y}, ${spawnPos.z})`);
     }
   }
 
