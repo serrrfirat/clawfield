@@ -148,6 +148,7 @@ export class DummyBot {
       crouch: false,
       throwGrenade: false,
       useGadget: false,
+      scope: false,
       yaw: Math.random() * Math.PI * 2,
       pitch: 0,
     };

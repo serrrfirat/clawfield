@@ -190,6 +190,21 @@ export const GADGET_SPOT_CONE = 0.15;
 /** Deploy cover HP */
 export const GADGET_COVER_HP = 300;
 
+/** Deploy cover width in voxels */
+export const GADGET_COVER_WIDTH = 3;
+
+/** Deploy cover height in voxels */
+export const GADGET_COVER_HEIGHT = 3;
+
+/** Deploy cover duration in seconds (auto-remove after this) */
+export const GADGET_COVER_DURATION = 45;
+
+/** Deploy cover placement distance from player (meters) */
+export const GADGET_COVER_DISTANCE = 2;
+
+/** Deploy cover material ID (uses wall material) */
+export const GADGET_COVER_MATERIAL = 4; // MAT_WALL
+
 /** Gadget cooldown in seconds */
 export const GADGET_COOLDOWN = 15;
 

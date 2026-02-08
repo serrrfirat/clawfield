@@ -35,6 +35,9 @@ export class GadgetRenderer {
     const serverIds = new Set<number>();
 
     for (const sg of gadgets) {
+      // Deploy cover renders as actual voxels — skip gadget icon
+      if (sg.type === 'repair_tool') continue;
+
       serverIds.add(sg.id);
 
       const existing = this.gadgets.get(sg.id);

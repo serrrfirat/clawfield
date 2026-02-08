@@ -5,6 +5,15 @@ import { Viewmodel } from './viewmodel';
 import type { InputCapture } from './input';
 import { soundManager, SoundId } from '../audio/sound-manager';
 
+/** Default camera FOV */
+const DEFAULT_FOV = 75;
+/** Scoped-in FOV (zoomed) */
+const SCOPED_FOV = 25;
+/** FOV interpolation speed (higher = faster transition) */
+const SCOPE_LERP_SPEED = 12;
+/** Weapons that support scoping */
+const SCOPE_WEAPONS = new Set<WeaponId>([WeaponId.SniperRifle, WeaponId.DMR]);
+
 /** Tracer line that fades and is removed */
 interface Tracer {
   line: THREE.Line;
@@ -55,6 +64,12 @@ export class WeaponController {
   /** First-person weapon viewmodel */
   private viewmodel: Viewmodel;
 
+  /** Whether the player is currently scoped in */
+  scoped = false;
+
+  /** Scope overlay DOM element */
+  private scopeOverlay: HTMLDivElement | null = null;
+
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, classId: string = 'assault') {
     const classDef = CLASSES[classId as ClassId] ?? CLASSES[ClassId.Assault];
     this.weapon = WEAPONS[classDef.defaultPrimary];
@@ -67,6 +82,7 @@ export class WeaponController {
     this.viewmodel.setWeaponType(this.weapon.name);
 
     this.createHitMarkerElement();
+    this.createScopeOverlay();
   }
 
   /** Create the hit marker "X" element in the DOM */
@@ -88,6 +104,36 @@ export class WeaponController {
       display: none;
     `;
     document.body.appendChild(this.hitMarkerEl);
+  }
+
+  /** Check if this weapon supports scoping */
+  get canScope(): boolean {
+    return SCOPE_WEAPONS.has(this.weapon.id);
+  }
+
+  /** Update scope state based on input */
+  updateScope(wantsScope: boolean, dt: number): void {
+    const shouldScope = wantsScope && this.canScope && !this.reloading;
+    this.scoped = shouldScope;
+
+    // Smoothly interpolate FOV
+    const targetFov = this.scoped ? SCOPED_FOV : DEFAULT_FOV;
+    const currentFov = this.camera.fov;
+    const newFov = currentFov + (targetFov - currentFov) * Math.min(1, SCOPE_LERP_SPEED * dt);
+    if (Math.abs(newFov - currentFov) > 0.01) {
+      this.camera.fov = newFov;
+      this.camera.updateProjectionMatrix();
+    }
+
+    // Show/hide scope overlay
+    if (this.scopeOverlay) {
+      // Show overlay when mostly zoomed in (FOV below midpoint)
+      const midFov = (DEFAULT_FOV + SCOPED_FOV) / 2;
+      this.scopeOverlay.style.display = this.camera.fov < midFov ? 'block' : 'none';
+    }
+
+    // Hide viewmodel when scoped
+    this.viewmodel.setVisible(!this.scoped);
   }
 
   /** Update fire cooldown, tracers, and viewmodel each frame */
@@ -197,6 +243,52 @@ export class WeaponController {
     this.reloading = reloading;
   }
 
+  /** Create the scope overlay element (dark vignette with crosshair) */
+  private createScopeOverlay(): void {
+    this.scopeOverlay = document.createElement('div');
+    this.scopeOverlay.id = 'scope-overlay';
+    this.scopeOverlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 90;
+      display: none;
+    `;
+    // Dark vignette around the edges using radial gradient
+    this.scopeOverlay.style.background =
+      'radial-gradient(circle at center, transparent 25%, rgba(0,0,0,0.85) 55%, rgba(0,0,0,0.98) 70%)';
+
+    // Scope crosshair lines
+    const crosshairH = document.createElement('div');
+    crosshairH.style.cssText = `
+      position: absolute;
+      top: 50%; left: 25%; right: 25%;
+      height: 1px;
+      background: rgba(0,0,0,0.6);
+    `;
+    const crosshairV = document.createElement('div');
+    crosshairV.style.cssText = `
+      position: absolute;
+      left: 50%; top: 25%; bottom: 25%;
+      width: 1px;
+      background: rgba(0,0,0,0.6);
+    `;
+    // Center dot
+    const dot = document.createElement('div');
+    dot.style.cssText = `
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 3px; height: 3px;
+      background: red;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    `;
+    this.scopeOverlay.appendChild(crosshairH);
+    this.scopeOverlay.appendChild(crosshairV);
+    this.scopeOverlay.appendChild(dot);
+    document.body.appendChild(this.scopeOverlay);
+  }
+
   /** Change weapon class */
   setClass(classId: string): void {
     const classDef = CLASSES[classId as ClassId] ?? CLASSES[ClassId.Assault];
@@ -205,6 +297,10 @@ export class WeaponController {
     this.maxAmmo = this.weapon.magSize;
     this.reloading = false;
     this.fireCooldown = 0;
+    this.scoped = false;
+    this.camera.fov = DEFAULT_FOV;
+    this.camera.updateProjectionMatrix();
+    if (this.scopeOverlay) this.scopeOverlay.style.display = 'none';
     this.viewmodel.setWeaponType(this.weapon.name);
   }
 
@@ -292,6 +388,10 @@ export class WeaponController {
     if (this.hitMarkerEl) {
       this.hitMarkerEl.remove();
       this.hitMarkerEl = null;
+    }
+    if (this.scopeOverlay) {
+      this.scopeOverlay.remove();
+      this.scopeOverlay = null;
     }
     if (this.flashLight) {
       this.scene.remove(this.flashLight);
