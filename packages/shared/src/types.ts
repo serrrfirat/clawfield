@@ -1,3 +1,6 @@
+/** Available game modes */
+export type GameMode = 'tdm' | 'conquest';
+
 /** 3D vector */
 export interface Vec3 {
   x: number;
@@ -145,7 +148,7 @@ export interface SpawnPointOption {
 }
 
 export type ClientMessage =
-  | { type: 'join'; name: string; classId: string }
+  | { type: 'join'; name: string; classId: string; gameMode: GameMode }
   | { type: 'input'; seq: number; input: InputState; dt: number }
   | { type: 'select_class'; classId: string }
   | { type: 'deploy'; classId: string; weaponId: string; spawnPointId: string };
@@ -159,6 +162,7 @@ export type ServerMessage =
       palette?: number[];
       mapName?: string;
       objectives?: MapObjective[];
+      gameMode: GameMode;
     }
   | { type: 'player_joined'; id: string; name: string; team: number }
   | { type: 'player_left'; id: string }

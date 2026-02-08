@@ -1,4 +1,4 @@
-import type { KillEntry } from '@clawfield/shared';
+import type { KillEntry, GameMode } from '@clawfield/shared';
 import { injectHUDStyles } from './styles.js';
 
 // ── Public interfaces ──────────────────────────────────────────────
@@ -15,6 +15,9 @@ export interface HUDState {
   myTeam: number;
   alive: boolean;
   className: string;
+  gameMode: GameMode;
+  conquestScoreAlpha: number;
+  conquestScoreBravo: number;
 }
 
 // ── Internal helpers ───────────────────────────────────────────────
@@ -176,9 +179,14 @@ export class HUD {
     }
     this.ammoClass.textContent = state.className;
 
-    // Tickets
-    this.ticketsAlphaEl.textContent = `ALPHA: ${state.ticketsAlpha}`;
-    this.ticketsBravoEl.textContent = `BRAVO: ${state.ticketsBravo}`;
+    // Score display — mode-aware
+    if (state.gameMode === 'conquest') {
+      this.ticketsAlphaEl.textContent = `ALPHA: ${state.conquestScoreAlpha}`;
+      this.ticketsBravoEl.textContent = `BRAVO: ${state.conquestScoreBravo}`;
+    } else {
+      this.ticketsAlphaEl.textContent = `ALPHA: ${state.ticketsAlpha}`;
+      this.ticketsBravoEl.textContent = `BRAVO: ${state.ticketsBravo}`;
+    }
 
     // Highlight player's own team
     this.ticketsAlphaEl.classList.toggle(

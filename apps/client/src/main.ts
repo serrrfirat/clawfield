@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { getVoxel, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS, CLASSES } from '@clawfield/shared';
-import type { ServerMessage, PlayerState, KillEntry } from '@clawfield/shared';
+import type { ServerMessage, PlayerState, KillEntry, GameMode } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer } from './voxel/world-renderer';
 import { deserializeChunks } from './voxel/test-map';
@@ -17,6 +17,7 @@ import { DamageIndicatorSystem } from './hud/damage-indicator';
 import { Scoreboard } from './hud/scoreboard';
 import { soundManager } from './audio/sound-manager';
 import { DeployScreen } from './hud/deploy-screen';
+import { MainMenu } from './hud/main-menu';
 import type { CapturePointState, MapObjective, SpawnPointOption } from '@clawfield/shared';
 
 // --- Game State (exported for HUD) ---
@@ -40,6 +41,7 @@ export const gameState = {
   conquestScoreBravo: 0,
   selectedClass: 'assault',
   selectedClassName: 'Assault',
+  gameMode: 'tdm' as GameMode,
 };
 
 // --- State ---
@@ -65,7 +67,8 @@ function handleServerMessage(msg: ServerMessage): void {
     case 'welcome': {
       gameState.myId = msg.id;
       gameState.myTeam = msg.team;
-      console.log(`Joined as ${gameState.myId} on team ${msg.team}`);
+      gameState.gameMode = msg.gameMode;
+      console.log(`Joined as ${gameState.myId} on team ${msg.team} (mode: ${msg.gameMode})`);
 
       // Load palette before building meshes so colors are correct
       if (msg.palette) {
@@ -400,6 +403,9 @@ function gameLoop(): void {
     myTeam: gameState.myTeam,
     alive: gameState.alive,
     className: gameState.selectedClassName,
+    gameMode: gameState.gameMode,
+    conquestScoreAlpha: gameState.conquestScoreAlpha,
+    conquestScoreBravo: gameState.conquestScoreBravo,
   });
 
   // Update damage indicators
@@ -449,6 +455,7 @@ const hud = new HUD();
 const damageIndicator = new DamageIndicatorSystem();
 const scoreboard = new Scoreboard();
 const deployScreen = new DeployScreen();
+const mainMenu = new MainMenu();
 
 function showDeployScreen(spawns: SpawnPointOption[]): void {
   deployScreen.show(
@@ -474,8 +481,16 @@ function showDeployScreen(spawns: SpawnPointOption[]): void {
 // --- Start ---
 console.log('Clawfield client starting...');
 
-// Connect to server (map data comes from server welcome message)
-network.connect();
+// Show the main menu — player picks name and game mode before connecting
+mainMenu.show((choice) => {
+  mainMenu.hide();
+
+  // Connect and join with chosen name + mode
+  network.onConnected = () => {
+    network.join(choice.name, choice.gameMode);
+  };
+  network.connect();
+});
 
 // Init sound on first user click (browser requires user gesture for AudioContext)
 // If a sound pack exists at /sounds/default/, it will be loaded asynchronously.
