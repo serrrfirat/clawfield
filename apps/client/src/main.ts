@@ -17,6 +17,7 @@ import { DamageIndicatorSystem } from './hud/damage-indicator';
 import { Scoreboard } from './hud/scoreboard';
 import { soundManager } from './audio/sound-manager';
 import { DeployScreen } from './hud/deploy-screen';
+import { loadSoldierModel } from './player/model-loader';
 import type { CapturePointState, MapObjective, SpawnPointOption } from '@clawfield/shared';
 
 // --- Game State (exported for HUD) ---
@@ -473,6 +474,9 @@ function showDeployScreen(spawns: SpawnPointOption[]): void {
 
 // --- Start ---
 console.log('Clawfield client starting...');
+
+// Preload 3D soldier model (non-blocking; falls back to box if missing)
+loadSoldierModel();
 
 // Connect to server (map data comes from server welcome message)
 network.connect();
