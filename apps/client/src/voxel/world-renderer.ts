@@ -2,12 +2,64 @@ import * as THREE from 'three';
 import { CHUNK_SIZE, chunkKeyToPosition } from '@clawfield/shared';
 import { buildChunkGeometry, buildWaterGeometry } from './chunk-mesh';
 import { getLodLevel } from './lod';
+import { createTextureAtlas, ATLAS_COLS, ATLAS_ROWS } from './texture-atlas';
+
+// Generate the texture atlas once at startup
+const atlasTexture = createTextureAtlas();
+
+/**
+ * Patch a MeshStandardMaterial to sample a texture atlas in the fragment shader.
+ *
+ * UV encoding from the mesher: uv = (tileCol + voxelU, tileRow + voxelV)
+ * The shader extracts the tile base via floor() and uses fract() to tile within
+ * each atlas cell, then samples the atlas texture and multiplies by vertex color
+ * (which carries the per-face directional shading).
+ */
+function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uAtlas = { value: atlasTexture };
+    shader.uniforms.uAtlasCols = { value: ATLAS_COLS };
+    shader.uniforms.uAtlasRows = { value: ATLAS_ROWS };
+
+    // Add uniforms to the fragment shader
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <common>',
+      /* glsl */ `
+      #include <common>
+      uniform sampler2D uAtlas;
+      uniform float uAtlasCols;
+      uniform float uAtlasRows;
+      `,
+    );
+
+    // Replace the color/map fragment to sample the atlas
+    // The default map_fragment reads from the 'map' texture; we override it
+    // to read from our atlas using the packed UVs.
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      /* glsl */ `
+      #include <color_fragment>
+      {
+        // Decode packed UVs: floor = tile index, fract = position within tile
+        vec2 tileBase = floor(vUv);
+        vec2 localUV = fract(vUv);
+        // Convert tile + local position to atlas UV
+        vec2 atlasUV = (tileBase + localUV) / vec2(uAtlasCols, uAtlasRows);
+        vec4 atlasColor = texture2D(uAtlas, atlasUV);
+        // Multiply atlas texture color by vertex color (carries face shading)
+        diffuseColor.rgb *= atlasColor.rgb;
+      }
+      `,
+    );
+  };
+}
 
 const chunkMaterial = new THREE.MeshStandardMaterial({
   vertexColors: true,
   roughness: 0.85,
   metalness: 0.0,
 });
+patchMaterialWithAtlas(chunkMaterial);
 
 const waterMaterial = new THREE.MeshStandardMaterial({
   vertexColors: true,
@@ -18,6 +70,7 @@ const waterMaterial = new THREE.MeshStandardMaterial({
   depthWrite: false,
   side: THREE.DoubleSide,
 });
+patchMaterialWithAtlas(waterMaterial);
 
 interface ChunkEntry {
   mesh: THREE.Mesh | null;
