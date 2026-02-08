@@ -1,6 +1,6 @@
 # Clawfield
 
-Browser-based voxel battlefield game for 24v24 multiplayer. Inspired by Ravenfield's accessible, casual FPS gameplay with an AI Game Master that dynamically generates world events during matches.
+Browser-based voxel battlefield game for 24v24 multiplayer. Accessible, casual FPS gameplay with an AI Game Master that dynamically generates world events during matches.
 
 ## Tech Stack
 
@@ -88,7 +88,7 @@ pnpm run convert:map
 - Hitscan (close-mid range) and projectile (long range) weapons
 - Grenade physics with bounce, fuse timer, and explosion radius
 - Chunked voxel world with greedy meshing for efficient rendering
-- AI bots with configurable difficulty (ported from Ravenfield behavior)
+- AI bots with configurable difficulty
 
 ## Architecture
 
