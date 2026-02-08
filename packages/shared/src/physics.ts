@@ -8,6 +8,12 @@ import {
   PLAYER_HEIGHT,
   CROUCH_HEIGHT,
   MAX_PITCH,
+  MAT_WATER,
+  WATER_MOVE_SPEED,
+  WATER_SWIM_UP_SPEED,
+  WATER_SINK_SPEED,
+  WATER_GRAVITY,
+  WATER_DRAG,
 } from './constants.js';
 import type { AABB, InputState, Vec3 } from './types.js';
 
@@ -19,6 +25,7 @@ export interface MoveResult {
   position: Vec3;
   velocity: Vec3;
   grounded: boolean;
+  inWater: boolean;
 }
 
 /** Build an AABB from a player position (position is at feet center) */
@@ -34,7 +41,7 @@ export function playerAABB(pos: Vec3, height: number = PLAYER_HEIGHT): AABB {
   };
 }
 
-/** Check if an AABB overlaps any solid voxel */
+/** Check if an AABB overlaps any solid (non-water) voxel */
 function aabbOverlapsSolid(aabb: AABB, getVoxel: VoxelGetter): boolean {
   const startX = Math.floor(aabb.minX);
   const endX = Math.floor(aabb.maxX);
@@ -46,10 +53,31 @@ function aabbOverlapsSolid(aabb: AABB, getVoxel: VoxelGetter): boolean {
   for (let x = startX; x <= endX; x++) {
     for (let y = startY; y <= endY; y++) {
       for (let z = startZ; z <= endZ; z++) {
-        if (getVoxel(x, y, z) !== 0) {
+        const v = getVoxel(x, y, z);
+        if (v !== 0 && v !== MAT_WATER) {
           return true;
         }
       }
+    }
+  }
+  return false;
+}
+
+/** Check if the player's body overlaps any water voxel */
+function isInWater(position: Vec3, height: number, getVoxel: VoxelGetter): boolean {
+  const hw = PLAYER_WIDTH / 2;
+  // Check at waist level (middle of the body)
+  const checkY = position.y + height * 0.5;
+
+  const points = [
+    { x: position.x, z: position.z },
+    { x: position.x - hw + 0.01, z: position.z - hw + 0.01 },
+    { x: position.x + hw - 0.01, z: position.z + hw - 0.01 },
+  ];
+
+  for (const pt of points) {
+    if (getVoxel(Math.floor(pt.x), Math.floor(checkY), Math.floor(pt.z)) === MAT_WATER) {
+      return true;
     }
   }
   return false;
@@ -90,6 +118,7 @@ export function inputToVelocity(input: InputState, yaw: number): Vec3 {
 /**
  * Move a player applying physics against the voxel world.
  * Uses per-axis sweep collision resolution.
+ * Supports water: buoyancy, drag, and swimming when submerged.
  */
 export function movePlayer(
   position: Vec3,
@@ -105,19 +134,53 @@ export function movePlayer(
   const isCrouching = input.crouch && !input.sprint;
   const height = isCrouching ? CROUCH_HEIGHT : PLAYER_HEIGHT;
 
+  // Detect if the player is in water at the start of this step
+  const submerged = isInWater(position, height, getVoxel);
+
   const yaw = input.yaw;
   const moveVel = inputToVelocity(input, yaw);
 
-  let vx = moveVel.x;
+  // In water, horizontal speed is capped to WATER_MOVE_SPEED
+  let vx: number;
+  let vz: number;
+  if (submerged) {
+    const hLen = Math.sqrt(moveVel.x * moveVel.x + moveVel.z * moveVel.z);
+    if (hLen > 0) {
+      const scale = Math.min(hLen, WATER_MOVE_SPEED) / hLen;
+      vx = moveVel.x * scale;
+      vz = moveVel.z * scale;
+    } else {
+      vx = 0;
+      vz = 0;
+    }
+  } else {
+    vx = moveVel.x;
+    vz = moveVel.z;
+  }
+
   let vy = velocity.y;
-  let vz = moveVel.z;
 
-  // Apply gravity
-  vy += GRAVITY * clampedDt;
+  if (submerged) {
+    // Water physics: reduced gravity (buoyancy) + drag
+    vy += WATER_GRAVITY * clampedDt;
+    // Apply drag to vertical velocity
+    const dragFactor = Math.max(0, 1 - WATER_DRAG * clampedDt);
+    vy *= dragFactor;
 
-  // Jump if grounded (cannot jump while crouching)
-  if (input.jump && !isCrouching && isGrounded(position, getVoxel)) {
-    vy = JUMP_VELOCITY;
+    // Swimming controls: jump = swim up, crouch = swim down
+    if (input.jump) {
+      vy = WATER_SWIM_UP_SPEED;
+    } else if (input.crouch) {
+      vy = -WATER_SINK_SPEED;
+    }
+  } else {
+    // Normal gravity
+    vy += GRAVITY * clampedDt;
+
+    // Jump if grounded (cannot jump while crouching)
+    if (input.jump && !isCrouching && isGrounded(position, getVoxel)) {
+      vy = JUMP_VELOCITY;
+    }
   }
 
   // New candidate position
@@ -158,15 +221,17 @@ export function movePlayer(
   }
 
   const grounded = isGrounded({ x: px, y: py, z: pz }, getVoxel);
+  const inWater = isInWater({ x: px, y: py, z: pz }, height, getVoxel);
 
   return {
     position: { x: px, y: py, z: pz },
     velocity: { x: vx, y: vy, z: vz },
     grounded,
+    inWater,
   };
 }
 
-/** Check if player is standing on solid ground */
+/** Check if player is standing on solid ground (water is not solid ground) */
 function isGrounded(position: Vec3, getVoxel: VoxelGetter): boolean {
   const hw = PLAYER_WIDTH / 2;
   const checkY = position.y - 0.05;
@@ -181,7 +246,8 @@ function isGrounded(position: Vec3, getVoxel: VoxelGetter): boolean {
   ];
 
   for (const pt of points) {
-    if (getVoxel(Math.floor(pt.x), Math.floor(checkY), Math.floor(pt.z)) !== 0) {
+    const v = getVoxel(Math.floor(pt.x), Math.floor(checkY), Math.floor(pt.z));
+    if (v !== 0 && v !== MAT_WATER) {
       return true;
     }
   }

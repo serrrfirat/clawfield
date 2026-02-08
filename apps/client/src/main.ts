@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getVoxel, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS, CLASSES } from '@clawfield/shared';
+import { getVoxel, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES } from '@clawfield/shared';
 import type { ServerMessage, PlayerState, KillEntry, GameMode } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer } from './voxel/world-renderer';
@@ -18,6 +18,7 @@ import { Scoreboard } from './hud/scoreboard';
 import { soundManager } from './audio/sound-manager';
 import { DeployScreen } from './hud/deploy-screen';
 import { MainMenu } from './hud/main-menu';
+import { loadSoldierModel } from './player/model-loader';
 import type { CapturePointState, MapObjective, SpawnPointOption } from '@clawfield/shared';
 
 // --- Game State (exported for HUD) ---
@@ -32,6 +33,7 @@ export const gameState = {
   ammo: 30,
   maxAmmo: 30,
   reloading: false,
+  inWater: false,
   gameOver: false,
   winner: -1,
   capturePoints: [] as CapturePointState[],
@@ -60,6 +62,11 @@ const minimap = new Minimap();
 
 // Voxel getter for physics
 const voxelGetter = (wx: number, wy: number, wz: number) => getVoxel(chunks, wx, wy, wz);
+
+// Colors for underwater effect
+const skyColor = new THREE.Color(0x7ec8e3);
+const fogColor = new THREE.Color(0xa9c2d0);
+const underwaterColor = new THREE.Color(0x1a5276);
 
 // --- Network ---
 function handleServerMessage(msg: ServerMessage): void {
@@ -121,6 +128,7 @@ function handleServerMessage(msg: ServerMessage): void {
           gameState.ammo = playerState.ammo;
           gameState.maxAmmo = playerState.maxAmmo;
           gameState.reloading = playerState.reloading;
+          gameState.inWater = playerState.inWater;
 
           // Reconcile local player with server state
           localPlayer?.reconcile(playerState, msg.ack);
@@ -360,6 +368,9 @@ function gameLoop(): void {
   // Update gadgets
   gadgetRenderer.update(dt);
 
+  // Update water mesh animation
+  worldRenderer.update(dt);
+
   // Update capture point animations
   capturePointRenderer.update(dt);
 
@@ -416,6 +427,12 @@ function gameLoop(): void {
     scoreboard.setVisible(localPlayer.input.scoreboardVisible);
   }
 
+  // Update chunk LOD levels based on distance to camera
+  if (localPlayer && frameCount % LOD_UPDATE_INTERVAL === 0) {
+    const cam = renderer.camera;
+    worldRenderer.updateLod({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
+  }
+
   // Prune distant chunks every ~60 frames (~1 second at 60fps)
   if (localPlayer && frameCount % 60 === 0) {
     const cam = renderer.camera;
@@ -432,6 +449,23 @@ function gameLoop(): void {
   if (localPlayer) {
     const cam = renderer.camera;
     renderer.updateSunTarget({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
+  }
+
+  // Underwater visual effect: tint fog and background when submerged
+  if (gameState.inWater) {
+    renderer.scene.background = underwaterColor;
+    if (renderer.scene.fog) {
+      (renderer.scene.fog as THREE.Fog).color.copy(underwaterColor);
+      (renderer.scene.fog as THREE.Fog).near = 5;
+      (renderer.scene.fog as THREE.Fog).far = 60;
+    }
+  } else {
+    renderer.scene.background = skyColor;
+    if (renderer.scene.fog) {
+      (renderer.scene.fog as THREE.Fog).color.copy(fogColor);
+      (renderer.scene.fog as THREE.Fog).near = 120;
+      (renderer.scene.fog as THREE.Fog).far = 320;
+    }
   }
 
   // Render
@@ -480,6 +514,9 @@ function showDeployScreen(spawns: SpawnPointOption[]): void {
 
 // --- Start ---
 console.log('Clawfield client starting...');
+
+// Preload 3D soldier model (non-blocking; falls back to box if missing)
+loadSoldierModel();
 
 // Show the main menu — player picks name and game mode before connecting
 mainMenu.show((choice) => {

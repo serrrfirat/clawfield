@@ -8,6 +8,7 @@ import {
   GRENADE_DAMAGE,
   GRENADE_DAMAGE_RADIUS,
   PLAYER_HEIGHT,
+  MAT_WATER,
   type VoxelGetter,
 } from '@clawfield/shared';
 import type { PlayerSim } from './player-sim.js';
@@ -114,8 +115,9 @@ export class GrenadeManager {
       const candidateY = grenade.position.y + grenade.velocity.y * dt;
       const candidateZ = grenade.position.z + grenade.velocity.z * dt;
 
-      // Check X axis
-      if (getVoxel(Math.floor(candidateX), Math.floor(grenade.position.y), Math.floor(grenade.position.z)) !== 0) {
+      // Check X axis (water is passable, not solid)
+      const vxCheck = getVoxel(Math.floor(candidateX), Math.floor(grenade.position.y), Math.floor(grenade.position.z));
+      if (vxCheck !== 0 && vxCheck !== MAT_WATER) {
         grenade.velocity.x = -grenade.velocity.x * GRENADE_BOUNCINESS;
         grenade.velocity.y *= (1 - GRENADE_BOUNCE_DRAG);
         grenade.velocity.z *= (1 - GRENADE_BOUNCE_DRAG);
@@ -124,7 +126,8 @@ export class GrenadeManager {
       }
 
       // Check Y axis
-      if (getVoxel(Math.floor(grenade.position.x), Math.floor(candidateY), Math.floor(grenade.position.z)) !== 0) {
+      const vyCheck = getVoxel(Math.floor(grenade.position.x), Math.floor(candidateY), Math.floor(grenade.position.z));
+      if (vyCheck !== 0 && vyCheck !== MAT_WATER) {
         grenade.velocity.y = -grenade.velocity.y * GRENADE_BOUNCINESS;
         grenade.velocity.x *= (1 - GRENADE_BOUNCE_DRAG);
         grenade.velocity.z *= (1 - GRENADE_BOUNCE_DRAG);
@@ -133,7 +136,8 @@ export class GrenadeManager {
       }
 
       // Check Z axis
-      if (getVoxel(Math.floor(grenade.position.x), Math.floor(grenade.position.y), Math.floor(candidateZ)) !== 0) {
+      const vzCheck = getVoxel(Math.floor(grenade.position.x), Math.floor(grenade.position.y), Math.floor(candidateZ));
+      if (vzCheck !== 0 && vzCheck !== MAT_WATER) {
         grenade.velocity.z = -grenade.velocity.z * GRENADE_BOUNCINESS;
         grenade.velocity.x *= (1 - GRENADE_BOUNCE_DRAG);
         grenade.velocity.y *= (1 - GRENADE_BOUNCE_DRAG);

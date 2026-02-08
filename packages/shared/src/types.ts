@@ -16,6 +16,7 @@ export interface PlayerState {
   yaw: number;
   pitch: number;
   grounded: boolean;
+  inWater: boolean;
   health: number;
   alive: boolean;
   team: number;
