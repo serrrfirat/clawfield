@@ -1,0 +1,387 @@
+import type { KillEntry } from '@clawfield/shared';
+import { injectHUDStyles } from './styles.js';
+
+// ── Public interfaces ──────────────────────────────────────────────
+
+/** State the game loop feeds into the HUD every frame. */
+export interface HUDState {
+  health: number;
+  ammo: number;
+  maxAmmo: number;
+  reloading: boolean;
+  ticketsAlpha: number;
+  ticketsBravo: number;
+  /** 0 = Alpha, 1 = Bravo */
+  myTeam: number;
+  alive: boolean;
+  className: string;
+}
+
+// ── Internal helpers ───────────────────────────────────────────────
+
+/** Team index constants matching shared/combat.ts Team enum. */
+const TEAM_ALPHA = 0;
+const TEAM_BRAVO = 1;
+
+/** Max kill feed entries shown at once. */
+const MAX_KILLFEED = 5;
+
+/** How long (ms) a kill feed entry lives before fading. */
+const KILLFEED_LIFETIME = 5_000;
+
+/** How long (ms) the hit marker stays visible. */
+const HITMARKER_DURATION = 200;
+
+// ── HUD Class ──────────────────────────────────────────────────────
+
+/**
+ * Pure HTML/CSS heads-up display overlay.
+ *
+ * Usage:
+ * ```ts
+ * const hud = new HUD();
+ * // Every frame:
+ * hud.update({ health, ammo, maxAmmo, ... });
+ * // Events:
+ * hud.addKill(entry);
+ * hud.showHitMarker();
+ * hud.showDeath(5);
+ * hud.hideDeath();
+ * hud.showGameOver(winner, myTeam);
+ * // Cleanup:
+ * hud.dispose();
+ * ```
+ */
+export class HUD {
+  // ── DOM refs ─────────────────────────────────────────────────
+
+  private root: HTMLDivElement;
+
+  // Health
+  private healthFill: HTMLDivElement;
+  private healthText: HTMLDivElement;
+
+  // Ammo
+  private ammoCount: HTMLDivElement;
+  private ammoReload: HTMLDivElement;
+  private ammoClass: HTMLDivElement;
+
+  // Tickets
+  private ticketsAlphaEl: HTMLSpanElement;
+  private ticketsBravoEl: HTMLSpanElement;
+
+  // Kill feed
+  private killfeedContainer: HTMLDivElement;
+  private killfeedTimers: number[] = [];
+
+  // Hit marker
+  private hitmarker: HTMLDivElement;
+  private hitmarkerTimer: number | null = null;
+
+  // Death overlay
+  private deathOverlay: HTMLDivElement;
+  private deathKillerName: HTMLDivElement;
+  private deathCountdown: HTMLDivElement;
+  private deathInterval: number | null = null;
+
+  // Game over
+  private gameoverOverlay: HTMLDivElement;
+  private gameoverText: HTMLDivElement;
+
+  // ── Constructor ──────────────────────────────────────────────
+
+  constructor() {
+    injectHUDStyles();
+    this.root = this.el('div', 'hud-root');
+
+    // Health
+    const healthWrap = this.el('div', 'hud-health');
+    const barBg = this.el('div', 'hud-health-bar-bg');
+    this.healthFill = this.el('div', 'hud-health-bar-fill');
+    this.healthText = this.el('div', 'hud-health-text');
+    barBg.appendChild(this.healthFill);
+    barBg.appendChild(this.healthText);
+    healthWrap.appendChild(barBg);
+    this.root.appendChild(healthWrap);
+
+    // Ammo
+    const ammoWrap = this.el('div', 'hud-ammo');
+    this.ammoCount = this.el('div', 'hud-ammo-count');
+    this.ammoReload = this.el('div', 'hud-ammo-reload');
+    this.ammoReload.textContent = 'RELOADING';
+    this.ammoClass = this.el('div', 'hud-ammo-class');
+    ammoWrap.appendChild(this.ammoCount);
+    ammoWrap.appendChild(this.ammoReload);
+    ammoWrap.appendChild(this.ammoClass);
+    this.root.appendChild(ammoWrap);
+
+    // Tickets
+    const ticketsWrap = this.el('div', 'hud-tickets');
+    this.ticketsAlphaEl = this.el('span', 'hud-tickets-alpha') as HTMLSpanElement;
+    this.ticketsBravoEl = this.el('span', 'hud-tickets-bravo') as HTMLSpanElement;
+    const sep = this.el('span', 'hud-tickets-sep');
+    sep.textContent = '|';
+    ticketsWrap.appendChild(this.ticketsAlphaEl);
+    ticketsWrap.appendChild(sep);
+    ticketsWrap.appendChild(this.ticketsBravoEl);
+    this.root.appendChild(ticketsWrap);
+
+    // Kill feed
+    this.killfeedContainer = this.el('div', 'hud-killfeed');
+    this.root.appendChild(this.killfeedContainer);
+
+    // Hit marker
+    this.hitmarker = this.el('div', 'hud-hitmarker');
+    this.root.appendChild(this.hitmarker);
+
+    // Death overlay
+    this.deathOverlay = this.el('div', 'hud-death');
+    const deathTitle = this.el('div', 'hud-death-title');
+    deathTitle.textContent = 'YOU DIED';
+    this.deathKillerName = this.el('div', 'hud-death-killer');
+    this.deathCountdown = this.el('div', 'hud-death-countdown');
+    this.deathOverlay.appendChild(deathTitle);
+    this.deathOverlay.appendChild(this.deathKillerName);
+    this.deathOverlay.appendChild(this.deathCountdown);
+    this.root.appendChild(this.deathOverlay);
+
+    // Game over
+    this.gameoverOverlay = this.el('div', 'hud-gameover');
+    this.gameoverText = this.el('div', 'hud-gameover-text');
+    this.gameoverOverlay.appendChild(this.gameoverText);
+    this.root.appendChild(this.gameoverOverlay);
+
+    // Mount
+    document.body.appendChild(this.root);
+  }
+
+  // ── Public API ───────────────────────────────────────────────
+
+  /**
+   * Call every frame to sync HUD with current game state.
+   */
+  update(state: HUDState): void {
+    // Health bar
+    const pct = Math.max(0, Math.min(100, state.health));
+    this.healthFill.style.width = `${pct}%`;
+    this.healthFill.style.backgroundColor = this.healthColor(pct);
+    this.healthText.textContent = `${Math.round(state.health)}`;
+
+    // Ammo
+    this.ammoCount.innerHTML = `${state.ammo} <span>/ ${state.maxAmmo}</span>`;
+    if (state.reloading) {
+      this.ammoReload.classList.add('visible');
+    } else {
+      this.ammoReload.classList.remove('visible');
+    }
+    this.ammoClass.textContent = state.className;
+
+    // Tickets
+    this.ticketsAlphaEl.textContent = `ALPHA: ${state.ticketsAlpha}`;
+    this.ticketsBravoEl.textContent = `BRAVO: ${state.ticketsBravo}`;
+
+    // Highlight player's own team
+    this.ticketsAlphaEl.classList.toggle(
+      'hud-tickets-highlight',
+      state.myTeam === TEAM_ALPHA,
+    );
+    this.ticketsBravoEl.classList.toggle(
+      'hud-tickets-highlight',
+      state.myTeam === TEAM_BRAVO,
+    );
+  }
+
+  /**
+   * Push a new kill into the kill feed.
+   * Automatically trims to the most recent entries and schedules fade-out.
+   */
+  addKill(entry: KillEntry): void {
+    const row = document.createElement('div');
+    row.className = 'hud-killfeed-entry';
+
+    // Killer name — color by weapon holder's team (we don't have team in KillEntry,
+    // so we use a neutral approach; the integrator can extend KillEntry later).
+    // For now, killer gets Alpha color, victim gets Bravo as a visual distinction.
+    // In practice the main.ts integration layer should set team info; we rely on
+    // the overloaded addKill variant below for team-aware coloring.
+    row.innerHTML =
+      `<span class="hud-killfeed-alpha">${this.esc(entry.killerName)}</span>` +
+      `<span class="hud-killfeed-weapon">[${this.esc(entry.weapon)}]</span>` +
+      `<span class="hud-killfeed-bravo">${this.esc(entry.victimName)}</span>`;
+
+    this.killfeedContainer.appendChild(row);
+
+    // Trim to MAX_KILLFEED
+    while (this.killfeedContainer.children.length > MAX_KILLFEED) {
+      this.killfeedContainer.removeChild(this.killfeedContainer.children[0]!);
+    }
+
+    // Schedule fade-out
+    const timer = window.setTimeout(() => {
+      row.classList.add('fading');
+      // Remove from DOM after CSS transition
+      window.setTimeout(() => {
+        row.remove();
+      }, 400);
+    }, KILLFEED_LIFETIME);
+
+    this.killfeedTimers.push(timer);
+  }
+
+  /**
+   * Team-aware kill feed variant.
+   * Lets the integrator pass team indices so names get correct colors.
+   */
+  addKillWithTeams(
+    entry: KillEntry,
+    killerTeam: number,
+    victimTeam: number,
+  ): void {
+    const row = document.createElement('div');
+    row.className = 'hud-killfeed-entry';
+
+    const killerClass = killerTeam === TEAM_ALPHA ? 'hud-killfeed-alpha' : 'hud-killfeed-bravo';
+    const victimClass = victimTeam === TEAM_ALPHA ? 'hud-killfeed-alpha' : 'hud-killfeed-bravo';
+
+    row.innerHTML =
+      `<span class="${killerClass}">${this.esc(entry.killerName)}</span>` +
+      `<span class="hud-killfeed-weapon">[${this.esc(entry.weapon)}]</span>` +
+      `<span class="${victimClass}">${this.esc(entry.victimName)}</span>`;
+
+    this.killfeedContainer.appendChild(row);
+
+    while (this.killfeedContainer.children.length > MAX_KILLFEED) {
+      this.killfeedContainer.removeChild(this.killfeedContainer.children[0]!);
+    }
+
+    const timer = window.setTimeout(() => {
+      row.classList.add('fading');
+      window.setTimeout(() => {
+        row.remove();
+      }, 400);
+    }, KILLFEED_LIFETIME);
+
+    this.killfeedTimers.push(timer);
+  }
+
+  /**
+   * Flash the hit marker for HITMARKER_DURATION ms.
+   */
+  showHitMarker(): void {
+    if (this.hitmarkerTimer !== null) {
+      window.clearTimeout(this.hitmarkerTimer);
+    }
+    this.hitmarker.classList.add('visible');
+    this.hitmarkerTimer = window.setTimeout(() => {
+      this.hitmarker.classList.remove('visible');
+      this.hitmarkerTimer = null;
+    }, HITMARKER_DURATION);
+  }
+
+  /**
+   * Show the death overlay with a live countdown.
+   * @param respawnTime — seconds until respawn
+   * @param killerName — optional name of the player who killed us
+   */
+  showDeath(respawnTime: number, killerName?: string): void {
+    this.clearDeathInterval();
+
+    if (killerName) {
+      this.deathKillerName.textContent = `Killed by ${killerName}`;
+      this.deathKillerName.style.display = 'block';
+    } else {
+      this.deathKillerName.style.display = 'none';
+    }
+
+    let remaining = Math.ceil(respawnTime);
+    this.deathCountdown.textContent = `Respawning in ${remaining}...`;
+    this.deathOverlay.classList.add('visible');
+
+    this.deathInterval = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        this.deathCountdown.textContent = 'Respawning...';
+        this.clearDeathInterval();
+      } else {
+        this.deathCountdown.textContent = `Respawning in ${remaining}...`;
+      }
+    }, 1_000);
+  }
+
+  /**
+   * Hide the death overlay (called on respawn).
+   */
+  hideDeath(): void {
+    this.clearDeathInterval();
+    this.deathOverlay.classList.remove('visible');
+  }
+
+  /**
+   * Show the game-over screen.
+   * @param winner — winning team index (0 = Alpha, 1 = Bravo)
+   * @param myTeam — the local player's team
+   */
+  showGameOver(winner: number, myTeam: number): void {
+    const isVictory = winner === myTeam;
+    this.gameoverText.textContent = isVictory ? 'VICTORY' : 'DEFEAT';
+    this.gameoverText.className =
+      'hud-gameover-text ' +
+      (isVictory ? 'hud-gameover-victory' : 'hud-gameover-defeat');
+    this.gameoverOverlay.classList.add('visible');
+  }
+
+  /**
+   * Remove all HUD DOM elements and clear timers.
+   */
+  dispose(): void {
+    this.clearDeathInterval();
+
+    if (this.hitmarkerTimer !== null) {
+      window.clearTimeout(this.hitmarkerTimer);
+      this.hitmarkerTimer = null;
+    }
+
+    for (const t of this.killfeedTimers) {
+      window.clearTimeout(t);
+    }
+    this.killfeedTimers.length = 0;
+
+    this.root.remove();
+  }
+
+  // ── Private helpers ──────────────────────────────────────────
+
+  /** Create a typed DOM element with a CSS class. */
+  private el<K extends keyof HTMLElementTagNameMap>(
+    tag: K,
+    className: string,
+  ): HTMLElementTagNameMap[K] {
+    const node = document.createElement(tag);
+    node.className = className;
+    return node;
+  }
+
+  /** Pick a health bar color based on percentage. */
+  private healthColor(pct: number): string {
+    if (pct > 60) return '#2ecc71'; // green
+    if (pct > 30) return '#f1c40f'; // yellow
+    return '#e74c3c'; // red
+  }
+
+  /** Simple HTML-escape to avoid injection from player names. */
+  private esc(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /** Clear the death countdown interval if running. */
+  private clearDeathInterval(): void {
+    if (this.deathInterval !== null) {
+      window.clearInterval(this.deathInterval);
+      this.deathInterval = null;
+    }
+  }
+}

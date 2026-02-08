@@ -1,0 +1,20 @@
+{
+  "name": "clawfield",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter server dev",
+    "dev:client": "pnpm --filter client dev",
+    "build": "pnpm -r build",
+    "convert:map": "tsx tools/vox-converter.ts",
+    "build:shoreline-map": "python3 tools/generate-shoreline-vox.py && pnpm tsx tools/vox-converter.ts assets/vox/shoreline_mvp.vox assets/maps/shoreline && pnpm tsx tools/map-packer.ts assets/maps/shoreline.chunks.json assets/maps/shoreline.palette.json assets/maps/shoreline.map"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2",
+    "tsx": "^4.21.0"
+  }
+}

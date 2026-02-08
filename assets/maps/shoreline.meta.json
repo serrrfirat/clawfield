@@ -1,0 +1,107 @@
+{
+  "name": "Shoreline",
+  "description": "MVP coastal town with harbor, tunnel, bridge, and beach flank route.",
+  "spawn_points": {
+    "alpha": [
+      {
+        "x": -88,
+        "y": 2,
+        "z": -20
+      },
+      {
+        "x": -88,
+        "y": 2,
+        "z": 20
+      },
+      {
+        "x": -80,
+        "y": 4,
+        "z": 0
+      }
+    ],
+    "bravo": [
+      {
+        "x": 88,
+        "y": 7,
+        "z": -16
+      },
+      {
+        "x": 88,
+        "y": 7,
+        "z": 16
+      },
+      {
+        "x": 80,
+        "y": 7,
+        "z": 0
+      }
+    ]
+  },
+  "capture_points": [
+    {
+      "id": "A",
+      "position": {
+        "x": -48,
+        "y": 4,
+        "z": 0
+      },
+      "initialOwner": 0
+    },
+    {
+      "id": "B",
+      "position": {
+        "x": 6,
+        "y": 7,
+        "z": 0
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "C",
+      "position": {
+        "x": 58,
+        "y": 12,
+        "z": 60
+      },
+      "initialOwner": 1
+    }
+  ],
+  "objectives": [
+    {
+      "id": "harbor",
+      "type": "control",
+      "position": {
+        "x": -48,
+        "y": 4,
+        "z": 0
+      }
+    },
+    {
+      "id": "beach",
+      "type": "flank",
+      "position": {
+        "x": -82,
+        "y": 3,
+        "z": 0
+      }
+    },
+    {
+      "id": "tunnel",
+      "type": "route",
+      "position": {
+        "x": 56,
+        "y": 7,
+        "z": 0
+      }
+    },
+    {
+      "id": "bridge",
+      "type": "chokepoint",
+      "position": {
+        "x": 50,
+        "y": 17,
+        "z": 60
+      }
+    }
+  ]
+}

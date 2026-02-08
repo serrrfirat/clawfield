@@ -5,8 +5,19 @@ node_modules/
 # MCP config (contains absolute paths)
 .mcp.json
 
-# Tools (cloned repos)
-tools/
+# Cloned reference repos
+ravenfield-decomp/
+
+# Generator output (intermediate files)
+output/
+
+# Large binary assets (Oasis map, intermediate JSON chunks)
+assets/maps/Oasis_*
+assets/maps/oasis.*
+assets/maps/*.chunks.json
+
+# Embedded tool repos
+tools/magicavoxel-mcp/
 
 # Build output
 dist/

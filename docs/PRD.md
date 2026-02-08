@@ -790,7 +790,195 @@ CREATE TABLE match_players (
 
 ---
 
-## 12. Glossary
+## 12. Reference System Catalog
+
+Design and technical systems extracted from reference games for future porting into Clawfield. Two primary references: **Ravenfield** (gameplay/design) and **OpenSpades** (voxel engine/netcode).
+
+### 12.1 Ravenfield Systems
+
+Source: Ravenfield Beta 5 decompilation. Design-focused reference.
+
+#### Already Ported
+| System | Status | Key Parameters |
+|--------|--------|----------------|
+| **Capture Points** | Ported (Phase 1.5) | Gradual control (0.0-1.0 float), 0.05/s per player, 10m radius, contested=frozen |
+| **Conquest Scoring** | Ported (Phase 1.5) | 1 pt/tick per flag owned, 200-point difference to win |
+| **Grenades** | Ported (Phase 1.5) | 18 m/s throw, 3s fuse, per-axis bounce (0.25), 200 dmg at center, 10m blast radius, linear falloff |
+| **AI Bots** | Ported (Phase 1) | Fire rectangle targeting, aim sway (sinusoidal), patrol waypoints, sprint AI |
+| **Sprint/Crouch** | Ported (Phase 1) | Sprint = 1.6x speed, crouch = 0.5x speed, weapon-specific recoil patterns |
+| **Minimap** | Ported (Phase 1.5) | Canvas-based 150px, rotating player view, capture point markers |
+
+#### Available for Future Porting
+| System | Description | Priority | Phase |
+|--------|-------------|----------|-------|
+| **Vehicles** | Jeeps, helicopters, boats. Wheel physics with suspension springs. Enter/exit system with driver/gunner/passenger seats. | Medium | Post-MVP |
+| **Hitboxes** | Multi-part hitbox system — head (2x damage), body (1x), limbs (0.75x). Per-bone collision for ragdoll on death. | Medium | Phase 2 |
+| **Squad Coordination** | Squad-based spawning (spawn on squad leader), squad orders (attack/defend markers), squad voice proximity. | Low | Phase 4 |
+| **Loadout UI** | Pre-spawn weapon selection screen. Primary, secondary, gadget slots. Per-class weapon pool restrictions. | Medium | Phase 2 |
+| **Weapon Attachments** | Scope zoom levels, silencers (reduced audio range + no minimap ping), extended mags, foregrip (reduced recoil). | Low | Post-MVP |
+| **Vehicle Weapons** | Mounted MGs, tank shells (projectile with splash), helicopter rockets. Separate ammo pools. | Low | Post-MVP |
+| **Kill Streaks/Scoring** | Multi-kill bonuses, objective score multipliers, MVP system at match end. | Low | Phase 2 |
+
+#### Ravenfield Design Constants (Reference)
+```
+Player run speed:        6.0 m/s
+Player sprint speed:     9.6 m/s (1.6x)
+Player crouch speed:     3.0 m/s (0.5x)
+Jump velocity:           5.0 m/s
+Gravity:                 -9.8 m/s²
+Step-up height:          0.5 voxels
+
+AR damage:               30 (4-hit kill)
+SMG damage:              22 (5-hit kill)
+Sniper damage:           90 (2-hit kill, 1-hit headshot)
+Shotgun pellet damage:   15 x 8 pellets
+
+Respawn timer:           5 seconds
+Ticket pool:             75 per team (TDM)
+Capture rate:            0.05/s per player in zone
+Capture radius:          10m
+```
+
+### 12.2 OpenSpades Systems
+
+Source: [OpenSpades](https://github.com/yvt/openspades) (GPL-3.0, C++). Technical reference for voxel engine, destruction, and netcode.
+
+#### Voxel Destruction with Structural Integrity
+The most valuable system from OpenSpades. When voxels are destroyed, a **BFS (Breadth-First Search) connectivity graph** determines if remaining blocks are still connected to the ground. Disconnected clusters collapse as debris.
+
+**Algorithm:**
+1. On voxel removal, identify all neighboring solid voxels
+2. For each neighbor, run BFS/flood-fill downward toward ground (y=0)
+3. If any neighbor cluster cannot reach ground → it's unsupported
+4. Unsupported clusters become dynamic debris (falling particles)
+5. Optimization: cache connectivity regions, only recheck affected area
+
+**Key Parameters:**
+```
+Max flood-fill radius:     64 voxels (prevent runaway checks)
+Ground connection:         Any voxel touching y=0 plane
+Debris lifetime:           3 seconds (fade + remove)
+Debris physics:            Simple gravity, no inter-debris collision
+Check frequency:           On voxel change only (event-driven, not per-tick)
+```
+
+**Clawfield Integration Notes:**
+- Implement as `StructuralIntegrity` class in `packages/shared/src/structural.ts`
+- Wire into `setVoxel()` — when a voxel is removed, trigger connectivity check
+- Keep check radius bounded (max 64 voxels) to prevent frame drops
+- Debris particles use existing projectile renderer pattern (small colored cubes)
+
+#### Chunk Rendering with Per-Vertex Ambient Occlusion
+OpenSpades pre-computes AO per vertex using an **8-neighbor mask** — for each vertex of a voxel face, check the 3 adjacent solid voxels (corner + 2 edges). This creates the characteristic soft shadows at voxel edges.
+
+**Algorithm:**
+```
+For each face vertex:
+  side1 = is_solid(neighbor in direction A)
+  side2 = is_solid(neighbor in direction B)
+  corner = is_solid(neighbor in direction A+B)
+
+  if side1 AND side2:
+    ao = 0  (fully occluded — both sides block)
+  else:
+    ao = 3 - (side1 + side2 + corner)  // 0-3 scale
+
+  vertex_color *= ao_lookup[ao]  // 1.0, 0.75, 0.5, 0.25
+```
+
+**Clawfield Integration Notes:**
+- Add to `apps/client/src/voxel/mesher.ts` during face generation
+- Encode AO as vertex color brightness multiplier
+- Zero runtime cost (baked during mesh generation)
+- Dramatic visual improvement for minimal complexity
+
+#### Multiplayer Netcode Optimizations
+
+**Input Bit-Packing:**
+All player inputs packed into a single byte:
+```
+Bit 0: forward
+Bit 1: backward
+Bit 2: left
+Bit 3: right
+Bit 4: jump
+Bit 5: crouch
+Bit 6: shoot
+Bit 7: sprint
+```
+Reduces per-frame input from ~50 bytes (JSON) to 1 byte + rotation (8 bytes total).
+
+**Server Architecture:**
+```
+Tick rate:           60Hz (OpenSpades) vs our 20Hz
+Protocol:            Custom UDP with reliability layer
+Delta compression:   Only send changed entity fields
+Position encoding:   Fixed-point 16-bit (0.01 unit precision)
+Rotation encoding:   Single byte per axis (256 angles = 1.4° precision)
+```
+
+**Clawfield Integration Notes (Phase 4: Binary Protocol):**
+- Replace JSON serialization with binary ArrayBuffer encoding
+- Input: 1 byte bitmask + 2x float16 (yaw, pitch) = 5 bytes vs ~120 bytes JSON
+- Position: 3x int16 fixed-point = 6 bytes vs ~60 bytes JSON
+- Estimated bandwidth savings: 80-90% reduction
+
+#### Water Rendering with Adaptive Mesh
+OpenSpades renders water as a deformable mesh with wave simulation:
+
+**Approach:**
+```
+Base:       Flat plane at water level
+Waves:      Perlin noise displacement on Y axis
+LOD:        Near water = high vertex density, far = sparse
+Reflection: Screen-space reflection (SSR) on water surface
+Refraction: Distorted underwater view through water plane
+```
+
+**Clawfield Integration Notes (Post-MVP):**
+- Add as shader effect in renderer, not voxel data
+- Water level defined per-map in metadata
+- Useful for Shoreline map (harbor, beach)
+- AI Game Master "Floodgate" event can raise water level dynamically
+
+#### Building/Construction System
+Players can place and remove voxels in real-time:
+
+**Rules:**
+```
+Placement:     Must be adjacent to existing solid voxel
+Range:          5 voxels from player
+Material:       Team-colored blocks (limited supply)
+Block pool:     50 blocks per life (replenished on respawn)
+Removal:        Destroy own team's blocks instantly, enemy blocks take 3 hits
+```
+
+**Clawfield Integration Notes:**
+- Maps to Engineer class "deploy cover" ability
+- Use existing `setVoxel()` + chunk dirty flag + remesh pipeline
+- Sync via `voxel_change` network event (position + material)
+- Structural integrity system prevents floating block exploits
+
+### 12.3 System Priority Matrix
+
+Which reference systems to implement next, ordered by impact/effort:
+
+| Priority | System | Source | Impact | Effort | Target Phase |
+|----------|--------|--------|--------|--------|-------------|
+| 1 | Per-vertex AO | OpenSpades | High visual lift | Low | Phase 2 |
+| 2 | Scoreboard overlay | Ravenfield | Core UX | Low | Phase 2 |
+| 3 | Sound effects | Both | Immersion | Medium | Phase 2 |
+| 4 | Damage indicators | Ravenfield | Combat feel | Low | Phase 2 |
+| 5 | Hitbox system | Ravenfield | Combat depth | Medium | Phase 2 |
+| 6 | Binary protocol | OpenSpades | Performance | Medium | Phase 4 |
+| 7 | Voxel destruction | OpenSpades | Core feature | High | Post-MVP |
+| 8 | Water rendering | OpenSpades | Visual polish | Medium | Post-MVP |
+| 9 | Building system | OpenSpades | Engineer class | Medium | Post-MVP |
+| 10 | Vehicles | Ravenfield | Content | High | Post-MVP |
+
+---
+
+## 13. Glossary
 
 | Term | Definition |
 |------|------------|

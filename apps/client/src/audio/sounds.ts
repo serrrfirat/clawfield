@@ -1,0 +1,60 @@
+/**
+ * Sound ID enum and configuration for all game sounds.
+ * Each sound has volume, loop, and spatial settings.
+ */
+
+export enum SoundId {
+  ShootRifle = 'shoot_rifle',
+  ShootSmg = 'shoot_smg',
+  ShootShotgun = 'shoot_shotgun',
+  ShootSniper = 'shoot_sniper',
+  Reload = 'reload',
+  FootstepGrass = 'footstep_grass',
+  FootstepStone = 'footstep_stone',
+  Jump = 'jump',
+  Land = 'land',
+  Explosion = 'explosion',
+  HitConfirmDing = 'hit_confirm_ding',
+  GrenadeBounce = 'grenade_bounce',
+  AmbientWind = 'ambient_wind',
+  CaptureTick = 'capture_tick',
+}
+
+export interface SoundConfig {
+  /** Volume 0-1 */
+  volume: number;
+  /** Whether this sound loops */
+  loop: boolean;
+  /** Whether this is a 3D positional sound */
+  spatial: boolean;
+}
+
+export const SOUND_CONFIGS: Record<SoundId, SoundConfig> = {
+  // Weapons: volume 0.5, no loop, spatial
+  [SoundId.ShootRifle]: { volume: 0.5, loop: false, spatial: true },
+  [SoundId.ShootSmg]: { volume: 0.5, loop: false, spatial: true },
+  [SoundId.ShootShotgun]: { volume: 0.6, loop: false, spatial: true },
+  [SoundId.ShootSniper]: { volume: 0.5, loop: false, spatial: true },
+  [SoundId.Reload]: { volume: 0.4, loop: false, spatial: true },
+
+  // Footsteps: volume 0.3, no loop, spatial
+  [SoundId.FootstepGrass]: { volume: 0.3, loop: false, spatial: true },
+  [SoundId.FootstepStone]: { volume: 0.3, loop: false, spatial: true },
+
+  // Movement: spatial
+  [SoundId.Jump]: { volume: 0.3, loop: false, spatial: true },
+  [SoundId.Land]: { volume: 0.35, loop: false, spatial: true },
+
+  // Explosion: volume 0.7, no loop, spatial
+  [SoundId.Explosion]: { volume: 0.7, loop: false, spatial: true },
+
+  // UI sounds: volume 0.4, no loop, non-spatial
+  [SoundId.HitConfirmDing]: { volume: 0.4, loop: false, spatial: false },
+  [SoundId.CaptureTick]: { volume: 0.4, loop: false, spatial: false },
+
+  // Grenade bounce: spatial
+  [SoundId.GrenadeBounce]: { volume: 0.35, loop: false, spatial: true },
+
+  // Ambient: volume 0.15, loop, non-spatial
+  [SoundId.AmbientWind]: { volume: 0.15, loop: true, spatial: false },
+};
