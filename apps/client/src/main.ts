@@ -408,6 +408,12 @@ function gameLoop(): void {
     }
   }
 
+  // Move sun shadow to follow player
+  if (localPlayer) {
+    const cam = renderer.camera;
+    renderer.updateSunTarget({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
+  }
+
   // Render
   renderer.render();
 
