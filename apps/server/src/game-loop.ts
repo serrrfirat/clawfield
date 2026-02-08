@@ -23,8 +23,9 @@ import {
   GADGET_COOLDOWN,
   STREAM_RADIUS,
   STREAM_CHECK_INTERVAL,
+  CONQUEST_VICTORY_POINTS,
 } from '@clawfield/shared';
-import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption } from '@clawfield/shared';
+import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
 import { PlayerSim } from './player-sim.js';
 import { DummyBot } from './bot.js';
@@ -89,6 +90,9 @@ export class GameLoop {
   private ticketsBravo = TDM_TICKETS;
   private gameOver = false;
   private nextTeam: Team = Team.Alpha;
+
+  // --- Game mode ---
+  private gameMode: GameMode = 'tdm';
 
   constructor(port: number) {
     // Try to load the configured binary map; fall back to test map
@@ -520,6 +524,15 @@ export class GameLoop {
       case 'join': {
         client.name = msg.name;
 
+        // First human player to join sets the game mode
+        const humanCount = Array.from(this.players.values()).filter(
+          p => !this.bots.some(b => b.sim.id === p.id)
+        ).length;
+        if (humanCount === 0 && msg.gameMode) {
+          this.gameMode = msg.gameMode;
+          console.log(`Game mode set to: ${this.gameMode}`);
+        }
+
         // Assign team
         const team = this.assignTeam();
 
@@ -564,6 +577,7 @@ export class GameLoop {
           palette: this.palette.length > 0 ? this.palette : undefined,
           mapName: this.mapDisplayName,
           objectives: this.mapObjectives,
+          gameMode: this.gameMode,
         });
 
         // Send available spawns for the deploy screen
@@ -1094,11 +1108,13 @@ export class GameLoop {
       }
     }
 
-    // Decrement enemy team's tickets
-    if (victim.team === Team.Alpha) {
-      this.ticketsAlpha = Math.max(0, this.ticketsAlpha - 1);
-    } else {
-      this.ticketsBravo = Math.max(0, this.ticketsBravo - 1);
+    // Decrement enemy team's tickets (TDM only)
+    if (this.gameMode === 'tdm') {
+      if (victim.team === Team.Alpha) {
+        this.ticketsAlpha = Math.max(0, this.ticketsAlpha - 1);
+      } else {
+        this.ticketsBravo = Math.max(0, this.ticketsBravo - 1);
+      }
     }
 
     // Broadcast kill to all players
@@ -1170,10 +1186,23 @@ export class GameLoop {
     if (this.gameOver) return;
 
     let winner: Team | null = null;
-    if (this.ticketsAlpha <= 0) {
-      winner = Team.Bravo;
-    } else if (this.ticketsBravo <= 0) {
-      winner = Team.Alpha;
+
+    if (this.gameMode === 'tdm') {
+      // TDM: first team to lose all tickets loses
+      if (this.ticketsAlpha <= 0) {
+        winner = Team.Bravo;
+      } else if (this.ticketsBravo <= 0) {
+        winner = Team.Alpha;
+      }
+    } else if (this.gameMode === 'conquest') {
+      // Conquest: first team to reach the victory point lead wins
+      const scores = this.capturePointManager.getScores();
+      const diff = scores.alpha - scores.bravo;
+      if (diff >= CONQUEST_VICTORY_POINTS) {
+        winner = Team.Alpha;
+      } else if (diff <= -CONQUEST_VICTORY_POINTS) {
+        winner = Team.Bravo;
+      }
     }
 
     if (winner !== null) {
@@ -1182,7 +1211,7 @@ export class GameLoop {
         type: 'game_over',
         winner,
       });
-      console.log(`GAME OVER: Team ${winner === Team.Alpha ? 'Alpha' : 'Bravo'} wins!`);
+      console.log(`GAME OVER: Team ${winner === Team.Alpha ? 'Alpha' : 'Bravo'} wins! (${this.gameMode})`);
     }
   }
 }
