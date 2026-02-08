@@ -67,6 +67,23 @@ export function loadPalette(palette: number[]): void {
   }
 }
 
+// --- Chunk LOD constants ---
+
+/** Number of LOD levels (0 = full detail, 1 = half, 2 = quarter) */
+export const LOD_LEVELS = 3;
+
+/** Chunk distance thresholds for each LOD level (in chunk units, squared for fast comparison) */
+export const LOD_DISTANCE_SQ = [
+  5 * 5,   // LOD 0 → LOD 1 at 5 chunks
+  8 * 8,   // LOD 1 → LOD 2 at 8 chunks
+] as const;
+
+/** Downsample factor per LOD level: LOD 0 = 1×, LOD 1 = 2×, LOD 2 = 4× */
+export const LOD_FACTORS = [1, 2, 4] as const;
+
+/** How often (in frames) the client recalculates LOD levels */
+export const LOD_UPDATE_INTERVAL = 30;
+
 /** Chunk streaming radius in chunks (how many chunks around the player to load) */
 export const STREAM_RADIUS = 10;
 

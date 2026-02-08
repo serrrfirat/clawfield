@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getVoxel, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS, CLASSES } from '@clawfield/shared';
+import { getVoxel, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES } from '@clawfield/shared';
 import type { ServerMessage, PlayerState, KillEntry } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer } from './voxel/world-renderer';
@@ -408,6 +408,12 @@ function gameLoop(): void {
   // Scoreboard visibility (Tab key)
   if (localPlayer) {
     scoreboard.setVisible(localPlayer.input.scoreboardVisible);
+  }
+
+  // Update chunk LOD levels based on distance to camera
+  if (localPlayer && frameCount % LOD_UPDATE_INTERVAL === 0) {
+    const cam = renderer.camera;
+    worldRenderer.updateLod({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
   }
 
   // Prune distant chunks every ~60 frames (~1 second at 60fps)
