@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ProjectileState, Vec3 } from '@clawfield/shared';
 import { GRAVITY } from '@clawfield/shared';
+import type { ParticleSystem } from './particle-system';
 
 /** Maximum number of point lights attached to projectiles (performance cap) */
 const MAX_PROJECTILE_LIGHTS = 5;
@@ -24,9 +25,18 @@ interface TrackedProjectile {
  * at the camera/muzzle position for instant visual feedback.
  * For other players: receives authoritative state from the server.
  */
+/** Impact spark particle colors (bright yellows and oranges) */
+const IMPACT_COLORS: [number, number, number][] = [
+  [1.0, 0.85, 0.2],
+  [1.0, 0.65, 0.1],
+  [1.0, 0.9, 0.5],
+  [0.9, 0.5, 0.1],
+];
+
 export class ProjectileRenderer {
   private scene: THREE.Scene;
   private projectiles = new Map<number, TrackedProjectile>();
+  private particles: ParticleSystem | null = null;
 
   /** Local player ID — used to skip own projectiles from server data */
   private localPlayerId: string | null = null;
@@ -47,6 +57,11 @@ export class ProjectileRenderer {
     // Elongated box that looks like a tracer round
     this.sharedGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.2);
     this.sharedMaterial = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+  }
+
+  /** Set the particle system used for bullet impact effects */
+  setParticleSystem(ps: ParticleSystem): void {
+    this.particles = ps;
   }
 
   /** Set the local player ID so we can skip our own server-side projectiles */
@@ -207,6 +222,24 @@ export class ProjectileRenderer {
 
   /** Remove a projectile from the scene and clean up its resources */
   private removeProjectile(id: number, tracked: TrackedProjectile): void {
+    // Spawn impact sparks at the projectile's last position
+    if (this.particles) {
+      const pos = tracked.mesh.position;
+      this.particles.emit({
+        position: { x: pos.x, y: pos.y, z: pos.z },
+        count: 10,
+        speedMin: 3,
+        speedMax: 8,
+        spread: Math.PI * 2,
+        lifetimeMin: 0.1,
+        lifetimeMax: 0.3,
+        sizeMin: 0.06,
+        sizeMax: 0.15,
+        colors: IMPACT_COLORS,
+        gravityScale: 0.5,
+      });
+    }
+
     this.scene.remove(tracked.mesh);
     // Geometry and material are shared, so don't dispose per-projectile
 
