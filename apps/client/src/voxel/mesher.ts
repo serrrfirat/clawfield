@@ -175,14 +175,14 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
     const g = ((colorHex >> 8) & 0xff) / 255;
     const b = (colorHex & 0xff) / 255;
 
-    // Apply face shading for depth perception
+    // Subtle ambient occlusion hint per face — real lighting handles the rest
     let shade = 1.0;
     if (normalAxis === 1) {
-      shade = normalDir > 0 ? 1.0 : 0.5; // top bright, bottom dark
+      shade = normalDir > 0 ? 1.0 : 0.75; // top full, bottom slightly darker
     } else if (normalAxis === 0) {
-      shade = 0.8; // sides slightly darker
+      shade = 0.92; // X-facing sides
     } else {
-      shade = 0.7;
+      shade = 0.88; // Z-facing sides
     }
 
     const sr = r * shade;

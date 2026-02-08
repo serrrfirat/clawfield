@@ -2,7 +2,11 @@ import * as THREE from 'three';
 import { CHUNK_SIZE, chunkKeyToPosition } from '@clawfield/shared';
 import { buildChunkGeometry } from './chunk-mesh';
 
-const chunkMaterial = new THREE.MeshLambertMaterial({ vertexColors: true });
+const chunkMaterial = new THREE.MeshStandardMaterial({
+  vertexColors: true,
+  roughness: 0.85,
+  metalness: 0.0,
+});
 
 /**
  * Manages chunk meshes in the Three.js scene.
@@ -28,6 +32,8 @@ export class WorldRenderer {
     const origin = chunkKeyToPosition(key);
     mesh.position.set(origin.x, origin.y, origin.z);
     mesh.name = `chunk_${key}`;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
     this.scene.add(mesh);
     this.meshes.set(key, mesh);
