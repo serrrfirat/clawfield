@@ -682,7 +682,8 @@ CREATE TABLE match_players (
 - [ ] Chunk LOD for distant terrain
 - [ ] Scoreboard overlay (Tab key — player list with KDA stats)
 - [ ] Player names above heads
-- [ ] Class gadgets (medkit, ammo box, spotting scope, deploy cover)
+- [x] Class gadgets (medkit, ammo box, spotting scope, deploy cover)
+- [x] Recon sniper scope view (right-click ADS with FOV zoom + overlay)
 - [ ] Damage indicators (directional damage arrows)
 - [ ] Death cam / killcam
 
