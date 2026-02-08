@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GrenadeState, Vec3 } from '@clawfield/shared';
 import { GRAVITY, GRENADE_FUSE_TIME, GRENADE_DAMAGE_RADIUS } from '@clawfield/shared';
 import { soundManager, SoundId } from '../audio/sound-manager';
+import type { ParticleSystem } from './particle-system';
 
 /** Maximum number of point lights for grenades (performance cap) */
 const MAX_GRENADE_LIGHTS = 4;
@@ -17,6 +18,22 @@ const EXPLOSION_LIFETIME = 0.5;
 
 /** Explosion initial sphere radius */
 const EXPLOSION_START_RADIUS = 0.5;
+
+/** Bright spark colors for explosion particles */
+const EXPLOSION_SPARK_COLORS: [number, number, number][] = [
+  [1.0, 0.9, 0.3],
+  [1.0, 0.6, 0.1],
+  [1.0, 0.8, 0.2],
+  [1.0, 1.0, 0.6],
+];
+
+/** Dark debris colors for explosion particles */
+const EXPLOSION_DEBRIS_COLORS: [number, number, number][] = [
+  [0.3, 0.25, 0.15],
+  [0.2, 0.15, 0.1],
+  [0.4, 0.3, 0.2],
+  [0.15, 0.12, 0.08],
+];
 
 /** Tracked grenade with mesh and interpolation data */
 interface TrackedGrenade {
@@ -49,6 +66,7 @@ export class GrenadeRenderer {
   private scene: THREE.Scene;
   private grenades = new Map<number, TrackedGrenade>();
   private explosions: TrackedExplosion[] = [];
+  private particles: ParticleSystem | null = null;
 
   /** Counter for client-predicted grenade IDs (negative to avoid server ID conflicts) */
   private localNextId = -1;
@@ -69,6 +87,11 @@ export class GrenadeRenderer {
     // Small dark cube for the grenade body
     this.grenadeGeometry = new THREE.BoxGeometry(GRENADE_SIZE, GRENADE_SIZE, GRENADE_SIZE);
     this.grenadeMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+  }
+
+  /** Set the particle system used for explosion effects */
+  setParticleSystem(ps: ParticleSystem): void {
+    this.particles = ps;
   }
 
   /**
@@ -164,6 +187,39 @@ export class GrenadeRenderer {
       lifetime: EXPLOSION_LIFETIME,
       targetRadius,
     });
+
+    // Emit explosion particles: bright sparks + dark debris
+    if (this.particles) {
+      // Bright sparks flying outward
+      this.particles.emit({
+        position,
+        count: 40,
+        speedMin: 6,
+        speedMax: 20,
+        spread: Math.PI * 2,
+        lifetimeMin: 0.2,
+        lifetimeMax: 0.8,
+        sizeMin: 0.1,
+        sizeMax: 0.35,
+        colors: EXPLOSION_SPARK_COLORS,
+        gravityScale: 0.3,
+      });
+
+      // Dark debris with heavier gravity
+      this.particles.emit({
+        position,
+        count: 20,
+        speedMin: 4,
+        speedMax: 14,
+        spread: Math.PI * 2,
+        lifetimeMin: 0.4,
+        lifetimeMax: 1.2,
+        sizeMin: 0.12,
+        sizeMax: 0.4,
+        colors: EXPLOSION_DEBRIS_COLORS,
+        gravityScale: 1.0,
+      });
+    }
   }
 
   /**

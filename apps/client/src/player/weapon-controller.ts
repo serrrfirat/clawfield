@@ -4,6 +4,7 @@ import { WEAPONS, WeaponId, CLASSES, ClassId, fireInterval } from '@clawfield/sh
 import { Viewmodel } from './viewmodel';
 import type { InputCapture } from './input';
 import { soundManager, SoundId } from '../audio/sound-manager';
+import type { ParticleSystem } from '../combat/particle-system';
 
 /** Tracer line that fades and is removed */
 interface Tracer {
@@ -19,6 +20,14 @@ interface Tracer {
  * visuals are handled by ProjectileRenderer.
  */
 const TRACER_LIFETIME = 0.05;
+
+/** Bright muzzle flash particle colors (hot white-yellow) */
+const MUZZLE_FLASH_COLORS: [number, number, number][] = [
+  [1.0, 1.0, 0.8],
+  [1.0, 0.9, 0.4],
+  [1.0, 0.8, 0.3],
+  [1.0, 1.0, 0.6],
+];
 
 /**
  * Manages local weapon state and visual feedback.
@@ -55,6 +64,9 @@ export class WeaponController {
   /** First-person weapon viewmodel */
   private viewmodel: Viewmodel;
 
+  /** Particle system for muzzle flash effects */
+  private particles: ParticleSystem | null = null;
+
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, classId: string = 'assault') {
     const classDef = CLASSES[classId as ClassId] ?? CLASSES[ClassId.Assault];
     this.weapon = WEAPONS[classDef.defaultPrimary];
@@ -67,6 +79,11 @@ export class WeaponController {
     this.viewmodel.setWeaponType(this.weapon.name);
 
     this.createHitMarkerElement();
+  }
+
+  /** Set the particle system used for muzzle flash effects */
+  setParticleSystem(ps: ParticleSystem): void {
+    this.particles = ps;
   }
 
   /** Create the hit marker "X" element in the DOM */
@@ -234,6 +251,27 @@ export class WeaponController {
       }
       this.flashTimeout = null;
     }, 50);
+
+    // Emit muzzle flash particles in a narrow cone forward
+    if (this.particles) {
+      const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+      const muzzlePos = this.camera.position.clone().add(dir.clone().multiplyScalar(0.5));
+      muzzlePos.y -= 0.15;
+      this.particles.emit({
+        position: { x: muzzlePos.x, y: muzzlePos.y, z: muzzlePos.z },
+        count: 6,
+        direction: { x: dir.x, y: dir.y, z: dir.z },
+        speedMin: 6,
+        speedMax: 15,
+        spread: 0.3,
+        lifetimeMin: 0.03,
+        lifetimeMax: 0.08,
+        sizeMin: 0.05,
+        sizeMax: 0.12,
+        colors: MUZZLE_FLASH_COLORS,
+        gravityScale: 0,
+      });
+    }
   }
 
   /**

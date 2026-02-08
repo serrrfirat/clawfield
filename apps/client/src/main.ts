@@ -12,6 +12,7 @@ import { ProjectileRenderer } from './combat/projectile-renderer';
 import { CapturePointRenderer } from './combat/capture-point-renderer';
 import { GrenadeRenderer } from './combat/grenade-renderer';
 import { GadgetRenderer } from './combat/gadget-renderer';
+import { ParticleSystem } from './combat/particle-system';
 import { Minimap } from './hud/minimap';
 import { DamageIndicatorSystem } from './hud/damage-indicator';
 import { Scoreboard } from './hud/scoreboard';
@@ -54,9 +55,12 @@ const remotePlayers = new Map<string, RemotePlayer>();
 // --- Setup ---
 const renderer = new Renderer();
 const worldRenderer = new WorldRenderer(renderer.scene);
+const particleSystem = new ParticleSystem(renderer.scene);
 const projectileRenderer = new ProjectileRenderer(renderer.scene);
+projectileRenderer.setParticleSystem(particleSystem);
 const capturePointRenderer = new CapturePointRenderer(renderer.scene);
 const grenadeRenderer = new GrenadeRenderer(renderer.scene);
+grenadeRenderer.setParticleSystem(particleSystem);
 const gadgetRenderer = new GadgetRenderer(renderer.scene);
 const minimap = new Minimap();
 
@@ -196,6 +200,7 @@ function handleServerMessage(msg: ServerMessage): void {
       if (!localPlayer) {
         // First spawn — create local player
         localPlayer = new LocalPlayer(renderer.scene, renderer.camera, voxelGetter, gameState.selectedClass);
+        localPlayer.weaponCtrl.setParticleSystem(particleSystem);
       }
       localPlayer.onRespawn(msg.position);
       break;
@@ -364,6 +369,9 @@ function gameLoop(): void {
 
   // Update grenades
   grenadeRenderer.update(dt);
+
+  // Update particles (bullet impacts, explosion debris, muzzle flash)
+  particleSystem.update(dt);
 
   // Update gadgets
   gadgetRenderer.update(dt);
