@@ -201,13 +201,9 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
     const v2 = [corner[0] + du[0] + dv[0], corner[1] + du[1] + dv[1], corner[2] + du[2] + dv[2]];
     const v3 = [corner[0] + dv[0], corner[1] + dv[1], corner[2] + dv[2]];
 
-    // Color from material (kept for tinting/fallback)
-    const colorHex = MATERIAL_COLORS[quad.material] ?? 0xff00ff;
-    const r = ((colorHex >> 16) & 0xff) / 255;
-    const g = ((colorHex >> 8) & 0xff) / 255;
-    const b = (colorHex & 0xff) / 255;
-
-    // Subtle ambient occlusion hint per face — real lighting handles the rest
+    // Vertex color now carries only the per-face shade factor (grayscale).
+    // The atlas texture provides all material color; multiplying in the shader
+    // gives: atlasColor * shade = correctly lit textured surface.
     let shade = 1.0;
     if (normalAxis === 1) {
       shade = normalDir > 0 ? 1.0 : 0.75; // top full, bottom slightly darker
@@ -217,9 +213,9 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
       shade = 0.88; // Z-facing sides
     }
 
-    const sr = r * shade;
-    const sg = g * shade;
-    const sb = b * shade;
+    const sr = shade;
+    const sg = shade;
+    const sb = shade;
 
     // --- UV calculation ---
     // Look up which tile in the atlas this material+face maps to
