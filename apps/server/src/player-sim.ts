@@ -35,6 +35,7 @@ export class PlayerSim {
   yaw = 0;
   pitch = 0;
   grounded = false;
+  inWater = false;
 
   // --- Combat state ---
   health: number = MAX_HEALTH;
@@ -133,6 +134,7 @@ export class PlayerSim {
       this.position = result.position;
       this.velocity = result.velocity;
       this.grounded = result.grounded;
+      this.inWater = result.inWater;
       this.yaw = qi.input.yaw;
       this.pitch = qi.input.pitch;
       this.lastAckedSeq = qi.seq;
@@ -261,6 +263,7 @@ export class PlayerSim {
       yaw: this.yaw,
       pitch: this.pitch,
       grounded: this.grounded,
+      inWater: this.inWater,
       health: this.health,
       alive: this.alive,
       team: this.team,

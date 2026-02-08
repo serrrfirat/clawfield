@@ -1,4 +1,4 @@
-import { CHUNK_SIZE, MATERIAL_COLORS } from '@clawfield/shared';
+import { CHUNK_SIZE, MATERIAL_COLORS, MAT_WATER } from '@clawfield/shared';
 
 /** A quad produced by the greedy mesher */
 export interface MeshQuad {
@@ -40,11 +40,17 @@ function getLocal(voxels: Uint8Array, x: number, y: number, z: number, gridSize:
  * For each of 6 face directions, sweeps through slices and merges
  * adjacent same-material faces into larger quads.
  *
+ * When waterPass is true, only meshes water voxels.
+ * When waterPass is false (default), only meshes solid (non-water) voxels.
+ * Face culling: solid faces show when neighbor is air OR water.
+ * Water faces show when neighbor is air (not solid, not water).
+ *
  * @param voxels - Flat voxel array (gridSize^3 elements)
+ * @param waterPass - If true, mesh only water; if false, mesh only solid
  * @param gridSize - Dimension of the grid (default CHUNK_SIZE=16, or 8/4 for LOD)
  * @param scale - Multiplier for output quad positions/sizes (default 1, or 2/4 for LOD)
  */
-export function greedyMesh(voxels: Uint8Array, gridSize: number = CHUNK_SIZE, scale: number = 1): MeshQuad[] {
+export function greedyMesh(voxels: Uint8Array, waterPass: boolean = false, gridSize: number = CHUNK_SIZE, scale: number = 1): MeshQuad[] {
   const quads: MeshQuad[] = [];
 
   for (let faceIdx = 0; faceIdx < 6; faceIdx++) {
@@ -64,14 +70,28 @@ export function greedyMesh(voxels: Uint8Array, gridSize: number = CHUNK_SIZE, sc
 
           const voxel = getLocal(voxels, pos[0], pos[1], pos[2], gridSize);
 
+          // Skip voxels not in the current pass
+          if (waterPass) {
+            if (voxel !== MAT_WATER) continue;
+          } else {
+            if (voxel === 0 || voxel === MAT_WATER) continue;
+          }
+
           // Check neighbor in normal direction
           const nPos = [pos[0], pos[1], pos[2]];
           nPos[normalAxis] += normalDir > 0 ? 1 : -1;
           const neighbor = getLocal(voxels, nPos[0], nPos[1], nPos[2], gridSize);
 
-          // Face exists when current voxel is solid and neighbor is air
-          if (voxel !== 0 && neighbor === 0) {
-            mask[u + v * gridSize] = voxel;
+          if (waterPass) {
+            // Water faces: show when neighbor is air (0) or out-of-chunk (0)
+            if (neighbor === 0) {
+              mask[u + v * gridSize] = voxel;
+            }
+          } else {
+            // Solid faces: show when neighbor is air or water
+            if (neighbor === 0 || neighbor === MAT_WATER) {
+              mask[u + v * gridSize] = voxel;
+            }
           }
         }
       }

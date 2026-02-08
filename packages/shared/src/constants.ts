@@ -45,6 +45,7 @@ export const MAT_DIRT = 2;
 export const MAT_STONE = 3;
 export const MAT_WALL = 4;
 export const MAT_ROOF = 5;
+export const MAT_WATER = 6;
 
 /** Material colors (hex). Populated at runtime for map palette. */
 export const MATERIAL_COLORS: Record<number, number> = {
@@ -53,7 +54,25 @@ export const MATERIAL_COLORS: Record<number, number> = {
   [MAT_STONE]: 0x888888,
   [MAT_WALL]: 0xa0a0a0,
   [MAT_ROOF]: 0x555555,
+  [MAT_WATER]: 0x2389da,
 };
+
+// --- Water physics constants ---
+
+/** Movement speed in water (m/s) */
+export const WATER_MOVE_SPEED = 3.5;
+
+/** Vertical swim speed when pressing jump in water (m/s) */
+export const WATER_SWIM_UP_SPEED = 4;
+
+/** Vertical sink speed when pressing crouch in water (m/s) */
+export const WATER_SINK_SPEED = 3;
+
+/** Gravity multiplier when submerged (buoyancy counteracts gravity) */
+export const WATER_GRAVITY = -4;
+
+/** Drag applied to vertical velocity in water (per second, multiplicative) */
+export const WATER_DRAG = 5;
 
 /**
  * Load a 256-entry palette (hex colors) into MATERIAL_COLORS.

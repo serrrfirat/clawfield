@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CHUNK_SIZE, chunkKeyToPosition } from '@clawfield/shared';
-import { buildChunkGeometry } from './chunk-mesh';
+import { buildChunkGeometry, buildWaterGeometry } from './chunk-mesh';
 import { getLodLevel } from './lod';
 
 const chunkMaterial = new THREE.MeshStandardMaterial({
@@ -9,8 +9,19 @@ const chunkMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.0,
 });
 
+const waterMaterial = new THREE.MeshStandardMaterial({
+  vertexColors: true,
+  transparent: true,
+  opacity: 0.55,
+  roughness: 0.15,
+  metalness: 0.1,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+});
+
 interface ChunkEntry {
   mesh: THREE.Mesh | null;
+  waterMesh: THREE.Mesh | null;
   lodLevel: number;
   voxels: Uint8Array;
 }
@@ -18,12 +29,12 @@ interface ChunkEntry {
 /**
  * Manages chunk meshes in the Three.js scene.
  * Adds/removes/updates chunk meshes as chunk data changes.
- * Supports distance-based LOD: chunks further from the camera are rendered
- * at lower detail (fewer triangles) to improve performance.
+ * Supports distance-based LOD and transparent water meshes.
  */
 export class WorldRenderer {
   private entries = new Map<string, ChunkEntry>();
   private scene: THREE.Scene;
+  private elapsedTime = 0;
 
   /** Max chunks to rebuild per LOD update frame to avoid stalls */
   private static readonly MAX_REBUILDS_PER_FRAME = 8;
@@ -39,19 +50,27 @@ export class WorldRenderer {
 
   /** Set a chunk with a specific LOD level */
   private setChunkWithLod(key: string, voxels: Uint8Array, lodLevel: number): void {
-    // Remove old mesh if present
+    // Remove old meshes if present
     const existing = this.entries.get(key);
-    if (existing?.mesh) {
-      this.scene.remove(existing.mesh);
-      existing.mesh.geometry.dispose();
+    if (existing) {
+      if (existing.mesh) {
+        this.scene.remove(existing.mesh);
+        existing.mesh.geometry.dispose();
+      }
+      if (existing.waterMesh) {
+        this.scene.remove(existing.waterMesh);
+        existing.waterMesh.geometry.dispose();
+      }
     }
 
-    const geometry = buildChunkGeometry(voxels, lodLevel);
+    const origin = chunkKeyToPosition(key);
     let mesh: THREE.Mesh | null = null;
+    let waterMesh: THREE.Mesh | null = null;
 
+    // Solid terrain mesh
+    const geometry = buildChunkGeometry(voxels, lodLevel);
     if (geometry) {
       mesh = new THREE.Mesh(geometry, chunkMaterial);
-      const origin = chunkKeyToPosition(key);
       mesh.position.set(origin.x, origin.y, origin.z);
       mesh.name = `chunk_${key}`;
       mesh.castShadow = lodLevel === 0;
@@ -59,7 +78,19 @@ export class WorldRenderer {
       this.scene.add(mesh);
     }
 
-    this.entries.set(key, { mesh, lodLevel, voxels });
+    // Water mesh (transparent, no shadows)
+    const waterGeom = buildWaterGeometry(voxels, lodLevel);
+    if (waterGeom) {
+      waterMesh = new THREE.Mesh(waterGeom, waterMaterial);
+      waterMesh.position.set(origin.x, origin.y, origin.z);
+      waterMesh.name = `water_${key}`;
+      waterMesh.castShadow = false;
+      waterMesh.receiveShadow = true;
+      waterMesh.renderOrder = 1; // render after opaque
+      this.scene.add(waterMesh);
+    }
+
+    this.entries.set(key, { mesh, waterMesh, lodLevel, voxels });
   }
 
   /** Remove a chunk mesh from the scene */
@@ -69,6 +100,10 @@ export class WorldRenderer {
       if (existing.mesh) {
         this.scene.remove(existing.mesh);
         existing.mesh.geometry.dispose();
+      }
+      if (existing.waterMesh) {
+        this.scene.remove(existing.waterMesh);
+        existing.waterMesh.geometry.dispose();
       }
       this.entries.delete(key);
     }
@@ -106,6 +141,19 @@ export class WorldRenderer {
       if (desiredLod !== entry.lodLevel) {
         this.setChunkWithLod(key, entry.voxels, desiredLod);
         rebuilds++;
+      }
+    }
+  }
+
+  /** Animate water — call each frame with dt */
+  update(dt: number): void {
+    this.elapsedTime += dt;
+    // Gentle vertical bob for water surface
+    const bob = Math.sin(this.elapsedTime * 1.5) * 0.04;
+    for (const [key, entry] of this.entries) {
+      if (entry.waterMesh) {
+        const origin = chunkKeyToPosition(key);
+        entry.waterMesh.position.y = origin.y + bob;
       }
     }
   }
