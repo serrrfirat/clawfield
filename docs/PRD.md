@@ -156,7 +156,7 @@ This is the core innovation. An LLM-powered system that acts as a real-time game
 
 ### 4.2 State Aggregator
 
-Collects and summarizes match state every N seconds (configurable, default 15s):
+Collects and summarizes match state every **60 seconds** (once per minute). Matches are capped at **30 minutes**, giving the AI Game Master up to 30 intervention opportunities per match.
 
 ```json
 {
@@ -190,7 +190,7 @@ The AI Game Master receives the state summary and a system prompt defining:
 
 1. **Event catalog** — What events are possible (see 4.4)
 2. **Balance rules** — Don't stack events against the losing team. Dramatic tension > fairness exploitation.
-3. **Pacing rules** — No more than 1 major event per 60 seconds. Minor events every 30-45 seconds.
+3. **Pacing rules** — AI checks once per minute. Can issue 0-2 events per check. No forced events — AI can pass.
 4. **Narrative coherence** — Events should feel like they belong together. A fog event shouldn't immediately follow a clear-sky airstrike.
 5. **Real-world integration** — If it's raining IRL, favor rain/storm events. Evening matches get twilight lighting shifts.
 
@@ -250,7 +250,8 @@ The AI Game Master must operate within strict bounds:
 - **Veto system:** Server can reject events that would break game state
 - **Fallback:** If AI is unreachable, a deterministic event system triggers pre-scripted events based on score differential and time elapsed
 - **Latency budget:** AI calls must return within 3 seconds. If slower, use cached/fallback events.
-- **Rate limiting:** Max 10 AI calls per minute per match
+- **Rate limiting:** 1 AI call per minute per match (30 calls max per 30-minute match). Cost-efficient by design.
+- **Match duration:** 30 minutes maximum. Time-limited to control AI costs and keep matches focused.
 
 ---
 
@@ -263,10 +264,14 @@ The AI Game Master must operate within strict bounds:
 | **Rendering** | Three.js (WebGL2, WebGPU-ready) | Most mature browser 3D library. Voxel-friendly. |
 | **UI** | HTML/CSS overlay + React | HUD, menus, chat. Separate from 3D canvas. |
 | **Client Language** | TypeScript | Type safety, tooling, team scalability |
+| **Physics (Movement)** | Custom AABB vs voxel grid | Tight FPS feel. Direct voxel lookup, no collider objects. Same code on client+server. |
+| **Physics (Dynamic)** | Rapier.js (WASM+SIMD) | Grenades, future vehicles, ragdolls. Native voxel collider (`ColliderDesc.voxels`). Cross-platform deterministic. |
 | **Networking** | WebSocket + WebRTC DataChannels | WS for reliable (chat, events), WebRTC for unreliable (positions, inputs) |
 | **Server** | Node.js (game logic) | JS/TS isomorphism with client. Shared types/validation. |
 | **Server Framework** | Custom ECS game loop | Entity-Component-System for game state. Not a web framework. |
 | **AI Backend** | Claude API / OpenClaw | LLM game master. HTTP calls from server. |
+| **Map Authoring** | MagicaVoxel + custom .vox pipeline | Hand-craft assets in MagicaVoxel, parse .vox directly into chunk data. |
+| **Map Pipeline CLI** | Vengi voxconvert | Batch format conversion, Lua scripting for asset transforms. |
 | **Infrastructure** | Cloud VMs (fly.io / Railway / AWS) | Auto-scaling game server instances |
 | **Database** | PostgreSQL (persistent) + Redis (session) | Player accounts, match history. Redis for matchmaking/lobby. |
 | **CDN** | Cloudflare | Static assets, voxel map data |
@@ -395,15 +400,113 @@ interface StructuralIntegrity {
 }
 ```
 
-### 5.5 Networking Model
+### 5.5 Physics Architecture (Hybrid)
 
-#### 5.5.1 Authority Model
+Two-layer physics system: custom AABB for movement, Rapier.js for dynamic objects.
+
+#### Layer 1: Custom AABB (Player Movement + Hitscan)
+
+- **Player-vs-world collision:** AABB swept against voxel grid. Direct lookup into chunk arrays — O(1) per axis. No collider objects to create/destroy.
+- **Hitscan weapons:** DDA (Digital Differential Analyzer) raycasting through voxel grid. Faster and more precise than general-purpose physics raycasting for grid-aligned worlds.
+- **Step-up:** Players can step onto voxels ≤1 voxel high without jumping (staircase feel).
+- **Slope handling:** Voxel terrain is inherently blocky — no slope math needed.
+- **Runs identically on client and server:** Pure TypeScript, no WASM dependency for this layer. Deterministic by construction.
+
+Reference implementation: [voxel-physics-engine](https://github.com/fenomas/voxel-physics-engine)
+
+#### Layer 2: Rapier.js (Dynamic Objects)
+
+- **Grenades:** Projectile arcs with bounce, friction, and explosion radius.
+- **Future vehicles:** Wheel physics, suspension springs.
+- **Terrain collider:** Uses Rapier's native `ColliderDesc.voxels` shape (added v0.16.0, April 2025). Updated via `Collider.setVoxel()` when terrain changes.
+- **Packages:**
+  - Client: `@dimforge/rapier3d-simd` (SIMD-accelerated, best performance)
+  - Server: `@dimforge/rapier3d-deterministic` (cross-platform deterministic)
+- **Note:** Rapier's voxel support is experimental — shape-casting on voxels and voxel-vs-voxel collision are not yet supported. This is fine for MVP (grenades-vs-terrain only).
+
+### 5.6 Map Authoring Pipeline
+
+#### Workflow
+
+```
+MagicaVoxel (hand-craft)     TypeScript (procedural)
+        │                            │
+        ▼                            ▼
+    .vox files                   .vox files
+        │                            │
+        └──────────┬─────────────────┘
+                   │
+                   ▼
+        Custom .vox Parser (TypeScript)
+                   │
+                   ▼
+        Map Definition File (JSON)
+        ┌─────────────────────────────┐
+        │  {                          │
+        │    "name": "Shoreline",     │
+        │    "chunks": [...],         │
+        │    "spawn_points": [...],   │
+        │    "objectives": [...],     │
+        │    "assets": [              │
+        │      { "file": "building_a.vox", "pos": [10,0,5] },  │
+        │      { "file": "bridge.vox", "pos": [30,0,20] }      │
+        │    ]                        │
+        │  }                          │
+        └─────────────────────────────┘
+                   │
+                   ▼
+        Build step → Compressed binary chunks (.bin)
+                   │
+                   ▼
+        CDN → Client streams chunks on load
+```
+
+#### MagicaVoxel Capabilities & Limits
+
+- **Per-model max:** 256x256x256 voxels
+- **World editor:** 2000x2000x1000 total (tiles multiple models)
+- **Our map size:** ~1000x128x1000 voxels → fits as 4x1x4 = 16 tiles of 256x128x256
+- **Supports:** Multi-story buildings, tunnels, bridges, complex interiors — all confirmed
+- **Scripting:** GLSL shaders for procedural generation (noise, mazes, patterns) — GUI-only, no CLI
+- **Export:** OBJ, PLY, QB, XRAW. No native glTF (use Vengi voxconvert for conversion)
+
+#### .vox Parser Strategy
+
+The .vox format is simple (RIFF-style chunks). We write our own parser:
+
+```typescript
+// Core .vox reading — no dependency on MagicaVoxel at runtime
+interface VoxModel {
+  size: { x: number; y: number; z: number };
+  voxels: Array<{ x: number; y: number; z: number; colorIndex: number }>;
+  palette: Uint8Array; // 256 * 4 (RGBA)
+}
+
+function parseVox(buffer: ArrayBuffer): VoxModel[] { /* ... */ }
+```
+
+Existing libraries for reference: `parse-magica-voxel` (read), `vox-file-generator` (write).
+
+#### Vengi voxconvert (Pipeline Automation)
+
+For batch operations, Vengi's CLI tool handles format conversion and asset transforms:
+```bash
+# Convert .vox to glTF (if needed for external tools)
+voxconvert --input map.vox --output map.gltf
+
+# Apply Lua script effects (snow, grass, etc.)
+voxconvert --input building.vox --script add_snow.lua --output building_snow.vox
+```
+
+### 5.7 Networking Model
+
+#### 5.7.1 Authority Model
 - **Server-authoritative:** Server owns all game state. Client sends inputs, server validates and simulates.
 - **Client-side prediction:** Client predicts own movement immediately. Server corrects if wrong.
 - **Entity interpolation:** Other players are rendered at slightly delayed positions for smoothness.
 - **Lag compensation:** Server rewinds time for hit detection based on client's reported timestamp.
 
-#### 5.5.2 Network Protocol
+#### 5.7.2 Network Protocol
 
 **Reliable channel (WebSocket):**
 - Match state changes (score updates, player joins/leaves)
@@ -417,7 +520,7 @@ interface StructuralIntegrity {
 - Projectile states
 - Health updates
 
-#### 5.5.3 Bandwidth Budget
+#### 5.7.3 Bandwidth Budget
 
 Target: **<50 KB/s per player** (both directions)
 
@@ -431,14 +534,14 @@ Target: **<50 KB/s per player** (both directions)
 
 Delta compression and binary encoding bring this well within budget.
 
-#### 5.5.4 Tick Rate & Latency
+#### 5.7.4 Tick Rate & Latency
 
 - **Server tick rate:** 20Hz (50ms per tick). Standard for 48-player games.
 - **Client render rate:** 60fps (interpolating between server ticks)
 - **Target latency:** <100ms for good experience, playable up to 200ms
 - **Regions:** Start with US-East, US-West. Expand to EU, Asia based on demand.
 
-### 5.6 Map Data Format
+### 5.8 Map Data Format
 
 Maps are authored as voxel data and stored as compressed binary:
 
@@ -672,13 +775,18 @@ CREATE TABLE match_players (
 
 ## 11. Open Questions & Decisions Needed
 
-1. **Map editor tooling:** Build custom editor or use MagicaVoxel + export pipeline?
-2. **Audio engine:** Web Audio API directly or use Howler.js?
-3. **Physics engine:** Custom simple physics or integrate Rapier (WASM)?
-4. **AI model choice:** Claude API vs self-hosted vs hybrid? Cost implications at scale.
-5. **Monetization model:** Free-to-play with cosmetics? Premium? This affects many design decisions.
-6. **Team/squad system:** Do we want squads within teams (4-player sub-groups)?
-7. **Voice chat:** Integrate or rely on external (Discord)?
+### Resolved
+- ~~Map editor tooling~~ → **MagicaVoxel** with export pipeline to custom .vox loader
+- ~~Physics engine~~ → **Hybrid: Custom AABB (movement) + Rapier.js WASM (dynamic objects)**
+- ~~Monetization~~ → Deferred. Not a concern for MVP.
+- ~~Squads~~ → No squads for MVP. Simple two-team structure.
+- ~~Voice chat~~ → Deferred. Players use Discord.
+- ~~AI frequency/cost~~ → 1 call per minute, 30-minute match cap = max 30 AI calls per match.
+
+### Still Open
+1. **Audio engine:** Web Audio API directly or use Howler.js?
+2. **AI model choice:** Claude API vs self-hosted vs hybrid? Cost implications at scale.
+3. **MagicaVoxel map pipeline:** Custom .vox parser → chunk data. Vengi voxconvert for batch ops. Pipeline defined in PRD 5.6.
 
 ---
 
