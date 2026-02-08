@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getVoxel, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS } from '@clawfield/shared';
+import { getVoxel, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS, CLASSES } from '@clawfield/shared';
 import type { ServerMessage, PlayerState, KillEntry } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer } from './voxel/world-renderer';
@@ -16,7 +16,8 @@ import { Minimap } from './hud/minimap';
 import { DamageIndicatorSystem } from './hud/damage-indicator';
 import { Scoreboard } from './hud/scoreboard';
 import { soundManager } from './audio/sound-manager';
-import type { CapturePointState, MapObjective } from '@clawfield/shared';
+import { DeployScreen } from './hud/deploy-screen';
+import type { CapturePointState, MapObjective, SpawnPointOption } from '@clawfield/shared';
 
 // --- Game State (exported for HUD) ---
 export const gameState = {
@@ -37,6 +38,8 @@ export const gameState = {
   mapObjectives: [] as MapObjective[],
   conquestScoreAlpha: 0,
   conquestScoreBravo: 0,
+  selectedClass: 'assault',
+  selectedClassName: 'Assault',
 };
 
 // --- State ---
@@ -81,11 +84,9 @@ function handleServerMessage(msg: ServerMessage): void {
         );
       }
 
-      // Create local player
-      localPlayer = new LocalPlayer(renderer.scene, renderer.camera, voxelGetter, 'assault');
-
       // Tell projectile renderer which player is local (skip our own server projectiles)
       projectileRenderer.setLocalPlayerId(msg.id);
+      // Player starts in deploy screen — local player created on first deploy
       break;
     }
 
@@ -173,13 +174,26 @@ function handleServerMessage(msg: ServerMessage): void {
       const killerName = killerRemote?.name ?? 'Unknown';
       localPlayer?.onDeath(msg.killerPos);
       hud.showDeath(msg.respawnTime, killerName);
+      // Deploy screen will be shown when server sends available_spawns after respawn delay
       break;
     }
 
     case 'respawn': {
       gameState.alive = true;
-      localPlayer?.onRespawn(msg.position);
+      deployScreen.hide();
       hud.hideDeath();
+      if (!localPlayer) {
+        // First spawn — create local player
+        localPlayer = new LocalPlayer(renderer.scene, renderer.camera, voxelGetter, gameState.selectedClass);
+      }
+      localPlayer.onRespawn(msg.position);
+      break;
+    }
+
+    case 'available_spawns': {
+      // Server says we can deploy — show the deploy screen
+      hud.hideDeath();
+      showDeployScreen(msg.spawns);
       break;
     }
 
@@ -276,8 +290,8 @@ function gameLoop(): void {
   lastTime = now;
   frameCount++;
 
-  // Update local player
-  if (localPlayer) {
+  // Update local player (skip while deploy screen is open)
+  if (localPlayer && !deployScreen.isVisible()) {
     const inputPacket = localPlayer.update(dt);
     if (inputPacket) {
       // If the player fired this frame, spawn a client-predicted projectile
@@ -385,7 +399,7 @@ function gameLoop(): void {
     ticketsBravo: gameState.ticketsBravo,
     myTeam: gameState.myTeam,
     alive: gameState.alive,
-    className: 'Assault',
+    className: gameState.selectedClassName,
   });
 
   // Update damage indicators
@@ -434,6 +448,28 @@ function gameLoop(): void {
 const hud = new HUD();
 const damageIndicator = new DamageIndicatorSystem();
 const scoreboard = new Scoreboard();
+const deployScreen = new DeployScreen();
+
+function showDeployScreen(spawns: SpawnPointOption[]): void {
+  deployScreen.show(
+    spawns,
+    gameState.myTeam,
+    gameState.capturePoints,
+    (choice) => {
+      gameState.selectedClass = choice.classId;
+      // Look up display name from CLASSES
+      const cls = Object.values(CLASSES).find(c => c.id === choice.classId);
+      gameState.selectedClassName = cls?.name ?? 'Assault';
+
+      network.send({
+        type: 'deploy',
+        classId: choice.classId,
+        weaponId: choice.weaponId,
+        spawnPointId: choice.spawnPointId,
+      });
+    },
+  );
+}
 
 // --- Start ---
 console.log('Clawfield client starting...');

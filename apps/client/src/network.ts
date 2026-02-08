@@ -28,7 +28,7 @@ export class NetworkClient {
       this._connected = true;
       console.log('Connected to server');
 
-      // Send join message with default class
+      // Send join message — player starts in deploy screen, not yet spawned
       const name = `Player_${Math.floor(Math.random() * 1000)}`;
       this.send({ type: 'join', name, classId: 'assault' });
     };
