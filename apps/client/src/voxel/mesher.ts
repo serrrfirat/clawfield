@@ -17,12 +17,13 @@ export interface MeshQuad {
 
 // Face normals and axis mappings
 // For each face: [normalAxis, uAxis, vAxis, normalDir]
+// uAxis × vAxis must equal +normalAxis for correct front-face winding
 const FACE_INFO: [number, number, number, number][] = [
-  [0, 2, 1, 1],  // +X: sweep along X, U=Z, V=Y
-  [0, 2, 1, -1], // -X
-  [1, 0, 2, 1],  // +Y: sweep along Y, U=X, V=Z
-  [1, 0, 2, -1], // -Y
-  [2, 0, 1, 1],  // +Z: sweep along Z, U=X, V=Y
+  [0, 1, 2, 1],  // +X: normal=X, U=Y, V=Z  (Y×Z = +X)
+  [0, 1, 2, -1], // -X
+  [1, 2, 0, 1],  // +Y: normal=Y, U=Z, V=X  (Z×X = +Y)
+  [1, 2, 0, -1], // -Y
+  [2, 0, 1, 1],  // +Z: normal=Z, U=X, V=Y  (X×Y = +Z)
   [2, 0, 1, -1], // -Z
 ];
 
