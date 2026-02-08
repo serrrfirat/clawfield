@@ -18,12 +18,13 @@ export function buildChunkGeometry(voxels: Uint8Array, lodLevel: number = 0): TH
   const quads = greedyMesh(downsampled, false, gridSize, factor);
   if (quads.length === 0) return null;
 
-  const { positions, normals, colors, indices } = quadsToGeometryData(quads);
+  const { positions, normals, colors, uvs, indices } = quadsToGeometryData(quads);
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
 
   return geometry;
@@ -43,12 +44,13 @@ export function buildWaterGeometry(voxels: Uint8Array, lodLevel: number = 0): TH
   const quads = greedyMesh(downsampled, true, gridSize, factor);
   if (quads.length === 0) return null;
 
-  const { positions, normals, colors, indices } = quadsToGeometryData(quads);
+  const { positions, normals, colors, uvs, indices } = quadsToGeometryData(quads);
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
 
   return geometry;
