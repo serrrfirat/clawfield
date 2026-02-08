@@ -16,6 +16,10 @@ const atlasTexture = createTextureAtlas();
  * (which carries the per-face directional shading).
  */
 function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
+  // Force Three.js to include the UV varying (vUv) in the compiled shader.
+  // Without this, vUv is stripped out because no built-in texture property (map, etc.) is set.
+  mat.defines = { ...mat.defines, USE_UV: '' };
+
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uAtlas = { value: atlasTexture };
     shader.uniforms.uAtlasCols = { value: ATLAS_COLS };
