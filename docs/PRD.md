@@ -630,46 +630,61 @@ CREATE TABLE match_players (
 
 ## 7. Milestones & Phasing
 
-### Phase 0: Foundation (Weeks 1-4)
+### Phase 0: Foundation (Weeks 1-4) ✅ COMPLETE
 **Goal:** Bare-bones engine proof-of-concept
 
-- [ ] Project scaffolding (monorepo: client + server + shared)
-- [ ] Voxel chunk system with greedy meshing
-- [ ] Basic Three.js renderer with camera controls
-- [ ] Load a test map (flat ground + simple buildings)
-- [ ] Player entity: WASD movement, mouse look, jumping
-- [ ] WebSocket connection between client and server
-- [ ] Server-authoritative position sync for 2 players
+- [x] Project scaffolding (monorepo: client + server + shared)
+- [x] Voxel chunk system with greedy meshing
+- [x] Basic Three.js renderer with camera controls
+- [x] Load a test map (flat ground + simple buildings)
+- [x] Player entity: WASD movement, mouse look, jumping
+- [x] WebSocket connection between client and server
+- [x] Server-authoritative position sync for 2 players
 
 **Exit criteria:** Two browser tabs showing two players moving in a voxel world, synced.
 
-### Phase 1: Combat Core (Weeks 5-8)
+### Phase 1: Combat Core (Weeks 5-8) ✅ COMPLETE
 **Goal:** Shooting works, people can die
 
-- [ ] Hitscan weapon system (assault rifle)
-- [ ] Health, damage, death, respawn
-- [ ] Ticket system
-- [ ] Basic HUD (health, ammo, tickets, killfeed)
-- [ ] Class system (4 classes with distinct weapons)
-- [ ] Class gadgets (medkit, ammo box, spotting scope, cover deploy)
-- [ ] Collision detection (player-world)
-- [ ] Client-side prediction + server reconciliation
-- [ ] Team Deathmatch mode
+- [x] Hitscan → projectile weapon system (8 weapons with full stats)
+- [x] Health, damage, death, respawn (5s timer, tickets)
+- [x] Ticket system (75 per team for TDM)
+- [x] Basic HUD (health bar, ammo, crosshair, kill feed, hit marker, death/game over overlays)
+- [x] Class system (4 classes: Assault, Medic, Engineer, Recon with distinct weapons)
+- [ ] Class gadgets (medkit, ammo box, spotting scope, cover deploy) — moved to Phase 2
+- [x] Collision detection (player-world AABB physics)
+- [x] Client-side prediction + server reconciliation
+- [x] Team Deathmatch mode
+- [x] Smart AI bots (Ravenfield-ported: targeting, aim sway, fire rectangle, patrol, sprint)
+- [x] Sprint / Crouch / Recoil system (weapon-specific recoil patterns)
+- [x] Projectile gravity (arc trajectory on server + client)
+- [x] Client-predicted projectiles (instant visual feedback)
 
 **Exit criteria:** 4+ players can play a TDM match in a browser.
 
-### Phase 2: Map & Polish (Weeks 9-12)
+### Phase 1.5: Ravenfield Ports ✅ COMPLETE
+
+- [x] Capture Points system (gradual control 0.0-1.0, 0.05/s per player, 10m radius, contested=frozen)
+- [x] Conquest scoring (1 pt/tick per flag owned, 200-point victory threshold)
+- [x] Grenade system (18 m/s throw, 3s fuse, per-axis bounce, 200 dmg center, 10m blast radius)
+- [x] Minimap (canvas-based 150px, player dots, capture point markers, rotating view)
+- [x] Capture-point spawning (respawn at owned flags)
+
+### Phase 2: Map & Polish (Weeks 9-12) 🔶 IN PROGRESS
 **Goal:** A real map that feels good to play on
 
-- [ ] "Shoreline" map — full design with buildings, tunnels, bridges
+- [x] "Shoreline" map — full design with buildings, tunnels, bridges (MagicaVoxel → .vox → chunked .map pipeline)
+- [x] Audio system scaffolding (sound-manager.ts with spatial audio, sound packs)
+- [ ] Sound effects integration (gunfire, footsteps, ambient — wired into gameplay)
 - [ ] Voxel material system (different block types, textures)
 - [ ] Texture atlas for voxel rendering
 - [ ] Basic lighting (directional sun + ambient)
 - [ ] Chunk LOD for distant terrain
-- [ ] Sound effects (gunfire, footsteps, ambient)
-- [ ] Scoreboard
+- [ ] Scoreboard overlay (Tab key — player list with KDA stats)
 - [ ] Player names above heads
-- [ ] Minimap
+- [ ] Class gadgets (medkit, ammo box, spotting scope, deploy cover)
+- [ ] Damage indicators (directional damage arrows)
+- [ ] Death cam / killcam
 
 **Exit criteria:** The Shoreline map is playable and visually coherent.
 
