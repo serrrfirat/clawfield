@@ -1,4 +1,4 @@
-import { MAT_WATER } from './constants.js';
+import { isWater } from './constants.js';
 import type { Vec3, AABB } from './types.js';
 
 /** Team identifiers */
@@ -150,7 +150,7 @@ export function rayVoxelMarch(
     // Check current voxel (skip origin voxel, bullets pass through water)
     if (dist > 0) {
       const v = getVoxel(x, y, z);
-      if (v !== 0 && v !== MAT_WATER) {
+      if (v !== 0 && !isWater(v)) {
         return dist;
       }
     }

@@ -91,8 +91,8 @@ export function createTextureAtlas(): THREE.CanvasTexture {
   canvas.height = ATLAS_HEIGHT;
   const ctx = canvas.getContext('2d')!;
 
-  // Fill with magenta (debug fallback)
-  ctx.fillStyle = '#ff00ff';
+  // Fill with white (neutral fallback for unmapped materials)
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, ATLAS_WIDTH, ATLAS_HEIGHT);
 
   // Draw each tile
@@ -361,12 +361,8 @@ function drawFallback(ctx: CanvasRenderingContext2D, col: number, row: number): 
   const ox = col * TILE_SIZE;
   const oy = row * TILE_SIZE;
 
-  // Magenta/black checkerboard (debug pattern)
-  for (let y = 0; y < TILE_SIZE; y++) {
-    for (let x = 0; x < TILE_SIZE; x++) {
-      const checker = ((x >> 2) + (y >> 2)) % 2;
-      ctx.fillStyle = checker ? '#ff00ff' : '#000000';
-      ctx.fillRect(ox + x, oy + y, 1, 1);
-    }
-  }
+  // Solid white: unmapped materials pass palette RGB via vertex colors,
+  // so white (1,1,1) is neutral in the shader multiply.
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
 }

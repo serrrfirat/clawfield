@@ -8,7 +8,7 @@ import {
   GRENADE_DAMAGE,
   GRENADE_DAMAGE_RADIUS,
   PLAYER_HEIGHT,
-  MAT_WATER,
+  isWater,
   type VoxelGetter,
 } from '@clawfield/shared';
 import type { PlayerSim } from './player-sim.js';
@@ -117,7 +117,7 @@ export class GrenadeManager {
 
       // Check X axis (water is passable, not solid)
       const vxCheck = getVoxel(Math.floor(candidateX), Math.floor(grenade.position.y), Math.floor(grenade.position.z));
-      if (vxCheck !== 0 && vxCheck !== MAT_WATER) {
+      if (vxCheck !== 0 && !isWater(vxCheck)) {
         grenade.velocity.x = -grenade.velocity.x * GRENADE_BOUNCINESS;
         grenade.velocity.y *= (1 - GRENADE_BOUNCE_DRAG);
         grenade.velocity.z *= (1 - GRENADE_BOUNCE_DRAG);
@@ -127,7 +127,7 @@ export class GrenadeManager {
 
       // Check Y axis
       const vyCheck = getVoxel(Math.floor(grenade.position.x), Math.floor(candidateY), Math.floor(grenade.position.z));
-      if (vyCheck !== 0 && vyCheck !== MAT_WATER) {
+      if (vyCheck !== 0 && !isWater(vyCheck)) {
         grenade.velocity.y = -grenade.velocity.y * GRENADE_BOUNCINESS;
         grenade.velocity.x *= (1 - GRENADE_BOUNCE_DRAG);
         grenade.velocity.z *= (1 - GRENADE_BOUNCE_DRAG);
@@ -137,7 +137,7 @@ export class GrenadeManager {
 
       // Check Z axis
       const vzCheck = getVoxel(Math.floor(grenade.position.x), Math.floor(grenade.position.y), Math.floor(candidateZ));
-      if (vzCheck !== 0 && vzCheck !== MAT_WATER) {
+      if (vzCheck !== 0 && !isWater(vzCheck)) {
         grenade.velocity.z = -grenade.velocity.z * GRENADE_BOUNCINESS;
         grenade.velocity.x *= (1 - GRENADE_BOUNCE_DRAG);
         grenade.velocity.y *= (1 - GRENADE_BOUNCE_DRAG);

@@ -24,6 +24,7 @@ import {
   STREAM_RADIUS,
   STREAM_CHECK_INTERVAL,
   CONQUEST_VICTORY_POINTS,
+  setWaterIndices,
 } from '@clawfield/shared';
 import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
@@ -84,6 +85,7 @@ export class GameLoop {
   private usingBinaryMap = false;
   private mapName = 'test';
   private mapDisplayName = 'Test';
+  private waterIndices: number[] | undefined;
 
   // --- Team & ticket tracking ---
   private ticketsAlpha = TDM_TICKETS;
@@ -184,6 +186,10 @@ export class GameLoop {
         type: obj.type,
         position: { ...obj.position },
       }));
+      if (metadata.waterIndices) {
+        this.waterIndices = metadata.waterIndices;
+        setWaterIndices(metadata.waterIndices);
+      }
       console.log(
         `Loaded map metadata for "${metadata.name}": ` +
           `${this.mapSpawnsAlpha.length} alpha spawns, ` +
@@ -576,6 +582,7 @@ export class GameLoop {
           team,
           mapData,
           palette: this.palette.length > 0 ? this.palette : undefined,
+          waterIndices: this.waterIndices,
           mapName: this.mapDisplayName,
           objectives: this.mapObjectives,
           gameMode: this.gameMode,

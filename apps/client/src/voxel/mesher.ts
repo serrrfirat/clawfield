@@ -1,5 +1,5 @@
-import { CHUNK_SIZE, MATERIAL_COLORS, MAT_WATER } from '@clawfield/shared';
-import { getTileForFace, TILE_SIZE, ATLAS_COLS, ATLAS_ROWS, FALLBACK_TILE } from './texture-atlas';
+import { CHUNK_SIZE, MATERIAL_COLORS, isWater } from '@clawfield/shared';
+import { FALLBACK_TILE } from './texture-atlas';
 
 /** A quad produced by the greedy mesher */
 export interface MeshQuad {
@@ -73,9 +73,9 @@ export function greedyMesh(voxels: Uint8Array, waterPass: boolean = false, gridS
 
           // Skip voxels not in the current pass
           if (waterPass) {
-            if (voxel !== MAT_WATER) continue;
+            if (!isWater(voxel)) continue;
           } else {
-            if (voxel === 0 || voxel === MAT_WATER) continue;
+            if (voxel === 0 || isWater(voxel)) continue;
           }
 
           // Check neighbor in normal direction
@@ -90,7 +90,7 @@ export function greedyMesh(voxels: Uint8Array, waterPass: boolean = false, gridS
             }
           } else {
             // Solid faces: show when neighbor is air or water
-            if (neighbor === 0 || neighbor === MAT_WATER) {
+            if (neighbor === 0 || isWater(neighbor)) {
               mask[u + v * gridSize] = voxel;
             }
           }
@@ -174,10 +174,6 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
   const uvs = new Float32Array(vertexCount * 2);
   const indices = new Uint32Array(indexCount);
 
-  // Atlas tile dimensions in UV space (0..1)
-  const tileU = 1 / ATLAS_COLS;
-  const tileV = 1 / ATLAS_ROWS;
-
   let vi = 0; // vertex index
   let ii = 0; // index index
 
@@ -201,9 +197,7 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
     const v2 = [corner[0] + du[0] + dv[0], corner[1] + du[1] + dv[1], corner[2] + du[2] + dv[2]];
     const v3 = [corner[0] + dv[0], corner[1] + dv[1], corner[2] + dv[2]];
 
-    // Vertex color now carries only the per-face shade factor (grayscale).
-    // The atlas texture provides all material color; multiplying in the shader
-    // gives: atlasColor * shade = correctly lit textured surface.
+    // Per-face directional shade factor
     let shade = 1.0;
     if (normalAxis === 1) {
       shade = normalDir > 0 ? 1.0 : 0.75; // top full, bottom slightly darker
@@ -213,37 +207,26 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
       shade = 0.88; // Z-facing sides
     }
 
-    const sr = shade;
-    const sg = shade;
-    const sb = shade;
+    // All materials: vertex color = palette RGB * shade.
+    // The atlas samples a white fallback tile so the shader multiply is neutral:
+    // white(1,1,1) * paletteRGB * shade = paletteRGB * shade.
+    // This avoids the UV interpolation bug (floor(interpolated_uv) gives wrong
+    // tiles for greedy-merged quads) and the palette mismatch where map palettes
+    // use different colors at indices 1-6 than the hardcoded atlas tile mapping.
+    const hex = MATERIAL_COLORS[quad.material] ?? 0xff00ff;
+    const sr = ((hex >> 16) & 0xff) / 255 * shade;
+    const sg = ((hex >> 8) & 0xff) / 255 * shade;
+    const sb = (hex & 0xff) / 255 * shade;
 
-    // --- UV calculation ---
-    // Look up which tile in the atlas this material+face maps to
-    const [tileCol, tileRow] = getTileForFace(quad.material, quad.face);
-    // Base UV of the tile's top-left corner in atlas space
-    const baseU = tileCol * tileU;
-    const baseV = tileRow * tileV;
-    // The quad spans quad.w × quad.h voxels. UVs tile per voxel within the tile region.
-    // We use fract() in the shader to wrap, so we pass raw voxel-scale UVs offset by tile base.
-    // The 4 corners of the UV quad:
-    //   v0 = (0, 0),  v1 = (w, 0),  v2 = (w, h),  v3 = (0, h)
-    // Mapped into atlas: u = baseU + (localU / quadW * tileU), but we want per-voxel tiling.
-    // Instead, we pass the tile base + voxel-count UVs scaled to tile size.
-    // The shader will do: atlasUV = tileBase + fract(vUv) * tileSize
-    // So we store: vUv = (voxelU, voxelV) as raw tiling counts, plus tile base in a separate attribute.
-    // BUT to keep it simple with a single UV attribute, we encode:
-    //   uv.x = tileCol + fractional_u_within_tile (repeating per voxel)
-    //   uv.y = tileRow + fractional_v_within_tile (repeating per voxel)
-    // The shader reconstructs: tile = floor(uv), localUV = fract(uv), atlasUV = (tile + localUV) * tileSize
-    const quadW = quad.w; // voxels wide
-    const quadH = quad.h; // voxels tall
-
-    // 4 UV corners: encode as tileCol + [0..quadW], tileRow + [0..quadH]
-    // Shader will: tileBase = floor(uv) / atlasDims, localUV = fract(uv), sample at tileBase + localUV * (1/atlasDims)
-    const uv0: [number, number] = [tileCol, tileRow];
-    const uv1: [number, number] = [tileCol + quadW, tileRow];
-    const uv2: [number, number] = [tileCol + quadW, tileRow + quadH];
-    const uv3: [number, number] = [tileCol, tileRow + quadH];
+    // Point all vertices to the center of the white fallback tile.
+    // All 4 vertices share the same UV, so interpolation is exact and
+    // floor(vUv) always yields the fallback tile index.
+    const fbU = FALLBACK_TILE[0] + 0.5;
+    const fbV = FALLBACK_TILE[1] + 0.5;
+    const uv0: [number, number] = [fbU, fbV];
+    const uv1: [number, number] = [fbU, fbV];
+    const uv2: [number, number] = [fbU, fbV];
+    const uv3: [number, number] = [fbU, fbV];
 
     // Emit 4 unique vertices: v0, v1, v2, v3
     const verts = [v0, v1, v2, v3];
