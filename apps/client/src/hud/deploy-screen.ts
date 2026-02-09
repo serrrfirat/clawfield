@@ -1,10 +1,11 @@
-import type { SpawnPointOption, CapturePointState } from '@clawfield/shared';
-import { ClassId, CLASSES, WEAPONS, type WeaponId } from '@clawfield/shared';
+import type { SpawnPointOption, CapturePointState, WeaponLoadout } from '@clawfield/shared';
+import { ClassId, CLASSES, WEAPONS, type WeaponId, AttachmentSlot, WEAPON_ATTACHMENTS, ATTACHMENTS, type AttachmentId, applyAttachments } from '@clawfield/shared';
 
 export interface DeployChoice {
   classId: string;
   weaponId: string;
   spawnPointId: string;
+  loadout: WeaponLoadout;
 }
 
 /**
@@ -18,6 +19,8 @@ export class DeployScreen {
   private mapCtx: CanvasRenderingContext2D;
   private classCardsContainer: HTMLDivElement;
   private weaponToggle: HTMLDivElement;
+  private attachmentContainer: HTMLDivElement;
+  private weaponStatsPreview: HTMLDivElement;
   private deployBtn: HTMLButtonElement;
   private selectedClass: ClassId = ClassId.Assault;
   private selectedWeapon: WeaponId;
@@ -27,6 +30,8 @@ export class DeployScreen {
   private team: number = 0;
   private onDeploy: ((choice: DeployChoice) => void) | null = null;
   private visible = false;
+  /** Per-weapon loadout selections (persisted across deploys within a session) */
+  private loadouts: Map<WeaponId, WeaponLoadout> = new Map();
 
   constructor() {
     this.selectedWeapon = CLASSES[ClassId.Assault].defaultPrimary;
@@ -45,6 +50,9 @@ export class DeployScreen {
             <div class="deploy-class-cards"></div>
             <div class="deploy-section-title deploy-weapon-title">SELECT WEAPON</div>
             <div class="deploy-weapon-toggle"></div>
+            <div class="deploy-section-title deploy-attach-title">ATTACHMENTS</div>
+            <div class="deploy-attachment-container"></div>
+            <div class="deploy-weapon-stats-preview"></div>
             <button class="deploy-btn">DEPLOY</button>
           </div>
         </div>
@@ -56,6 +64,8 @@ export class DeployScreen {
     this.mapCtx = this.mapCanvas.getContext('2d')!;
     this.classCardsContainer = this.root.querySelector('.deploy-class-cards')!;
     this.weaponToggle = this.root.querySelector('.deploy-weapon-toggle')!;
+    this.attachmentContainer = this.root.querySelector('.deploy-attachment-container')!;
+    this.weaponStatsPreview = this.root.querySelector('.deploy-weapon-stats-preview')!;
     this.deployBtn = this.root.querySelector('.deploy-btn')!;
 
     this.deployBtn.addEventListener('click', () => {
@@ -64,6 +74,7 @@ export class DeployScreen {
           classId: this.selectedClass,
           weaponId: this.selectedWeapon,
           spawnPointId: this.selectedSpawn,
+          loadout: this.getLoadout(),
         });
       }
     });
@@ -89,6 +100,7 @@ export class DeployScreen {
     this.buildSpawnList();
     this.renderMap();
     this.updateWeaponToggle();
+    this.updateAttachmentPicker();
   }
 
   hide(): void {
@@ -127,6 +139,7 @@ export class DeployScreen {
         this.selectedWeapon = cls.defaultPrimary;
         this.updateClassSelection();
         this.updateWeaponToggle();
+        this.updateAttachmentPicker();
       });
 
       this.classCardsContainer.appendChild(card);
@@ -160,6 +173,7 @@ export class DeployScreen {
       btn.addEventListener('click', () => {
         this.selectedWeapon = weaponId;
         this.updateWeaponToggle();
+        this.updateAttachmentPicker();
       });
       return btn;
     };
@@ -288,6 +302,97 @@ export class DeployScreen {
     }
   }
 
+  /** Get the current loadout for the selected weapon */
+  private getLoadout(): WeaponLoadout {
+    return this.loadouts.get(this.selectedWeapon) ?? {};
+  }
+
+  /** Toggle an attachment on/off for the current weapon */
+  private toggleAttachment(slot: AttachmentSlot, attachId: AttachmentId): void {
+    const loadout = { ...this.getLoadout() };
+    if (loadout[slot] === attachId) {
+      delete loadout[slot];
+    } else {
+      loadout[slot] = attachId;
+    }
+    this.loadouts.set(this.selectedWeapon, loadout);
+    this.updateAttachmentPicker();
+  }
+
+  /** Build the attachment picker UI for the selected weapon */
+  private updateAttachmentPicker(): void {
+    this.attachmentContainer.innerHTML = '';
+    const available = WEAPON_ATTACHMENTS[this.selectedWeapon] ?? {};
+    const loadout = this.getLoadout();
+    const slots = Object.values(AttachmentSlot);
+
+    for (const slot of slots) {
+      const attachIds = available[slot];
+      if (!attachIds || attachIds.length === 0) continue;
+
+      const row = document.createElement('div');
+      row.className = 'deploy-attach-row';
+
+      const label = document.createElement('div');
+      label.className = 'deploy-attach-slot-label';
+      label.textContent = slot.toUpperCase();
+      row.appendChild(label);
+
+      const options = document.createElement('div');
+      options.className = 'deploy-attach-options';
+
+      for (const attachId of attachIds) {
+        const def = ATTACHMENTS[attachId];
+        if (!def) continue;
+
+        const btn = document.createElement('div');
+        const isSelected = loadout[slot] === attachId;
+        btn.className = 'deploy-attach-btn' + (isSelected ? ' selected' : '');
+        btn.textContent = def.name;
+        btn.title = def.description;
+        btn.addEventListener('click', () => this.toggleAttachment(slot, attachId));
+        options.appendChild(btn);
+      }
+
+      row.appendChild(options);
+      this.attachmentContainer.appendChild(row);
+    }
+
+    this.updateStatsPreview();
+  }
+
+  /** Show a compact stat comparison (base vs modified) */
+  private updateStatsPreview(): void {
+    const base = WEAPONS[this.selectedWeapon];
+    const loadout = this.getLoadout();
+    const hasAttachments = Object.keys(loadout).length > 0;
+
+    if (!hasAttachments) {
+      this.weaponStatsPreview.innerHTML = '';
+      return;
+    }
+
+    const modded = applyAttachments(base, loadout);
+
+    const stat = (label: string, baseVal: number, modVal: number, unit = '', lower = false) => {
+      const changed = Math.abs(modVal - baseVal) > 0.001;
+      if (!changed) return `<span class="deploy-stat-neutral">${label}: ${modVal.toFixed(1)}${unit}</span>`;
+      const better = lower ? modVal < baseVal : modVal > baseVal;
+      const cls = better ? 'deploy-stat-better' : 'deploy-stat-worse';
+      return `<span class="${cls}">${label}: ${baseVal.toFixed(1)} → ${modVal.toFixed(1)}${unit}</span>`;
+    };
+
+    this.weaponStatsPreview.innerHTML = [
+      stat('DMG', base.damage, modded.damage, ''),
+      stat('MAG', base.magSize, modded.magSize, ''),
+      stat('SPREAD', base.spread, modded.spread, '', true),
+      stat('RECOIL', base.recoilKick, modded.recoilKick, '', true),
+      stat('ADS', base.adsSpeed, modded.adsSpeed, ''),
+      stat('RELOAD', base.reloadTime, modded.reloadTime, 's', true),
+      stat('RANGE', base.maxRange, modded.maxRange, 'm'),
+    ].join('');
+  }
+
   private injectStyles(): void {
     if (document.getElementById('deploy-styles')) return;
     const style = document.createElement('style');
@@ -321,6 +426,7 @@ export class DeployScreen {
         display: flex;
         flex-direction: column;
         gap: 10px;
+        overflow-y: auto;
       }
       .deploy-section-title {
         font-size: 13px;
@@ -438,6 +544,63 @@ export class DeployScreen {
         color: #888;
         margin-top: 4px;
       }
+      .deploy-attach-title {
+        margin-top: 8px;
+      }
+      .deploy-attachment-container {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .deploy-attach-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .deploy-attach-slot-label {
+        font-size: 9px;
+        font-weight: bold;
+        color: #666;
+        letter-spacing: 1px;
+        width: 60px;
+        flex-shrink: 0;
+      }
+      .deploy-attach-options {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .deploy-attach-btn {
+        padding: 4px 8px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+        color: #aaa;
+        transition: all 0.15s;
+        pointer-events: auto;
+        white-space: nowrap;
+      }
+      .deploy-attach-btn:hover {
+        background: rgba(255,255,255,0.1);
+        color: #ddd;
+      }
+      .deploy-attach-btn.selected {
+        background: rgba(255,170,0,0.2);
+        border-color: #ffaa00;
+        color: #ffaa00;
+      }
+      .deploy-weapon-stats-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        font-size: 10px;
+        min-height: 14px;
+      }
+      .deploy-stat-neutral { color: #666; }
+      .deploy-stat-better { color: #4caf50; }
+      .deploy-stat-worse { color: #ef5350; }
       .deploy-btn {
         margin-top: 12px;
         padding: 14px 0;
