@@ -50,6 +50,12 @@ export interface ProjectileHit {
   distance: number;
 }
 
+/** Result of a projectile hitting a voxel wall */
+export interface ProjectileVoxelHit {
+  position: Vec3;
+  direction: Vec3;
+}
+
 /**
  * Manages all active projectiles in the game world.
  * Spawns projectiles when players fire, advances them each tick,
@@ -97,8 +103,9 @@ export class ProjectileManager {
     dt: number,
     getVoxel: VoxelGetter,
     players: Map<string, PlayerSim>
-  ): ProjectileHit[] {
-    const hits: ProjectileHit[] = [];
+  ): { playerHits: ProjectileHit[]; voxelHits: ProjectileVoxelHit[] } {
+    const playerHits: ProjectileHit[] = [];
+    const voxelHits: ProjectileVoxelHit[] = [];
 
     for (const proj of this.projectiles) {
       if (!proj.alive) continue;
@@ -153,7 +160,7 @@ export class ProjectileManager {
       if (closestPlayerId !== null) {
         // Hit a player
         proj.alive = false;
-        hits.push({
+        playerHits.push({
           projectileId: proj.id,
           ownerId: proj.ownerId,
           ownerTeam: proj.ownerTeam,
@@ -169,13 +176,17 @@ export class ProjectileManager {
           z: oldPos.z + dir.z * closestPlayerDist,
         };
       } else if (voxelHitDist < stepDist) {
-        // Hit a wall
+        // Hit a wall — record for destruction system
         proj.alive = false;
         proj.position = {
           x: oldPos.x + dir.x * voxelHitDist,
           y: oldPos.y + dir.y * voxelHitDist,
           z: oldPos.z + dir.z * voxelHitDist,
         };
+        voxelHits.push({
+          position: { ...proj.position },
+          direction: { ...dir },
+        });
       } else {
         // No collision: advance to new position
         proj.position = {
@@ -196,7 +207,7 @@ export class ProjectileManager {
     // Remove dead projectiles
     this.projectiles = this.projectiles.filter((p) => p.alive);
 
-    return hits;
+    return { playerHits, voxelHits };
   }
 
   /** Get all alive projectile states for broadcasting to clients */

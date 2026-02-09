@@ -376,29 +376,24 @@ interface VoxelWorld {
 
 **Target:** 60fps with 48 players on mid-range hardware (GTX 1060 / integrated GPU equivalent).
 
-#### 5.4.3 Destruction-Ready Architecture
+#### 5.4.3 Destruction System (Implemented)
 
-Even though MVP is static, the voxel system must support future destruction:
+Voxel destruction is live with the following capabilities:
 
-- **Voxel modification API:** `setVoxel(x, y, z, materialId)` exists from day 1
-- **Chunk dirty flag:** Triggers remeshing when voxels change
-- **Structural integrity system:** (Deferred) Placeholder interfaces for checking if a structure should collapse
-- **Debris particle system:** (Deferred) Placeholder for spawning voxel debris on destruction
-- **Network sync:** Voxel changes are events that can be broadcast to all clients
+- **Voxel modification API:** `setVoxel(x, y, z, materialId)` + `getVoxel()` for real-time terrain changes
+- **Chunk dirty flag:** Triggers remeshing when voxels change (both server-side voxel_update and client-side)
+- **Explosion destruction:** Grenades/explosions remove destructible voxels in a sphere; terrain materials (grass, dirt, stone) are indestructible ground anchors
+- **Bullet destruction:** Hitscan bullets destroy 1-3 voxels along the bullet direction if bullet damage >= material hardness
+- **Structural integrity (BFS):** After voxels are removed, a flood-fill connectivity check detects unsupported sections. Disconnected groups either crumble (small) or collapse as rigid bodies (large)
+- **Visual debris (Rapier):** Destroyed voxels become Rapier physics bodies that fly outward from explosions with mass-proportional impulses, then settle on terrain. Varied chunk sizes (1x1, 2x2, 3x3) for visual variety
+- **Network sync:** Server broadcasts `voxel_update` (chunk changes) and `destruction_event` (visual debris data) to all clients
+- **DestructionManager:** Server-side manager handles all destruction logic, structural checks, pending drops, and crush zones
 
-```typescript
-// Future-proofing interfaces (not implemented in MVP)
-interface DestructionEvent {
-  chunks_affected: string[];
-  voxels_destroyed: { x: number; y: number; z: number; material: number }[];
-  debris_particles: { position: Vector3; velocity: Vector3; material: number }[];
-}
-
-interface StructuralIntegrity {
-  checkSupport(chunk: Chunk): boolean;
-  propagateCollapse(origin: Vector3, radius: number): DestructionEvent;
-}
-```
+**Known Limitation — Debris Player Collision:**
+Rapier debris is currently **visual-only**. Players walk through settled debris. The player movement system uses custom AABB collision against the voxel grid (Layer 1 physics), while debris uses Rapier (Layer 2). Bridging these two systems — placing settled Rapier debris back into the voxel grid as solid terrain — requires solving coordinate alignment and chunk remeshing timing issues. This is deferred to a future iteration. Potential approaches:
+- Server-authoritative rubble: server tracks where debris lands, sends voxel_update to place rubble
+- Client-side voxel snapping: when Rapier body settles, write material into chunk data and remesh
+- Hybrid Rapier-AABB: add AABB colliders for large settled debris chunks
 
 ### 5.5 Physics Architecture (Hybrid)
 
