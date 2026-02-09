@@ -1,0 +1,184 @@
+{
+  "name": "Shoreline",
+  "bounds": { "xMin": -130, "xMax": 130, "yMin": -4, "yMax": 32, "zMin": -110, "zMax": 110 },
+  "terrain": { "generator": "heightmap", "waterLevel": 0 },
+  "terrainPalette": {
+    "SAND_LIGHT":    { "index": 1,  "r": 212, "g": 184, "b": 150 },
+    "SAND_DARK":     { "index": 2,  "r": 196, "g": 166, "b": 122 },
+    "GRASS":         { "index": 3,  "r": 90,  "g": 140, "b": 63  },
+    "GRASS_DARK":    { "index": 4,  "r": 74,  "g": 122, "b": 51  },
+    "DIRT":          { "index": 5,  "r": 122, "g": 92,  "b": 58  },
+    "STONE":         { "index": 6,  "r": 136, "g": 136, "b": 136 },
+    "STONE_DARK":    { "index": 7,  "r": 102, "g": 102, "b": 102 },
+    "CONCRETE":      { "index": 8,  "r": 160, "g": 160, "b": 160 },
+    "CONCRETE_DARK": { "index": 9,  "r": 128, "g": 128, "b": 128 },
+    "WOOD":          { "index": 10, "r": 139, "g": 105, "b": 20  },
+    "WOOD_DARK":     { "index": 11, "r": 107, "g": 79,  "b": 16  },
+    "BRICK":         { "index": 12, "r": 160, "g": 82,  "b": 45  },
+    "ROOF_TILE":     { "index": 13, "r": 139, "g": 69,  "b": 19  },
+    "WATER":         { "index": 14, "r": 34,  "g": 102, "b": 170 },
+    "WATER_DEEP":    { "index": 15, "r": 26,  "g": 76,  "b": 128 },
+    "ROAD":          { "index": 16, "r": 85,  "g": 85,  "b": 85  },
+    "WINDOW":        { "index": 17, "r": 135, "g": 206, "b": 235 },
+    "METAL":         { "index": 18, "r": 112, "g": 128, "b": 144 }
+  },
+  "placements": [
+    {
+      "componentId": "oasis/model_279",
+      "position": { "x": -35, "y": 4, "z": -25 },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "oasis/model_083",
+      "position": { "x": 15, "y": 5, "z": 15 },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "oasis/model_071",
+      "position": { "x": -55, "y": 3, "z": 10 },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "oasis/model_086",
+      "position": { "x": 25, "y": 5, "z": -20 },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "oasis/model_161",
+      "position": { "x": 40, "y": 6, "z": 40 },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "oasis/model_205",
+      "position": { "x": -20, "y": 4, "z": 25 },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "oasis/model_163",
+      "position": { "x": 65, "y": 7, "z": -10 },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "oasis/model_045",
+      "position": { "x": -45, "y": 3, "z": -8 },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "oasis/model_277",
+      "position": { "x": 70, "y": 8, "z": 20 },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "oasis/model_278",
+      "position": { "x": -10, "y": 5, "z": -35 },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+
+    {
+      "componentId": "buildings/cinema/model_000",
+      "position": { "x": -30, "y": 4, "z": -40 },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "buildings/cafe/model_000",
+      "position": { "x": 15, "y": 5, "z": -30 },
+      "rotation": 90,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "buildings/house_a/model_000",
+      "position": { "x": -25, "y": 4, "z": 30 },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "buildings/office_small_a/model_000",
+      "position": { "x": 30, "y": 5, "z": 25 },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "buildings/office_small_b/model_000",
+      "position": { "x": -5, "y": 5, "z": 40 },
+      "rotation": 270,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "buildings/apartment_a/model_000",
+      "position": { "x": 35, "y": 5, "z": -40 },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "buildings/office_med_a/model_000",
+      "position": { "x": -40, "y": 4, "z": 40 },
+      "rotation": 90,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "buildings/tower_a/model_000",
+      "position": { "x": 6, "y": 5, "z": -50 },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "buildings/office_large_a/model_000",
+      "position": { "x": 70, "y": 7, "z": -40 },
+      "rotation": 270,
+      "terrainCarve": true
+    },
+
+    { "componentId": "vehicles/truck-v3/model_000", "position": { "x": -55, "y": 4, "z": -4 }, "rotation": 90, "terrainCarve": false },
+    { "componentId": "vehicles/container/model_000", "position": { "x": -62, "y": 4, "z": -10 }, "rotation": 0, "terrainCarve": false },
+    { "componentId": "vehicles/container/model_000", "position": { "x": -62, "y": 4, "z": 8 }, "rotation": 0, "terrainCarve": false },
+
+    { "componentId": "vehicles/car-v1/model_000", "position": { "x": -20, "y": 5, "z": 3 }, "rotation": 90, "terrainCarve": false },
+    { "componentId": "vehicles/car-v3/model_000", "position": { "x": -10, "y": 5, "z": 3 }, "rotation": 90, "terrainCarve": false },
+    { "componentId": "vehicles/car-v5/model_000", "position": { "x": 20, "y": 5, "z": -3 }, "rotation": 270, "terrainCarve": false },
+    { "componentId": "vehicles/emergency-ambulance-1/model_000", "position": { "x": 5, "y": 5, "z": -3 }, "rotation": 270, "terrainCarve": false },
+
+    { "componentId": "vehicles/car-v2/model_000", "position": { "x": 49, "y": 6, "z": 15 }, "rotation": 0, "terrainCarve": false },
+    { "componentId": "vehicles/bus-small/model_000", "position": { "x": 42, "y": 6, "z": -15 }, "rotation": 90, "terrainCarve": false },
+
+    { "componentId": "vehicles/truck-v1/model_000", "position": { "x": 75, "y": 7, "z": 5 }, "rotation": 180, "terrainCarve": false },
+    { "componentId": "vehicles/emergency-police-1/model_000", "position": { "x": 60, "y": 7, "z": -5 }, "rotation": 90, "terrainCarve": false },
+    { "componentId": "vehicles/car-v4/model_000", "position": { "x": -35, "y": 4, "z": -3 }, "rotation": 90, "terrainCarve": false },
+    { "componentId": "vehicles/tractor/model_000", "position": { "x": -75, "y": 3, "z": -6 }, "rotation": 0, "terrainCarve": false }
+  ],
+  "metadata": {
+    "spawnPoints": {
+      "alpha": [
+        { "x": -88, "y": 2, "z": -20 },
+        { "x": -88, "y": 2, "z": 20 },
+        { "x": -80, "y": 4, "z": 0 }
+      ],
+      "bravo": [
+        { "x": 88, "y": 7, "z": -16 },
+        { "x": 88, "y": 7, "z": 16 },
+        { "x": 80, "y": 7, "z": 0 }
+      ]
+    },
+    "capturePoints": [
+      { "id": "A", "position": { "x": -48, "y": 4, "z": 0 }, "initialOwner": 0 },
+      { "id": "B", "position": { "x": 6, "y": 7, "z": 0 }, "initialOwner": -1 },
+      { "id": "C", "position": { "x": 58, "y": 12, "z": 60 }, "initialOwner": 1 }
+    ],
+    "objectives": [
+      { "id": "harbor", "type": "control", "position": { "x": -48, "y": 4, "z": 0 } },
+      { "id": "beach", "type": "flank", "position": { "x": -82, "y": 3, "z": 0 } },
+      { "id": "tunnel", "type": "route", "position": { "x": 56, "y": 7, "z": 0 } },
+      { "id": "bridge", "type": "chokepoint", "position": { "x": 50, "y": 17, "z": 60 } }
+    ]
+  }
+}

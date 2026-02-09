@@ -749,6 +749,7 @@ export class GameLoop {
       target.recordDamageFrom(hit.ownerId);
 
       const killed = target.takeDamage(damage);
+      console.log(`HIT: ${shooter.name} -> ${target.name} for ${damage} dmg (hp: ${target.health}/${killed ? 'DEAD' : 'alive'}) dist=${hit.distance.toFixed(1)}`);
 
       // Send hit confirmation to shooter (with sourcePos)
       const shooterClient = this.network.getClients().get(hit.ownerId);

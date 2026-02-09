@@ -1,0 +1,144 @@
+{
+  "name": "Dust Storm",
+  "description": "Generated from Dust Storm mapdef",
+  "spawn_points": {
+    "alpha": [
+      {
+        "x": -100,
+        "y": 2,
+        "z": -70
+      },
+      {
+        "x": -100,
+        "y": 2,
+        "z": -55
+      },
+      {
+        "x": -95,
+        "y": 2,
+        "z": -62
+      },
+      {
+        "x": -105,
+        "y": 3,
+        "z": -80
+      }
+    ],
+    "bravo": [
+      {
+        "x": 105,
+        "y": 33,
+        "z": -20
+      },
+      {
+        "x": 105,
+        "y": 4,
+        "z": 0
+      },
+      {
+        "x": 100,
+        "y": 33,
+        "z": -10
+      },
+      {
+        "x": 100,
+        "y": 4,
+        "z": 10
+      }
+    ]
+  },
+  "capture_points": [
+    {
+      "id": "A",
+      "position": {
+        "x": -45,
+        "y": 33,
+        "z": -50
+      },
+      "initialOwner": 0
+    },
+    {
+      "id": "B",
+      "position": {
+        "x": 0,
+        "y": 12,
+        "z": 0
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "C",
+      "position": {
+        "x": 40,
+        "y": 33,
+        "z": 55
+      },
+      "initialOwner": 1
+    },
+    {
+      "id": "D",
+      "position": {
+        "x": -70,
+        "y": 18,
+        "z": -40
+      },
+      "initialOwner": 0
+    },
+    {
+      "id": "E",
+      "position": {
+        "x": 70,
+        "y": 21,
+        "z": 25
+      },
+      "initialOwner": 1
+    }
+  ],
+  "objectives": [
+    {
+      "id": "a_site",
+      "type": "control",
+      "position": {
+        "x": -45,
+        "y": 33,
+        "z": -50
+      }
+    },
+    {
+      "id": "b_site",
+      "type": "control",
+      "position": {
+        "x": 40,
+        "y": 33,
+        "z": 55
+      }
+    },
+    {
+      "id": "mid_tower",
+      "type": "chokepoint",
+      "position": {
+        "x": 0,
+        "y": 12,
+        "z": 0
+      }
+    },
+    {
+      "id": "long_a",
+      "type": "route",
+      "position": {
+        "x": -70,
+        "y": 18,
+        "z": -40
+      }
+    },
+    {
+      "id": "tunnels",
+      "type": "route",
+      "position": {
+        "x": 70,
+        "y": 21,
+        "z": 25
+      }
+    }
+  ]
+}

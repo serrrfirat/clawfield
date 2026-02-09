@@ -1,0 +1,6025 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "id": "buildings/apartment_a/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 36,
+        "sizeZ": 36
+      },
+      "voxelCount": 19169,
+      "tags": [],
+      "componentPath": "assets/components/buildings/apartment_a/model_000.component.json",
+      "source": {
+        "file": "4.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/apartment_b/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 35,
+        "sizeZ": 36
+      },
+      "voxelCount": 18122,
+      "tags": [],
+      "componentPath": "assets/components/buildings/apartment_b/model_000.component.json",
+      "source": {
+        "file": "5.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/cafe/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 18,
+        "sizeY": 15,
+        "sizeZ": 18
+      },
+      "voxelCount": 2051,
+      "tags": [],
+      "componentPath": "assets/components/buildings/cafe/model_000.component.json",
+      "source": {
+        "file": "13.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/cinema/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 40,
+        "sizeZ": 36
+      },
+      "voxelCount": 30072,
+      "tags": [],
+      "componentPath": "assets/components/buildings/cinema/model_000.component.json",
+      "source": {
+        "file": "8.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/complex/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 72,
+        "sizeY": 54,
+        "sizeZ": 72
+      },
+      "voxelCount": 130411,
+      "tags": [],
+      "componentPath": "assets/components/buildings/complex/model_000.component.json",
+      "source": {
+        "file": "11.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/house_a/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 18,
+        "sizeY": 15,
+        "sizeZ": 18
+      },
+      "voxelCount": 1868,
+      "tags": [],
+      "componentPath": "assets/components/buildings/house_a/model_000.component.json",
+      "source": {
+        "file": "12.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/office_large_a/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 40,
+        "sizeZ": 36
+      },
+      "voxelCount": 27406,
+      "tags": [],
+      "componentPath": "assets/components/buildings/office_large_a/model_000.component.json",
+      "source": {
+        "file": "9.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/office_med_a/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 36,
+        "sizeZ": 36
+      },
+      "voxelCount": 20313,
+      "tags": [],
+      "componentPath": "assets/components/buildings/office_med_a/model_000.component.json",
+      "source": {
+        "file": "2.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/office_med_b/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 37,
+        "sizeZ": 36
+      },
+      "voxelCount": 22232,
+      "tags": [],
+      "componentPath": "assets/components/buildings/office_med_b/model_000.component.json",
+      "source": {
+        "file": "3.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/office_small_a/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 32,
+        "sizeZ": 36
+      },
+      "voxelCount": 15032,
+      "tags": [],
+      "componentPath": "assets/components/buildings/office_small_a/model_000.component.json",
+      "source": {
+        "file": "1.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/office_small_b/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 26,
+        "sizeZ": 36
+      },
+      "voxelCount": 15005,
+      "tags": [],
+      "componentPath": "assets/components/buildings/office_small_b/model_000.component.json",
+      "source": {
+        "file": "10.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/skyscraper_a/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 103,
+        "sizeZ": 36
+      },
+      "voxelCount": 33824,
+      "tags": [],
+      "componentPath": "assets/components/buildings/skyscraper_a/model_000.component.json",
+      "source": {
+        "file": "6.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "buildings/tower_a/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 36,
+        "sizeY": 56,
+        "sizeZ": 36
+      },
+      "voxelCount": 29550,
+      "tags": [],
+      "componentPath": "assets/components/buildings/tower_a/model_000.component.json",
+      "source": {
+        "file": "7.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "oasis/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 40,
+        "sizeY": 16,
+        "sizeZ": 60
+      },
+      "voxelCount": 5340,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_000.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 0,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 25,
+        "sizeZ": 30
+      },
+      "voxelCount": 3654,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_001.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 1,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_002",
+      "name": "model_002",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 25,
+        "sizeZ": 30
+      },
+      "voxelCount": 3654,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_002.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 2,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_003",
+      "name": "model_003",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 25,
+        "sizeZ": 30
+      },
+      "voxelCount": 4082,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_003.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 3,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_004",
+      "name": "model_004",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 11,
+        "sizeZ": 30
+      },
+      "voxelCount": 3580,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_004.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 4,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_005",
+      "name": "model_005",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 11,
+        "sizeZ": 30
+      },
+      "voxelCount": 3580,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_005.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 5,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_006",
+      "name": "model_006",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 19,
+        "sizeZ": 30
+      },
+      "voxelCount": 2790,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_006.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 6,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_007",
+      "name": "model_007",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 19,
+        "sizeZ": 30
+      },
+      "voxelCount": 2790,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_007.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 7,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_008",
+      "name": "model_008",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 19,
+        "sizeZ": 30
+      },
+      "voxelCount": 2911,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_008.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 8,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_009",
+      "name": "model_009",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 19,
+        "sizeZ": 30
+      },
+      "voxelCount": 2911,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_009.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 9,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_010",
+      "name": "model_010",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3528,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_010.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 10,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_011",
+      "name": "model_011",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3600,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_011.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 11,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_012",
+      "name": "model_012",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3600,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_012.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 12,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_013",
+      "name": "model_013",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3152,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_013.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 13,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_014",
+      "name": "model_014",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 2570,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_014.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 14,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_015",
+      "name": "model_015",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3124,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_015.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 15,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_016",
+      "name": "model_016",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 2570,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_016.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 16,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_017",
+      "name": "model_017",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3097,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_017.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 17,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_018",
+      "name": "model_018",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 7,
+        "sizeY": 107,
+        "sizeZ": 21
+      },
+      "voxelCount": 1692,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_018.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 18,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_019",
+      "name": "model_019",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3538,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_019.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 19,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_020",
+      "name": "model_020",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 2574,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_020.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 20,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_021",
+      "name": "model_021",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 7,
+        "sizeY": 107,
+        "sizeZ": 21
+      },
+      "voxelCount": 1692,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_021.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 21,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_022",
+      "name": "model_022",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3156,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_022.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 22,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_023",
+      "name": "model_023",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3956,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_023.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 23,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_024",
+      "name": "model_024",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3074,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_024.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 24,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_025",
+      "name": "model_025",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 87,
+        "sizeZ": 49
+      },
+      "voxelCount": 2543,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_025.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 25,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_026",
+      "name": "model_026",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 87,
+        "sizeZ": 49
+      },
+      "voxelCount": 2543,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_026.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 26,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_027",
+      "name": "model_027",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 100,
+        "sizeY": 174,
+        "sizeZ": 98
+      },
+      "voxelCount": 6105,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_027.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 27,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_028",
+      "name": "model_028",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 91,
+        "sizeY": 174,
+        "sizeZ": 94
+      },
+      "voxelCount": 6038,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_028.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 28,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_029",
+      "name": "model_029",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 100,
+        "sizeY": 174,
+        "sizeZ": 98
+      },
+      "voxelCount": 6105,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_029.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 29,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_030",
+      "name": "model_030",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 46,
+        "sizeY": 87,
+        "sizeZ": 48
+      },
+      "voxelCount": 2500,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_030.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 30,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_031",
+      "name": "model_031",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 46,
+        "sizeY": 87,
+        "sizeZ": 48
+      },
+      "voxelCount": 2500,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_031.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 31,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_032",
+      "name": "model_032",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 46,
+        "sizeY": 87,
+        "sizeZ": 37
+      },
+      "voxelCount": 2398,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_032.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 32,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_033",
+      "name": "model_033",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 79,
+        "sizeZ": 49
+      },
+      "voxelCount": 2519,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_033.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 33,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_034",
+      "name": "model_034",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 48,
+        "sizeY": 87,
+        "sizeZ": 46
+      },
+      "voxelCount": 2500,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_034.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 34,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_035",
+      "name": "model_035",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 87,
+        "sizeZ": 49
+      },
+      "voxelCount": 2543,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_035.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 35,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_036",
+      "name": "model_036",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 87,
+        "sizeZ": 49
+      },
+      "voxelCount": 2543,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_036.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 36,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_037",
+      "name": "model_037",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 100,
+        "sizeY": 174,
+        "sizeZ": 98
+      },
+      "voxelCount": 6105,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_037.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 37,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_038",
+      "name": "model_038",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 91,
+        "sizeY": 174,
+        "sizeZ": 94
+      },
+      "voxelCount": 6036,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_038.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 38,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_039",
+      "name": "model_039",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 23,
+        "sizeY": 34,
+        "sizeZ": 20
+      },
+      "voxelCount": 2388,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_039.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 39,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_040",
+      "name": "model_040",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 19,
+        "sizeY": 29,
+        "sizeZ": 18
+      },
+      "voxelCount": 1910,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_040.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 40,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_041",
+      "name": "model_041",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 21,
+        "sizeY": 29,
+        "sizeZ": 22
+      },
+      "voxelCount": 1926,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_041.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 41,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_042",
+      "name": "model_042",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 21,
+        "sizeY": 29,
+        "sizeZ": 22
+      },
+      "voxelCount": 1909,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_042.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 42,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_043",
+      "name": "model_043",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 23,
+        "sizeY": 34,
+        "sizeZ": 20
+      },
+      "voxelCount": 2389,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_043.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 43,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_044",
+      "name": "model_044",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 19,
+        "sizeY": 29,
+        "sizeZ": 18
+      },
+      "voxelCount": 1939,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_044.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 44,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_045",
+      "name": "model_045",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 13,
+        "sizeY": 5,
+        "sizeZ": 11
+      },
+      "voxelCount": 115,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_045.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 45,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_046",
+      "name": "model_046",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 19,
+        "sizeY": 29,
+        "sizeZ": 18
+      },
+      "voxelCount": 1919,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_046.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 46,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_047",
+      "name": "model_047",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 21,
+        "sizeY": 29,
+        "sizeZ": 22
+      },
+      "voxelCount": 1913,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_047.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 47,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_048",
+      "name": "model_048",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 23,
+        "sizeY": 34,
+        "sizeZ": 20
+      },
+      "voxelCount": 2391,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_048.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 48,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_049",
+      "name": "model_049",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 120,
+        "sizeY": 63,
+        "sizeZ": 37
+      },
+      "voxelCount": 33767,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_049.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 49,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_050",
+      "name": "model_050",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 120,
+        "sizeY": 44,
+        "sizeZ": 30
+      },
+      "voxelCount": 23378,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_050.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 50,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_051",
+      "name": "model_051",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 55,
+        "sizeY": 10,
+        "sizeZ": 16
+      },
+      "voxelCount": 385,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_051.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 51,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_052",
+      "name": "model_052",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 110,
+        "sizeY": 70,
+        "sizeZ": 200
+      },
+      "voxelCount": 208891,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_052.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 52,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_053",
+      "name": "model_053",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 124,
+        "sizeY": 70,
+        "sizeZ": 140
+      },
+      "voxelCount": 184634,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_053.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 53,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_054",
+      "name": "model_054",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 140,
+        "sizeY": 75,
+        "sizeZ": 110
+      },
+      "voxelCount": 142435,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_054.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 54,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_055",
+      "name": "model_055",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 110,
+        "sizeY": 75,
+        "sizeZ": 110
+      },
+      "voxelCount": 107662,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_055.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 55,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_056",
+      "name": "model_056",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 70,
+        "sizeZ": 116
+      },
+      "voxelCount": 108087,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_056.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 56,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_057",
+      "name": "model_057",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 70,
+        "sizeZ": 110
+      },
+      "voxelCount": 73986,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_057.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 57,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_058",
+      "name": "model_058",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 75,
+        "sizeZ": 110
+      },
+      "voxelCount": 74189,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_058.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 58,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_059",
+      "name": "model_059",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 76,
+        "sizeZ": 116
+      },
+      "voxelCount": 108386,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_059.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 59,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_060",
+      "name": "model_060",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 140,
+        "sizeY": 75,
+        "sizeZ": 110
+      },
+      "voxelCount": 142813,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_060.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 60,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_061",
+      "name": "model_061",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 110,
+        "sizeY": 75,
+        "sizeZ": 110
+      },
+      "voxelCount": 98075,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_061.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 61,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_062",
+      "name": "model_062",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 60,
+        "sizeZ": 54
+      },
+      "voxelCount": 42060,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_062.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 62,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_063",
+      "name": "model_063",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 110,
+        "sizeY": 76,
+        "sizeZ": 148
+      },
+      "voxelCount": 138172,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_063.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 63,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_064",
+      "name": "model_064",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 75,
+        "sizeZ": 110
+      },
+      "voxelCount": 74394,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_064.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 64,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_065",
+      "name": "model_065",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 75,
+        "sizeZ": 110
+      },
+      "voxelCount": 74374,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_065.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 65,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_066",
+      "name": "model_066",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 114,
+        "sizeY": 76,
+        "sizeZ": 80
+      },
+      "voxelCount": 108355,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_066.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 66,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_067",
+      "name": "model_067",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 76,
+        "sizeZ": 110
+      },
+      "voxelCount": 74560,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_067.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 67,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_068",
+      "name": "model_068",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 76,
+        "sizeZ": 110
+      },
+      "voxelCount": 75116,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_068.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 68,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_069",
+      "name": "model_069",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 76,
+        "sizeZ": 110
+      },
+      "voxelCount": 74689,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_069.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 69,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_070",
+      "name": "model_070",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 186,
+        "sizeY": 1,
+        "sizeZ": 160
+      },
+      "voxelCount": 29760,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_070.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 70,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_071",
+      "name": "model_071",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 15,
+        "sizeY": 3,
+        "sizeZ": 18
+      },
+      "voxelCount": 390,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_071.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 71,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_072",
+      "name": "model_072",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 31,
+        "sizeY": 6,
+        "sizeZ": 30
+      },
+      "voxelCount": 515,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_072.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 72,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_073",
+      "name": "model_073",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 96,
+        "sizeZ": 80
+      },
+      "voxelCount": 40386,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_073.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 73,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_074",
+      "name": "model_074",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 116,
+        "sizeZ": 80
+      },
+      "voxelCount": 45852,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_074.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 74,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_075",
+      "name": "model_075",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 116,
+        "sizeZ": 80
+      },
+      "voxelCount": 45991,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_075.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 75,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_076",
+      "name": "model_076",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 121,
+        "sizeZ": 80
+      },
+      "voxelCount": 80499,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_076.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 76,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_077",
+      "name": "model_077",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 141,
+        "sizeY": 144,
+        "sizeZ": 80
+      },
+      "voxelCount": 170448,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_077.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 77,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_078",
+      "name": "model_078",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 141,
+        "sizeY": 144,
+        "sizeZ": 110
+      },
+      "voxelCount": 232335,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_078.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 78,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_079",
+      "name": "model_079",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 141,
+        "sizeY": 141,
+        "sizeZ": 110
+      },
+      "voxelCount": 222648,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_079.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 79,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_080",
+      "name": "model_080",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 111,
+        "sizeY": 141,
+        "sizeZ": 110
+      },
+      "voxelCount": 183158,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_080.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 80,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_081",
+      "name": "model_081",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 68,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 3758,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_081.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 81,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_082",
+      "name": "model_082",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 65,
+        "sizeZ": 30
+      },
+      "voxelCount": 28252,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_082.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 82,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_083",
+      "name": "model_083",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 6,
+        "sizeY": 6,
+        "sizeZ": 11
+      },
+      "voxelCount": 225,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_083.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 83,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_084",
+      "name": "model_084",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 19,
+        "sizeY": 2,
+        "sizeZ": 11
+      },
+      "voxelCount": 150,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_084.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 84,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_085",
+      "name": "model_085",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 23,
+        "sizeY": 2,
+        "sizeZ": 15
+      },
+      "voxelCount": 210,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_085.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 85,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_086",
+      "name": "model_086",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 15,
+        "sizeY": 6,
+        "sizeZ": 18
+      },
+      "voxelCount": 390,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_086.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 86,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_087",
+      "name": "model_087",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 95,
+        "sizeY": 7,
+        "sizeZ": 28
+      },
+      "voxelCount": 532,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_087.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 87,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_088",
+      "name": "model_088",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 111,
+        "sizeY": 149,
+        "sizeZ": 110
+      },
+      "voxelCount": 192976,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_088.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 88,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_089",
+      "name": "model_089",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 111,
+        "sizeY": 156,
+        "sizeZ": 110
+      },
+      "voxelCount": 210591,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_089.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 89,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_090",
+      "name": "model_090",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 111,
+        "sizeY": 156,
+        "sizeZ": 80
+      },
+      "voxelCount": 144907,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_090.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 90,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_091",
+      "name": "model_091",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 111,
+        "sizeY": 164,
+        "sizeZ": 80
+      },
+      "voxelCount": 144483,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_091.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 91,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_092",
+      "name": "model_092",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 140,
+        "sizeY": 141,
+        "sizeZ": 110
+      },
+      "voxelCount": 193360,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_092.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 92,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_093",
+      "name": "model_093",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 140,
+        "sizeY": 141,
+        "sizeZ": 110
+      },
+      "voxelCount": 220008,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_093.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 93,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_094",
+      "name": "model_094",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 140,
+        "sizeY": 141,
+        "sizeZ": 110
+      },
+      "voxelCount": 238219,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_094.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 94,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_095",
+      "name": "model_095",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 170,
+        "sizeY": 149,
+        "sizeZ": 110
+      },
+      "voxelCount": 316348,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_095.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 95,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_096",
+      "name": "model_096",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 170,
+        "sizeY": 144,
+        "sizeZ": 80
+      },
+      "voxelCount": 199399,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_096.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 96,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_097",
+      "name": "model_097",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 170,
+        "sizeY": 129,
+        "sizeZ": 80
+      },
+      "voxelCount": 176450,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_097.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 97,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_098",
+      "name": "model_098",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 100,
+        "sizeY": 24,
+        "sizeZ": 96
+      },
+      "voxelCount": 18675,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_098.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 98,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_099",
+      "name": "model_099",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 69,
+        "sizeY": 20,
+        "sizeZ": 96
+      },
+      "voxelCount": 14323,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_099.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 99,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_100",
+      "name": "model_100",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 69,
+        "sizeY": 20,
+        "sizeZ": 96
+      },
+      "voxelCount": 14323,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_100.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 100,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_101",
+      "name": "model_101",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 69,
+        "sizeY": 20,
+        "sizeZ": 71
+      },
+      "voxelCount": 9115,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_101.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 101,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_102",
+      "name": "model_102",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 110,
+        "sizeY": 70,
+        "sizeZ": 140
+      },
+      "voxelCount": 140520,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_102.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 102,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_103",
+      "name": "model_103",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 72,
+        "sizeY": 24,
+        "sizeZ": 103
+      },
+      "voxelCount": 16873,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_103.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 103,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_104",
+      "name": "model_104",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 71,
+        "sizeY": 29,
+        "sizeZ": 134
+      },
+      "voxelCount": 17674,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_104.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 104,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_105",
+      "name": "model_105",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 59,
+        "sizeY": 7,
+        "sizeZ": 5
+      },
+      "voxelCount": 304,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_105.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 105,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_106",
+      "name": "model_106",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 27,
+        "sizeY": 7,
+        "sizeZ": 5
+      },
+      "voxelCount": 152,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_106.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 106,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_107",
+      "name": "model_107",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 7,
+        "sizeZ": 4
+      },
+      "voxelCount": 75,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_107.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 107,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_108",
+      "name": "model_108",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 7,
+        "sizeZ": 4
+      },
+      "voxelCount": 75,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_108.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 108,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_109",
+      "name": "model_109",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 7,
+        "sizeZ": 4
+      },
+      "voxelCount": 75,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_109.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 109,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_110",
+      "name": "model_110",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 7,
+        "sizeZ": 4
+      },
+      "voxelCount": 76,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_110.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 110,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_111",
+      "name": "model_111",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 7,
+        "sizeZ": 4
+      },
+      "voxelCount": 76,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_111.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 111,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_112",
+      "name": "model_112",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 84,
+        "sizeY": 7,
+        "sizeZ": 5
+      },
+      "voxelCount": 228,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_112.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 112,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_113",
+      "name": "model_113",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 60,
+        "sizeY": 58,
+        "sizeZ": 60
+      },
+      "voxelCount": 41377,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_113.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 113,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_114",
+      "name": "model_114",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 161,
+        "sizeZ": 138
+      },
+      "voxelCount": 196880,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_114.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 114,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_115",
+      "name": "model_115",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 144,
+        "sizeZ": 108
+      },
+      "voxelCount": 137948,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_115.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 115,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_116",
+      "name": "model_116",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 47,
+        "sizeY": 12,
+        "sizeZ": 32
+      },
+      "voxelCount": 3710,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_116.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 116,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_117",
+      "name": "model_117",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 149,
+        "sizeZ": 108
+      },
+      "voxelCount": 141662,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_117.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 117,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_118",
+      "name": "model_118",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 97,
+        "sizeY": 124,
+        "sizeZ": 50
+      },
+      "voxelCount": 52305,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_118.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 118,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_119",
+      "name": "model_119",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 174,
+        "sizeY": 86,
+        "sizeZ": 77
+      },
+      "voxelCount": 58214,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_119.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 119,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_120",
+      "name": "model_120",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 75,
+        "sizeZ": 123
+      },
+      "voxelCount": 88104,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_120.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 120,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_121",
+      "name": "model_121",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 78,
+        "sizeY": 81,
+        "sizeZ": 129
+      },
+      "voxelCount": 42695,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_121.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 121,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_122",
+      "name": "model_122",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 123,
+        "sizeY": 75,
+        "sizeZ": 151
+      },
+      "voxelCount": 189712,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_122.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 122,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_123",
+      "name": "model_123",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 75,
+        "sizeZ": 50
+      },
+      "voxelCount": 33404,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_123.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 123,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_124",
+      "name": "model_124",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 75,
+        "sizeZ": 50
+      },
+      "voxelCount": 33522,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_124.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 124,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_125",
+      "name": "model_125",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 55,
+        "sizeY": 67,
+        "sizeZ": 50
+      },
+      "voxelCount": 6852,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_125.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 125,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_126",
+      "name": "model_126",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 48,
+        "sizeY": 16,
+        "sizeZ": 36
+      },
+      "voxelCount": 3372,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_126.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 126,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_127",
+      "name": "model_127",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_127.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 127,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_128",
+      "name": "model_128",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_128.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 128,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_129",
+      "name": "model_129",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_129.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 129,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_130",
+      "name": "model_130",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_130.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 130,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_131",
+      "name": "model_131",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_131.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 131,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_132",
+      "name": "model_132",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 31,
+        "sizeY": 6,
+        "sizeZ": 34
+      },
+      "voxelCount": 705,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_132.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 132,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_133",
+      "name": "model_133",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 89,
+        "sizeZ": 54
+      },
+      "voxelCount": 58428,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_133.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 133,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_134",
+      "name": "model_134",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 77,
+        "sizeY": 69,
+        "sizeZ": 67
+      },
+      "voxelCount": 11975,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_134.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 134,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_135",
+      "name": "model_135",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 77,
+        "sizeY": 69,
+        "sizeZ": 67
+      },
+      "voxelCount": 17963,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_135.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 135,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_136",
+      "name": "model_136",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 87,
+        "sizeY": 48,
+        "sizeZ": 65
+      },
+      "voxelCount": 14790,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_136.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 136,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_137",
+      "name": "model_137",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 88,
+        "sizeY": 49,
+        "sizeZ": 118
+      },
+      "voxelCount": 23170,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_137.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 137,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_138",
+      "name": "model_138",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 88,
+        "sizeY": 49,
+        "sizeZ": 94
+      },
+      "voxelCount": 19377,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_138.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 138,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_139",
+      "name": "model_139",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 71,
+        "sizeY": 27,
+        "sizeZ": 61
+      },
+      "voxelCount": 8139,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_139.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 139,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_140",
+      "name": "model_140",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 71,
+        "sizeY": 26,
+        "sizeZ": 58
+      },
+      "voxelCount": 7785,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_140.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 140,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_141",
+      "name": "model_141",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 57,
+        "sizeY": 10,
+        "sizeZ": 28
+      },
+      "voxelCount": 491,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_141.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 141,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_142",
+      "name": "model_142",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 57,
+        "sizeY": 10,
+        "sizeZ": 27
+      },
+      "voxelCount": 188,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_142.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 142,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_143",
+      "name": "model_143",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 7,
+        "sizeZ": 4
+      },
+      "voxelCount": 76,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_143.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 143,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_144",
+      "name": "model_144",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 7,
+        "sizeZ": 4
+      },
+      "voxelCount": 75,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_144.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 144,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_145",
+      "name": "model_145",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 7,
+        "sizeZ": 4
+      },
+      "voxelCount": 76,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_145.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 145,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_146",
+      "name": "model_146",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 7,
+        "sizeZ": 4
+      },
+      "voxelCount": 75,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_146.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 146,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_147",
+      "name": "model_147",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 86,
+        "sizeY": 169,
+        "sizeZ": 152
+      },
+      "voxelCount": 266246,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_147.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 147,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_148",
+      "name": "model_148",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 96,
+        "sizeZ": 50
+      },
+      "voxelCount": 41727,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_148.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 148,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_149",
+      "name": "model_149",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 136,
+        "sizeZ": 108
+      },
+      "voxelCount": 122031,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_149.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 149,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_150",
+      "name": "model_150",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 121,
+        "sizeZ": 108
+      },
+      "voxelCount": 125297,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_150.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 150,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_151",
+      "name": "model_151",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 124,
+        "sizeZ": 108
+      },
+      "voxelCount": 118893,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_151.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 151,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_152",
+      "name": "model_152",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 86,
+        "sizeY": 13,
+        "sizeZ": 74
+      },
+      "voxelCount": 24588,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_152.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 152,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_153",
+      "name": "model_153",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 84,
+        "sizeY": 13,
+        "sizeZ": 64
+      },
+      "voxelCount": 14496,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_153.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 153,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_154",
+      "name": "model_154",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_154.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 154,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_155",
+      "name": "model_155",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_155.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 155,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_156",
+      "name": "model_156",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_156.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 156,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_157",
+      "name": "model_157",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_157.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 157,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_158",
+      "name": "model_158",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 70,
+        "sizeY": 19,
+        "sizeZ": 60
+      },
+      "voxelCount": 6795,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_158.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 158,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_159",
+      "name": "model_159",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 86,
+        "sizeY": 20,
+        "sizeZ": 66
+      },
+      "voxelCount": 20376,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_159.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 159,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_160",
+      "name": "model_160",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 69,
+        "sizeY": 20,
+        "sizeZ": 71
+      },
+      "voxelCount": 9115,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_160.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 160,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_161",
+      "name": "model_161",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 17,
+        "sizeY": 6,
+        "sizeZ": 24
+      },
+      "voxelCount": 600,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_161.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 161,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_162",
+      "name": "model_162",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 11,
+        "sizeY": 3,
+        "sizeZ": 7
+      },
+      "voxelCount": 150,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_162.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 162,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_163",
+      "name": "model_163",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 17,
+        "sizeY": 6,
+        "sizeZ": 6
+      },
+      "voxelCount": 300,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_163.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 163,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_164",
+      "name": "model_164",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 60,
+        "sizeZ": 54
+      },
+      "voxelCount": 42001,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_164.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 164,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_165",
+      "name": "model_165",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 136,
+        "sizeY": 70,
+        "sizeZ": 80
+      },
+      "voxelCount": 125280,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_165.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 165,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_166",
+      "name": "model_166",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 84,
+        "sizeY": 25,
+        "sizeZ": 70
+      },
+      "voxelCount": 6845,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_166.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 166,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_167",
+      "name": "model_167",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 100,
+        "sizeY": 76,
+        "sizeZ": 80
+      },
+      "voxelCount": 74592,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_167.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 167,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_168",
+      "name": "model_168",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 109,
+        "sizeY": 76,
+        "sizeZ": 142
+      },
+      "voxelCount": 144062,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_168.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 168,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_169",
+      "name": "model_169",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 77,
+        "sizeY": 76,
+        "sizeZ": 77
+      },
+      "voxelCount": 21773,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_169.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 169,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_170",
+      "name": "model_170",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 77,
+        "sizeY": 75,
+        "sizeZ": 67
+      },
+      "voxelCount": 18275,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_170.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 170,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_171",
+      "name": "model_171",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 67,
+        "sizeY": 75,
+        "sizeZ": 147
+      },
+      "voxelCount": 24927,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_171.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 171,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_172",
+      "name": "model_172",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 187,
+        "sizeY": 91,
+        "sizeZ": 137
+      },
+      "voxelCount": 69379,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_172.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 172,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_173",
+      "name": "model_173",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 102,
+        "sizeY": 60,
+        "sizeZ": 54
+      },
+      "voxelCount": 84061,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_173.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 173,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_174",
+      "name": "model_174",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 84,
+        "sizeY": 20,
+        "sizeZ": 161
+      },
+      "voxelCount": 16216,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_174.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 174,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_175",
+      "name": "model_175",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 55,
+        "sizeY": 7,
+        "sizeZ": 28
+      },
+      "voxelCount": 387,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_175.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 175,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_176",
+      "name": "model_176",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 116,
+        "sizeZ": 80
+      },
+      "voxelCount": 75269,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_176.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 176,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_177",
+      "name": "model_177",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 149,
+        "sizeZ": 80
+      },
+      "voxelCount": 88251,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_177.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 177,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_178",
+      "name": "model_178",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 116,
+        "sizeZ": 80
+      },
+      "voxelCount": 70107,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_178.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 178,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_179",
+      "name": "model_179",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 108,
+        "sizeY": 104,
+        "sizeZ": 80
+      },
+      "voxelCount": 91307,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_179.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 179,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_180",
+      "name": "model_180",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 140,
+        "sizeY": 121,
+        "sizeZ": 50
+      },
+      "voxelCount": 75487,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_180.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 180,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_181",
+      "name": "model_181",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 110,
+        "sizeY": 129,
+        "sizeZ": 110
+      },
+      "voxelCount": 118335,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_181.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 181,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_182",
+      "name": "model_182",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 80,
+        "sizeY": 124,
+        "sizeZ": 70
+      },
+      "voxelCount": 54236,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_182.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 182,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_183",
+      "name": "model_183",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 71,
+        "sizeY": 14,
+        "sizeZ": 207
+      },
+      "voxelCount": 70826,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_183.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 183,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_184",
+      "name": "model_184",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 134,
+        "sizeY": 16,
+        "sizeZ": 256
+      },
+      "voxelCount": 221465,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_184.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 184,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_185",
+      "name": "model_185",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 18,
+        "sizeZ": 256
+      },
+      "voxelCount": 417614,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_185.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 185,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_186",
+      "name": "model_186",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 230,
+        "sizeY": 18,
+        "sizeZ": 92
+      },
+      "voxelCount": 159265,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_186.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 186,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_187",
+      "name": "model_187",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 153,
+        "sizeY": 18,
+        "sizeZ": 256
+      },
+      "voxelCount": 274670,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_187.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 187,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_188",
+      "name": "model_188",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 18,
+        "sizeZ": 138
+      },
+      "voxelCount": 226744,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_188.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 188,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_189",
+      "name": "model_189",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 211,
+        "sizeY": 18,
+        "sizeZ": 74
+      },
+      "voxelCount": 85117,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_189.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 189,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_190",
+      "name": "model_190",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 71,
+        "sizeY": 14,
+        "sizeZ": 117
+      },
+      "voxelCount": 39912,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_190.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 190,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_191",
+      "name": "model_191",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 130,
+        "sizeY": 14,
+        "sizeZ": 128
+      },
+      "voxelCount": 108391,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_191.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 191,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_192",
+      "name": "model_192",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 208,
+        "sizeY": 18,
+        "sizeZ": 256
+      },
+      "voxelCount": 383569,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_192.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 192,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_193",
+      "name": "model_193",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 18,
+        "sizeZ": 242
+      },
+      "voxelCount": 414477,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_193.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 193,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_194",
+      "name": "model_194",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 18,
+        "sizeZ": 256
+      },
+      "voxelCount": 418773,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_194.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 194,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_195",
+      "name": "model_195",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 78,
+        "sizeY": 18,
+        "sizeZ": 214
+      },
+      "voxelCount": 94729,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_195.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 195,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_196",
+      "name": "model_196",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 147,
+        "sizeY": 16,
+        "sizeZ": 55
+      },
+      "voxelCount": 37686,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_196.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 196,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_197",
+      "name": "model_197",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 55,
+        "sizeY": 12,
+        "sizeZ": 54
+      },
+      "voxelCount": 9964,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_197.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 197,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_198",
+      "name": "model_198",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 105,
+        "sizeY": 14,
+        "sizeZ": 76
+      },
+      "voxelCount": 37368,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_198.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 198,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_199",
+      "name": "model_199",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 52,
+        "sizeY": 18,
+        "sizeZ": 187
+      },
+      "voxelCount": 44022,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_199.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 199,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_200",
+      "name": "model_200",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 79,
+        "sizeY": 14,
+        "sizeZ": 218
+      },
+      "voxelCount": 75683,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_200.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 200,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_201",
+      "name": "model_201",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 240,
+        "sizeY": 16,
+        "sizeZ": 205
+      },
+      "voxelCount": 380334,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_201.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 201,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_202",
+      "name": "model_202",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 240,
+        "sizeY": 16,
+        "sizeZ": 205
+      },
+      "voxelCount": 336094,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_202.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 202,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_203",
+      "name": "model_203",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 18,
+        "sizeZ": 256
+      },
+      "voxelCount": 417614,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_203.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 203,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_204",
+      "name": "model_204",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 67,
+        "sizeY": 5,
+        "sizeZ": 8
+      },
+      "voxelCount": 434,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_204.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 204,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_205",
+      "name": "model_205",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 11,
+        "sizeY": 6,
+        "sizeZ": 20
+      },
+      "voxelCount": 382,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_205.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 205,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_206",
+      "name": "model_206",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 252,
+        "sizeY": 18,
+        "sizeZ": 121
+      },
+      "voxelCount": 201318,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_206.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 206,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_207",
+      "name": "model_207",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 212,
+        "sizeY": 16,
+        "sizeZ": 82
+      },
+      "voxelCount": 87352,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_207.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 207,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_208",
+      "name": "model_208",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 82,
+        "sizeY": 18,
+        "sizeZ": 168
+      },
+      "voxelCount": 88586,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_208.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 208,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_209",
+      "name": "model_209",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 182,
+        "sizeY": 18,
+        "sizeZ": 150
+      },
+      "voxelCount": 218770,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_209.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 209,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_210",
+      "name": "model_210",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 73,
+        "sizeY": 11,
+        "sizeZ": 31
+      },
+      "voxelCount": 5952,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_210.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 210,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_211",
+      "name": "model_211",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 103,
+        "sizeY": 18,
+        "sizeZ": 117
+      },
+      "voxelCount": 80708,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_211.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 211,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_212",
+      "name": "model_212",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 203,
+        "sizeY": 18,
+        "sizeZ": 49
+      },
+      "voxelCount": 37400,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_212.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 212,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_213",
+      "name": "model_213",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 49,
+        "sizeY": 16,
+        "sizeZ": 195
+      },
+      "voxelCount": 38187,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_213.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 213,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_214",
+      "name": "model_214",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 230,
+        "sizeY": 18,
+        "sizeZ": 109
+      },
+      "voxelCount": 161491,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_214.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 214,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_215",
+      "name": "model_215",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 122,
+        "sizeY": 16,
+        "sizeZ": 25
+      },
+      "voxelCount": 9548,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_215.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 215,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_216",
+      "name": "model_216",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 46,
+        "sizeY": 18,
+        "sizeZ": 198
+      },
+      "voxelCount": 35025,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_216.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 216,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_217",
+      "name": "model_217",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 198,
+        "sizeY": 18,
+        "sizeZ": 46
+      },
+      "voxelCount": 32518,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_217.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 217,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_218",
+      "name": "model_218",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 182,
+        "sizeY": 18,
+        "sizeZ": 256
+      },
+      "voxelCount": 333658,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_218.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 218,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_219",
+      "name": "model_219",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 16,
+        "sizeZ": 124
+      },
+      "voxelCount": 8266,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_219.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 219,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_220",
+      "name": "model_220",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 94,
+        "sizeY": 18,
+        "sizeZ": 224
+      },
+      "voxelCount": 126445,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_220.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 220,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_221",
+      "name": "model_221",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 141,
+        "sizeY": 16,
+        "sizeZ": 250
+      },
+      "voxelCount": 224520,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_221.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 221,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_222",
+      "name": "model_222",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 16,
+        "sizeZ": 188
+      },
+      "voxelCount": 313536,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_222.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 222,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_223",
+      "name": "model_223",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 94,
+        "sizeY": 18,
+        "sizeZ": 224
+      },
+      "voxelCount": 128270,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_223.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 223,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_224",
+      "name": "model_224",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 128,
+        "sizeY": 18,
+        "sizeZ": 256
+      },
+      "voxelCount": 215423,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_224.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 224,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_225",
+      "name": "model_225",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 16,
+        "sizeZ": 194
+      },
+      "voxelCount": 325410,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_225.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 225,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_226",
+      "name": "model_226",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 16,
+        "sizeZ": 250
+      },
+      "voxelCount": 377541,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_226.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 226,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_227",
+      "name": "model_227",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 128,
+        "sizeY": 16,
+        "sizeZ": 256
+      },
+      "voxelCount": 206801,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_227.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 227,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_228",
+      "name": "model_228",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 49,
+        "sizeY": 18,
+        "sizeZ": 204
+      },
+      "voxelCount": 39917,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_228.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 228,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_229",
+      "name": "model_229",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 193,
+        "sizeY": 16,
+        "sizeZ": 49
+      },
+      "voxelCount": 38973,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_229.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 229,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_230",
+      "name": "model_230",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 138,
+        "sizeY": 16,
+        "sizeZ": 233
+      },
+      "voxelCount": 203904,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_230.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 230,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_231",
+      "name": "model_231",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 105,
+        "sizeY": 16,
+        "sizeZ": 125
+      },
+      "voxelCount": 77877,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_231.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 231,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_232",
+      "name": "model_232",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 52,
+        "sizeY": 18,
+        "sizeZ": 209
+      },
+      "voxelCount": 44837,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_232.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 232,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_233",
+      "name": "model_233",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 211,
+        "sizeY": 18,
+        "sizeZ": 74
+      },
+      "voxelCount": 85119,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_233.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 233,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_234",
+      "name": "model_234",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 74,
+        "sizeY": 16,
+        "sizeZ": 199
+      },
+      "voxelCount": 78889,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_234.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 234,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_235",
+      "name": "model_235",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 141,
+        "sizeY": 18,
+        "sizeZ": 40
+      },
+      "voxelCount": 28549,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_235.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 235,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_236",
+      "name": "model_236",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 40,
+        "sizeY": 16,
+        "sizeZ": 130
+      },
+      "voxelCount": 28439,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_236.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 236,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_237",
+      "name": "model_237",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 18,
+        "sizeZ": 110
+      },
+      "voxelCount": 169626,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_237.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 237,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_238",
+      "name": "model_238",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 213,
+        "sizeY": 14,
+        "sizeZ": 79
+      },
+      "voxelCount": 77185,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_238.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 238,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_239",
+      "name": "model_239",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 82,
+        "sizeY": 14,
+        "sizeZ": 230
+      },
+      "voxelCount": 84842,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_239.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 239,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_240",
+      "name": "model_240",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 127,
+        "sizeY": 15,
+        "sizeZ": 250
+      },
+      "voxelCount": 190943,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_240.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 240,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_241",
+      "name": "model_241",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 184,
+        "sizeY": 18,
+        "sizeZ": 39
+      },
+      "voxelCount": 22952,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_241.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 241,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_242",
+      "name": "model_242",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 18,
+        "sizeZ": 256
+      },
+      "voxelCount": 418777,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_242.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 242,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_243",
+      "name": "model_243",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 16,
+        "sizeZ": 213
+      },
+      "voxelCount": 351924,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_243.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 243,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_244",
+      "name": "model_244",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 173,
+        "sizeY": 16,
+        "sizeZ": 256
+      },
+      "voxelCount": 307067,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_244.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 244,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_245",
+      "name": "model_245",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 153,
+        "sizeY": 14,
+        "sizeZ": 36
+      },
+      "voxelCount": 16548,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_245.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 245,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_246",
+      "name": "model_246",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 89,
+        "sizeY": 18,
+        "sizeZ": 223
+      },
+      "voxelCount": 116616,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_246.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 246,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_247",
+      "name": "model_247",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 18,
+        "sizeZ": 238
+      },
+      "voxelCount": 412818,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_247.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 247,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_248",
+      "name": "model_248",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 110,
+        "sizeY": 16,
+        "sizeZ": 125
+      },
+      "voxelCount": 101865,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_248.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 248,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_249",
+      "name": "model_249",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 128,
+        "sizeY": 16,
+        "sizeZ": 150
+      },
+      "voxelCount": 128631,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_249.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 249,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_250",
+      "name": "model_250",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 154,
+        "sizeY": 16,
+        "sizeZ": 225
+      },
+      "voxelCount": 244652,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_250.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 250,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_251",
+      "name": "model_251",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 179,
+        "sizeY": 18,
+        "sizeZ": 128
+      },
+      "voxelCount": 162864,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_251.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 251,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_252",
+      "name": "model_252",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 71,
+        "sizeY": 20,
+        "sizeZ": 254
+      },
+      "voxelCount": 106954,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_252.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 252,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_253",
+      "name": "model_253",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_253.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 253,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_254",
+      "name": "model_254",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_254.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 254,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_255",
+      "name": "model_255",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_255.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 255,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_256",
+      "name": "model_256",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_256.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 256,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_257",
+      "name": "model_257",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_257.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 257,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_258",
+      "name": "model_258",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_258.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 258,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_259",
+      "name": "model_259",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_259.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 259,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_260",
+      "name": "model_260",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_260.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 260,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_261",
+      "name": "model_261",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_261.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 261,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_262",
+      "name": "model_262",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_262.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 262,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_263",
+      "name": "model_263",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 10,
+        "sizeZ": 200
+      },
+      "voxelCount": 41800,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_263.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 263,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_264",
+      "name": "model_264",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_264.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 264,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_265",
+      "name": "model_265",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_265.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 265,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_266",
+      "name": "model_266",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_266.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 266,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_267",
+      "name": "model_267",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_267.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 267,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_268",
+      "name": "model_268",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_268.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 268,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_269",
+      "name": "model_269",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_269.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 269,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_270",
+      "name": "model_270",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_270.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 270,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_271",
+      "name": "model_271",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_271.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 271,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_272",
+      "name": "model_272",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 1,
+        "sizeZ": 200
+      },
+      "voxelCount": 40000,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_272.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 272,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_273",
+      "name": "model_273",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 200,
+        "sizeY": 10,
+        "sizeZ": 200
+      },
+      "voxelCount": 43591,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_273.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 273,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_274",
+      "name": "model_274",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 1,
+        "sizeZ": 171
+      },
+      "voxelCount": 43776,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_274.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 274,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_275",
+      "name": "model_275",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 4068,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_275.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 275,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_276",
+      "name": "model_276",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 50,
+        "sizeY": 63,
+        "sizeZ": 50
+      },
+      "voxelCount": 38461,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_276.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 276,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_277",
+      "name": "model_277",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 8,
+        "sizeY": 10,
+        "sizeZ": 9
+      },
+      "voxelCount": 82,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_277.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 277,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_278",
+      "name": "model_278",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 11,
+        "sizeY": 21,
+        "sizeZ": 5
+      },
+      "voxelCount": 58,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_278.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 278,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_279",
+      "name": "model_279",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 23,
+        "sizeY": 10,
+        "sizeZ": 23
+      },
+      "voxelCount": 2433,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_279.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 279,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_280",
+      "name": "model_280",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 4064,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_280.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 280,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_281",
+      "name": "model_281",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 6,
+        "sizeZ": 30
+      },
+      "voxelCount": 1384,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_281.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 281,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_282",
+      "name": "model_282",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 32,
+        "sizeY": 14,
+        "sizeZ": 32
+      },
+      "voxelCount": 1796,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_282.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 282,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_283",
+      "name": "model_283",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 19,
+        "sizeZ": 30
+      },
+      "voxelCount": 2266,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_283.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 283,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_284",
+      "name": "model_284",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 6,
+        "sizeZ": 30
+      },
+      "voxelCount": 1204,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_284.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 284,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_285",
+      "name": "model_285",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 6,
+        "sizeZ": 30
+      },
+      "voxelCount": 1204,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_285.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 285,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_286",
+      "name": "model_286",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 35,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 4244,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_286.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 286,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_287",
+      "name": "model_287",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 20,
+        "sizeZ": 30
+      },
+      "voxelCount": 4528,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_287.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 287,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_288",
+      "name": "model_288",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 1,
+        "sizeZ": 171
+      },
+      "voxelCount": 43776,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_288.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 288,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_289",
+      "name": "model_289",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 256,
+        "sizeY": 18,
+        "sizeZ": 256
+      },
+      "voxelCount": 422224,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_289.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 289,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "oasis/model_290",
+      "name": "model_290",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 151,
+        "sizeY": 14,
+        "sizeZ": 159
+      },
+      "voxelCount": 49679,
+      "tags": [],
+      "componentPath": "assets/components/oasis/model_290.component.json",
+      "source": {
+        "file": "Oasis_Hard_Cover.vox",
+        "modelIndex": 290,
+        "license": "CC0"
+      }
+    },
+    {
+      "id": "vehicles/bus-big/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 27,
+        "sizeY": 7,
+        "sizeZ": 6
+      },
+      "voxelCount": 1106,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/bus-big/model_000.component.json",
+      "source": {
+        "file": "bus-big.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/bus-big/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 17,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 24,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/bus-big/model_001.component.json",
+      "source": {
+        "file": "bus-big.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/bus-small/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 16,
+        "sizeY": 6,
+        "sizeZ": 6
+      },
+      "voxelCount": 534,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/bus-small/model_000.component.json",
+      "source": {
+        "file": "bus-small.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/bus-small/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 12,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/bus-small/model_001.component.json",
+      "source": {
+        "file": "bus-small.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/car-v1/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 14,
+        "sizeY": 5,
+        "sizeZ": 6
+      },
+      "voxelCount": 312,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v1/model_000.component.json",
+      "source": {
+        "file": "car-v1.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/car-v1/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 9,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v1/model_001.component.json",
+      "source": {
+        "file": "car-v1.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/car-v2/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 14,
+        "sizeY": 5,
+        "sizeZ": 6
+      },
+      "voxelCount": 292,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v2/model_000.component.json",
+      "source": {
+        "file": "car-v2.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/car-v2/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 9,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v2/model_001.component.json",
+      "source": {
+        "file": "car-v2.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/car-v3/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 16,
+        "sizeY": 5,
+        "sizeZ": 6
+      },
+      "voxelCount": 368,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v3/model_000.component.json",
+      "source": {
+        "file": "car-v3.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/car-v3/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 11,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v3/model_001.component.json",
+      "source": {
+        "file": "car-v3.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/car-v4/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 16,
+        "sizeY": 5,
+        "sizeZ": 6
+      },
+      "voxelCount": 348,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v4/model_000.component.json",
+      "source": {
+        "file": "car-v4.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/car-v4/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 11,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v4/model_001.component.json",
+      "source": {
+        "file": "car-v4.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/car-v5/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 16,
+        "sizeY": 5,
+        "sizeZ": 6
+      },
+      "voxelCount": 270,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v5/model_000.component.json",
+      "source": {
+        "file": "car-v5.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/car-v5/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 11,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v5/model_001.component.json",
+      "source": {
+        "file": "car-v5.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/car-v6/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 14,
+        "sizeY": 5,
+        "sizeZ": 6
+      },
+      "voxelCount": 280,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v6/model_000.component.json",
+      "source": {
+        "file": "car-v6.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/car-v6/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 9,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/car-v6/model_001.component.json",
+      "source": {
+        "file": "car-v6.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/container/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 23,
+        "sizeY": 6,
+        "sizeZ": 6
+      },
+      "voxelCount": 828,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/container/model_000.component.json",
+      "source": {
+        "file": "container.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/emergency-ambulance-1/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 16,
+        "sizeY": 7,
+        "sizeZ": 6
+      },
+      "voxelCount": 538,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/emergency-ambulance-1/model_000.component.json",
+      "source": {
+        "file": "emergency-ambulance-1.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/emergency-ambulance-1/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 12,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/emergency-ambulance-1/model_001.component.json",
+      "source": {
+        "file": "emergency-ambulance-1.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/emergency-fire-engine-1/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 20,
+        "sizeY": 8,
+        "sizeZ": 6
+      },
+      "voxelCount": 852,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/emergency-fire-engine-1/model_000.component.json",
+      "source": {
+        "file": "emergency-fire-engine-1.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/emergency-fire-engine-1/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 14,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 24,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/emergency-fire-engine-1/model_001.component.json",
+      "source": {
+        "file": "emergency-fire-engine-1.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/emergency-police-1/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 16,
+        "sizeY": 6,
+        "sizeZ": 6
+      },
+      "voxelCount": 408,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/emergency-police-1/model_000.component.json",
+      "source": {
+        "file": "emergency-police-1.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/emergency-police-1/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 11,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/emergency-police-1/model_001.component.json",
+      "source": {
+        "file": "emergency-police-1.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/racer-v1/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 14,
+        "sizeY": 5,
+        "sizeZ": 6
+      },
+      "voxelCount": 288,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/racer-v1/model_000.component.json",
+      "source": {
+        "file": "racer-v1.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/racer-v1/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 9,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/racer-v1/model_001.component.json",
+      "source": {
+        "file": "racer-v1.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/tractor/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 15,
+        "sizeY": 9,
+        "sizeZ": 8
+      },
+      "voxelCount": 550,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/tractor/model_000.component.json",
+      "source": {
+        "file": "tractor.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/tractor/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 11,
+        "sizeY": 4,
+        "sizeZ": 8
+      },
+      "voxelCount": 56,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/tractor/model_001.component.json",
+      "source": {
+        "file": "tractor.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/truck-v1/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 16,
+        "sizeY": 6,
+        "sizeZ": 6
+      },
+      "voxelCount": 534,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/truck-v1/model_000.component.json",
+      "source": {
+        "file": "truck-v1.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/truck-v1/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 12,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 16,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/truck-v1/model_001.component.json",
+      "source": {
+        "file": "truck-v1.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/truck-v2/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 13,
+        "sizeY": 8,
+        "sizeZ": 6
+      },
+      "voxelCount": 344,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/truck-v2/model_000.component.json",
+      "source": {
+        "file": "truck-v2.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/truck-v2/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 10,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 24,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/truck-v2/model_001.component.json",
+      "source": {
+        "file": "truck-v2.vox",
+        "modelIndex": 1
+      }
+    },
+    {
+      "id": "vehicles/truck-v3/model_000",
+      "name": "model_000",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 30,
+        "sizeY": 8,
+        "sizeZ": 6
+      },
+      "voxelCount": 616,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/truck-v3/model_000.component.json",
+      "source": {
+        "file": "truck-v3.vox",
+        "modelIndex": 0
+      }
+    },
+    {
+      "id": "vehicles/truck-v3/model_001",
+      "name": "model_001",
+      "category": "uncategorized",
+      "bounds": {
+        "sizeX": 24,
+        "sizeY": 2,
+        "sizeZ": 6
+      },
+      "voxelCount": 56,
+      "tags": [],
+      "componentPath": "assets/components/vehicles/truck-v3/model_001.component.json",
+      "source": {
+        "file": "truck-v3.vox",
+        "modelIndex": 1
+      }
+    }
+  ]
+}

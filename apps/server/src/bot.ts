@@ -6,26 +6,30 @@ import { PlayerSim } from './player-sim.js';
 const ALL_CLASSES = Object.values(ClassId);
 
 // ---------------------------------------------------------------------------
-// Ravenfield-inspired AI parameters (Normal difficulty)
+// Ravenfield-inspired AI parameters (Easy difficulty — tuned for human play)
 // ---------------------------------------------------------------------------
 
 /** Base aim sway (radians) — always present even on a stationary target */
-const AIM_BASE_SWAY = 0.002;
+const AIM_BASE_SWAY = 0.03;
 
 /** Maximum extra sway added when the bot is fatigued / at range */
-const AIM_MAX_SWAY = 0.05;
+const AIM_MAX_SWAY = 0.12;
 
 /**
  * How close (in world-space metres projected on the perpendicular plane)
  * the aim must be to the target before the bot pulls the trigger.
  */
-const AI_FIRE_RECTANGLE_BOUND = 1.0;
+const AI_FIRE_RECTANGLE_BOUND = 1.8;
 
 /** Sway magnitude — multiplied by a time-varying sine wave */
-const SWAY_MAGNITUDE = 0.5;
+const SWAY_MAGNITUDE = 1.2;
 
 /** How quickly the bot rotates toward its target (slerp speed, rad/s) */
-const AIM_SLERP_SPEED = 6.0;
+const AIM_SLERP_SPEED = 2.5;
+
+/** Reaction delay before bot fires at a newly acquired target (seconds) */
+const REACTION_DELAY_MIN = 0.4;
+const REACTION_DELAY_MAX = 0.9;
 
 /** Eye offset from player feet — must match game-loop.ts EYE_OFFSET */
 const EYE_OFFSET = PLAYER_HEIGHT - 0.1; // 1.7
@@ -127,6 +131,9 @@ export class DummyBot {
   // -- Target tracking --
   private targetId: string | null = null;
   private patrolPoint: Vec3 | null = null;
+
+  /** Reaction timer — bot won't fire until this reaches 0 after acquiring a new target */
+  private reactionTimer = 0;
 
   // -- Current input being built each tick --
   private currentInput: InputState;
@@ -237,6 +244,11 @@ export class DummyBot {
       }
     }
 
+    // If we acquired a NEW target, apply reaction delay
+    if (bestId !== null && bestId !== this.targetId) {
+      this.reactionTimer = randRange(REACTION_DELAY_MIN, REACTION_DELAY_MAX);
+    }
+
     this.targetId = bestId;
   }
 
@@ -248,6 +260,11 @@ export class DummyBot {
     // Stop sprinting when engaging
     this.isSprinting = false;
     this.sprintTimer = 0;
+
+    // Count down reaction timer
+    if (this.reactionTimer > 0) {
+      this.reactionTimer -= dt;
+    }
 
     // --- Calculate aim direction toward target ---
     const myEye: Vec3 = {
@@ -299,6 +316,7 @@ export class DummyBot {
     const aimErrorWorld = Math.max(aimYawError, aimPitchError) * totalDist;
 
     const canFire =
+      this.reactionTimer <= 0 &&
       aimErrorWorld < AI_FIRE_RECTANGLE_BOUND &&
       !this.sim.reloading &&
       this.sim.ammo > 0;
