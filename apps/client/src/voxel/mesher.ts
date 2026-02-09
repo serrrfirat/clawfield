@@ -1,4 +1,5 @@
 import { CHUNK_SIZE, MATERIAL_COLORS, MAT_WATER } from '@clawfield/shared';
+import { getTileForFace, TILE_SIZE, ATLAS_COLS, ATLAS_ROWS, FALLBACK_TILE } from './texture-atlas';
 
 /** A quad produced by the greedy mesher */
 export interface MeshQuad {
@@ -162,6 +163,7 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
   positions: Float32Array;
   normals: Float32Array;
   colors: Float32Array;
+  uvs: Float32Array;
   indices: Uint32Array;
 } {
   const vertexCount = quads.length * 4; // 4 unique vertices per quad
@@ -169,7 +171,12 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
   const positions = new Float32Array(vertexCount * 3);
   const normals = new Float32Array(vertexCount * 3);
   const colors = new Float32Array(vertexCount * 3);
+  const uvs = new Float32Array(vertexCount * 2);
   const indices = new Uint32Array(indexCount);
+
+  // Atlas tile dimensions in UV space (0..1)
+  const tileU = 1 / ATLAS_COLS;
+  const tileV = 1 / ATLAS_ROWS;
 
   let vi = 0; // vertex index
   let ii = 0; // index index
@@ -194,7 +201,7 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
     const v2 = [corner[0] + du[0] + dv[0], corner[1] + du[1] + dv[1], corner[2] + du[2] + dv[2]];
     const v3 = [corner[0] + dv[0], corner[1] + dv[1], corner[2] + dv[2]];
 
-    // Color from material
+    // Color from material (kept for tinting/fallback)
     const colorHex = MATERIAL_COLORS[quad.material] ?? 0xff00ff;
     const r = ((colorHex >> 16) & 0xff) / 255;
     const g = ((colorHex >> 8) & 0xff) / 255;
@@ -214,9 +221,39 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
     const sg = g * shade;
     const sb = b * shade;
 
+    // --- UV calculation ---
+    // Look up which tile in the atlas this material+face maps to
+    const [tileCol, tileRow] = getTileForFace(quad.material, quad.face);
+    // Base UV of the tile's top-left corner in atlas space
+    const baseU = tileCol * tileU;
+    const baseV = tileRow * tileV;
+    // The quad spans quad.w × quad.h voxels. UVs tile per voxel within the tile region.
+    // We use fract() in the shader to wrap, so we pass raw voxel-scale UVs offset by tile base.
+    // The 4 corners of the UV quad:
+    //   v0 = (0, 0),  v1 = (w, 0),  v2 = (w, h),  v3 = (0, h)
+    // Mapped into atlas: u = baseU + (localU / quadW * tileU), but we want per-voxel tiling.
+    // Instead, we pass the tile base + voxel-count UVs scaled to tile size.
+    // The shader will do: atlasUV = tileBase + fract(vUv) * tileSize
+    // So we store: vUv = (voxelU, voxelV) as raw tiling counts, plus tile base in a separate attribute.
+    // BUT to keep it simple with a single UV attribute, we encode:
+    //   uv.x = tileCol + fractional_u_within_tile (repeating per voxel)
+    //   uv.y = tileRow + fractional_v_within_tile (repeating per voxel)
+    // The shader reconstructs: tile = floor(uv), localUV = fract(uv), atlasUV = (tile + localUV) * tileSize
+    const quadW = quad.w; // voxels wide
+    const quadH = quad.h; // voxels tall
+
+    // 4 UV corners: encode as tileCol + [0..quadW], tileRow + [0..quadH]
+    // Shader will: tileBase = floor(uv) / atlasDims, localUV = fract(uv), sample at tileBase + localUV * (1/atlasDims)
+    const uv0: [number, number] = [tileCol, tileRow];
+    const uv1: [number, number] = [tileCol + quadW, tileRow];
+    const uv2: [number, number] = [tileCol + quadW, tileRow + quadH];
+    const uv3: [number, number] = [tileCol, tileRow + quadH];
+
     // Emit 4 unique vertices: v0, v1, v2, v3
     const verts = [v0, v1, v2, v3];
-    for (const vertex of verts) {
+    const vertUvs = [uv0, uv1, uv2, uv3];
+    for (let i = 0; i < 4; i++) {
+      const vertex = verts[i];
       positions[vi * 3] = vertex[0];
       positions[vi * 3 + 1] = vertex[1];
       positions[vi * 3 + 2] = vertex[2];
@@ -226,6 +263,8 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
       colors[vi * 3] = sr;
       colors[vi * 3 + 1] = sg;
       colors[vi * 3 + 2] = sb;
+      uvs[vi * 2] = vertUvs[i][0];
+      uvs[vi * 2 + 1] = vertUvs[i][1];
       vi++;
     }
 
@@ -250,5 +289,5 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
     }
   }
 
-  return { positions, normals, colors, indices };
+  return { positions, normals, colors, uvs, indices };
 }
