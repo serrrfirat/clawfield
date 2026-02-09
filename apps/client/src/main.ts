@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId } from '@clawfield/shared';
-import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef, DestructionEvent } from '@clawfield/shared';
+import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId, REVIVE_RADIUS, SMOKE_GRENADE_FUSE_TIME } from '@clawfield/shared';
+import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef, DestructionEvent, WeaponLoadout } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer, setFogUniforms } from './voxel/world-renderer';
 import { deserializeChunks } from './voxel/test-map';
@@ -15,6 +15,7 @@ import { GadgetRenderer } from './combat/gadget-renderer';
 import { ParticleSystem } from './combat/particle-system';
 import { DebrisSystem } from './combat/debris-system';
 import { PhysicsDebrisSystem } from './combat/physics-debris';
+import { SmokeSystem } from './combat/smoke-system';
 import { Minimap } from './hud/minimap';
 import { DamageIndicatorSystem } from './hud/damage-indicator';
 import { Scoreboard } from './hud/scoreboard';
@@ -25,6 +26,8 @@ import { loadSoldierModel } from './player/model-loader';
 import { RadialMenu } from './hud/radial-menu';
 import { CoverPreview } from './combat/cover-preview';
 import { SoundId } from './audio/sound-manager';
+import { WeatherManager } from './weather/weather-manager';
+import type { WeatherState } from './weather/weather-manager';
 import type { CapturePointState, MapObjective, SpawnPointOption } from '@clawfield/shared';
 
 // --- Game State (exported for HUD) ---
@@ -35,6 +38,7 @@ export const gameState = {
   ticketsBravo: 75,
   kills: [] as KillEntry[],
   alive: true,
+  downed: false,
   health: 100,
   ammo: 30,
   maxAmmo: 30,
@@ -52,6 +56,7 @@ export const gameState = {
   gameMode: 'tdm' as GameMode,
   lastGadgetUseTime: 0,
   selectedGadgetIndex: 0,
+  selectedLoadout: {} as WeaponLoadout,
 };
 
 // --- State ---
@@ -71,9 +76,11 @@ const capturePointRenderer = new CapturePointRenderer(renderer.scene);
 const grenadeRenderer = new GrenadeRenderer(renderer.scene);
 grenadeRenderer.setParticleSystem(particleSystem);
 const gadgetRenderer = new GadgetRenderer(renderer.scene);
+const smokeSystem = new SmokeSystem(renderer.scene, renderer.camera);
 const minimap = new Minimap();
 const radialMenu = new RadialMenu();
 const coverPreview = new CoverPreview(renderer.scene);
+const weatherManager = new WeatherManager(renderer.scene, renderer.sunLight);
 const knownGadgetIds = new Set<number>();
 
 // --- Screen shake state ---
@@ -85,10 +92,17 @@ const voxelGetter = (wx: number, wy: number, wz: number) => getVoxel(chunks, wx,
 debrisSystem.setVoxelGetter(voxelGetter);
 physicsDebrisSystem.setVoxelGetter(voxelGetter);
 
-// Colors for underwater effect
-const skyColor = new THREE.Color(0x7ec8e3);
-const fogColor = new THREE.Color(0xa9c2d0);
+// Color for underwater effect
 const underwaterColor = new THREE.Color(0x1a5276);
+
+// Expose weather manager on window for dev console testing:
+//   setWeather('rain')  /  setWeather('snow', 10)  /  setWeather('clear')
+(window as unknown as Record<string, unknown>).setWeather = (
+  state: WeatherState,
+  duration = 5,
+) => {
+  weatherManager.setWeather(state, duration);
+};
 
 // --- Network ---
 function handleServerMessage(msg: ServerMessage): void {
@@ -151,6 +165,7 @@ function handleServerMessage(msg: ServerMessage): void {
           // Update gameState from server authoritative state
           gameState.health = playerState.health;
           gameState.alive = playerState.alive;
+          gameState.downed = playerState.downed;
           gameState.ammo = playerState.ammo;
           gameState.maxAmmo = playerState.maxAmmo;
           gameState.reloading = playerState.reloading;
@@ -206,6 +221,7 @@ function handleServerMessage(msg: ServerMessage): void {
 
     case 'death': {
       gameState.alive = false;
+      gameState.downed = false;
       // Find killer name from remote players
       const killerRemote = remotePlayers.get(msg.killerId);
       const killerName = killerRemote?.name ?? 'Unknown';
@@ -215,8 +231,35 @@ function handleServerMessage(msg: ServerMessage): void {
       break;
     }
 
+    case 'downed': {
+      gameState.downed = true;
+      // Find killer name from remote players
+      const downerRemote = remotePlayers.get(msg.killerId);
+      const downerName = downerRemote?.name ?? 'Unknown';
+      hud.showDowned(msg.bleedoutTime, downerName);
+      break;
+    }
+
+    case 'revive_progress': {
+      if (gameState.downed) {
+        const reviverRemote = remotePlayers.get(msg.reviverId);
+        const reviverName = reviverRemote?.name ?? 'Teammate';
+        hud.updateReviveProgress(msg.progress, reviverName);
+      }
+      break;
+    }
+
+    case 'revived': {
+      gameState.downed = false;
+      gameState.alive = true;
+      gameState.health = msg.health;
+      hud.hideDeath();
+      break;
+    }
+
     case 'respawn': {
       gameState.alive = true;
+      gameState.downed = false;
       deployScreen.hide();
       hud.hideDeath();
       if (!localPlayer) {
@@ -224,6 +267,8 @@ function handleServerMessage(msg: ServerMessage): void {
         localPlayer = new LocalPlayer(renderer.scene, renderer.camera, voxelGetter, gameState.selectedClass);
         localPlayer.weaponCtrl.setParticleSystem(particleSystem);
       }
+      // Apply selected attachments to the weapon
+      localPlayer.weaponCtrl.setLoadout(gameState.selectedLoadout);
       localPlayer.onRespawn(msg.position);
       break;
     }
@@ -260,6 +305,24 @@ function handleServerMessage(msg: ServerMessage): void {
 
     case 'explosion': {
       grenadeRenderer.addExplosion(msg.event.position, msg.event.radius);
+      // Spawn volumetric smoke after the explosion flash
+      smokeSystem.spawnExplosionSmoke(msg.event.position);
+      break;
+    }
+
+    case 'smoke_grenades': {
+      // In-flight smoke grenades rendered same as frag grenades (small cubes)
+      // Reuse grenade renderer for the in-flight visuals
+      grenadeRenderer.updateSmokeGrenadesFromServer(msg.grenades);
+      break;
+    }
+
+    case 'smoke_deploy': {
+      smokeSystem.spawnSmokeGrenade(
+        msg.event.position,
+        msg.event.radius,
+        msg.event.duration,
+      );
       break;
     }
 
@@ -668,7 +731,17 @@ function gameLoop(): void {
           y: cam.position.y + gDir.y * 0.5,
           z: cam.position.z + gDir.z * 0.5,
         };
-        grenadeRenderer.spawnLocal(grenadePos, { x: gDir.x, y: gDir.y, z: gDir.z });
+
+        // Determine if this is a smoke or frag grenade from selected gadget
+        const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
+        const gadgetIdx = inputPacket.input.gadgetIndex ?? 0;
+        const gadgetId = classDef?.gadgets[gadgetIdx];
+
+        if (gadgetId === GadgetId.SmokeGrenade) {
+          grenadeRenderer.spawnLocalSmoke(grenadePos, { x: gDir.x, y: gDir.y, z: gDir.z });
+        } else {
+          grenadeRenderer.spawnLocal(grenadePos, { x: gDir.x, y: gDir.y, z: gDir.z });
+        }
       }
 
       network.send({
@@ -691,18 +764,49 @@ function gameLoop(): void {
   debrisSystem.update(dt);
   physicsDebrisSystem.update(dt);
 
+  // Update volumetric smoke clouds
+  smokeSystem.update(dt);
+
   // Update gadgets
   gadgetRenderer.update(dt);
 
   // Update water mesh animation
   worldRenderer.update(dt);
 
+  // Update weather (clouds, rain/snow particles, fog transitions)
+  {
+    const cam = renderer.camera;
+    weatherManager.update(dt, { x: cam.position.x, y: cam.position.y, z: cam.position.z });
+  }
+
   // Update capture point animations
   capturePointRenderer.update(dt);
 
   // Update remote players
   for (const remote of remotePlayers.values()) {
-    remote.update(renderer.camera);
+    remote.update(dt, renderer.camera);
+  }
+
+  // Check for nearby downed teammates and show revive prompt
+  if (localPlayer && gameState.alive && !gameState.downed) {
+    const cam = renderer.camera;
+    let nearestDownedName: string | null = null;
+    let nearestDist = Infinity;
+    for (const remote of remotePlayers.values()) {
+      if (!remote.downed || remote.team !== gameState.myTeam) continue;
+      const rp = remote.getPosition();
+      const dx = rp.x - cam.position.x;
+      const dy = rp.y - cam.position.y;
+      const dz = rp.z - cam.position.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (dist <= REVIVE_RADIUS && dist < nearestDist) {
+        nearestDist = dist;
+        nearestDownedName = remote.name;
+      }
+    }
+    hud.showRevivePrompt(nearestDownedName);
+  } else {
+    hud.showRevivePrompt(null);
   }
 
   // Update minimap
@@ -734,8 +838,8 @@ function gameLoop(): void {
     const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
     const isAssault = gameState.selectedClass === ClassId.Assault;
 
-    // Radial menu: show/hide based on input state (skip Assault — grenades use G)
-    if (!isAssault && classDef && localPlayer.input.radialMenuOpen) {
+    // Radial menu: show/hide based on input state (all classes including Assault for frag/smoke selection)
+    if (classDef && localPlayer.input.radialMenuOpen) {
       gameState.selectedGadgetIndex = localPlayer.input.selectedGadgetIndex;
       radialMenu.show(classDef, gameState.selectedGadgetIndex, gameState.lastGadgetUseTime, now);
     } else {
@@ -770,8 +874,7 @@ function gameLoop(): void {
   {
     const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
     if (classDef) {
-      const isAssault = gameState.selectedClass === ClassId.Assault;
-      const idx = isAssault ? 0 : gameState.selectedGadgetIndex;
+      const idx = gameState.selectedGadgetIndex;
       const gadgetId = classDef.gadgets[idx];
       const nameMap: Record<string, string> = {
         frag_grenade: 'Frag Grenade', smoke_grenade: 'Smoke',
@@ -784,6 +887,15 @@ function gameLoop(): void {
       gadgetCooldownPct = Math.max(0, Math.min(1, (cooldown - elapsed) / cooldown));
       gadgetReady = elapsed >= cooldown;
     }
+  }
+
+  // Compute weapon name and player yaw for HUD
+  const weaponName = localPlayer?.weaponCtrl.weapon.name ?? '';
+  let playerYaw = 0;
+  if (localPlayer) {
+    const cam = renderer.camera;
+    const camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    playerYaw = Math.atan2(camDir.x, -camDir.z);
   }
 
   // Update HUD
@@ -803,6 +915,8 @@ function gameLoop(): void {
     gadgetName,
     gadgetCooldownPct,
     gadgetReady,
+    weaponName,
+    playerYaw,
   });
 
   // Update damage indicators
@@ -838,12 +952,11 @@ function gameLoop(): void {
   }
 
   // Underwater visual effect: tint fog and background when submerged
+  // (weather manager handles normal fog; only override when underwater)
+  weatherManager.setUnderwater(gameState.inWater);
   if (gameState.inWater) {
     renderer.scene.background = underwaterColor;
     setFogUniforms({ color: underwaterColor, near: 5, far: 60, heightDensity: 0.0, heightOrigin: 0 });
-  } else {
-    renderer.scene.background = skyColor;
-    setFogUniforms({ color: fogColor, near: 120, far: 320, heightDensity: 0.015, heightOrigin: 8 });
   }
 
   // Sort water faces back-to-front for correct transparency
@@ -890,6 +1003,7 @@ function showDeployScreen(spawns: SpawnPointOption[]): void {
     gameState.capturePoints,
     (choice) => {
       gameState.selectedClass = choice.classId;
+      gameState.selectedLoadout = choice.loadout;
       // Look up display name from CLASSES
       const cls = Object.values(CLASSES).find(c => c.id === choice.classId);
       gameState.selectedClassName = cls?.name ?? 'Assault';

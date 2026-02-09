@@ -12,6 +12,8 @@ import {
   CROUCH_HEIGHT,
   PLAYER_HEIGHT,
   GRENADE_MAX_COUNT,
+  BLEEDOUT_TIME,
+  DOWNED_SPEED_MULT,
   type WeaponStats,
 } from '@clawfield/shared';
 
@@ -50,6 +52,18 @@ export class PlayerSim {
   deathTime: number = 0; // timestamp in ms when player died
   /** When true, player is on the deploy screen and won't auto-respawn */
   waitingToDeploy: boolean = false;
+
+  // --- Revive system ---
+  /** Player is downed but can be revived */
+  downed: boolean = false;
+  /** Time remaining before the downed player bleeds out and fully dies (seconds) */
+  bleedoutTimer: number = 0;
+  /** Current revive progress (0 to 1). Revive completes at 1. */
+  reviveProgress: number = 0;
+  /** ID of the player currently reviving us, or null */
+  reviverId: string | null = null;
+  /** ID of the player who downed us (for kill credit on bleedout) */
+  downedBy: string | null = null;
 
   /** Time remaining before firing is allowed after sprint (seconds) */
   sprintFireTimer: number = 0;
@@ -114,7 +128,7 @@ export class PlayerSim {
     }
 
     // Dead players don't move
-    if (!this.alive) {
+    if (!this.alive && !this.downed) {
       // Still consume the queue so ack seq advances
       for (const qi of this.inputQueue) {
         this.lastAckedSeq = qi.seq;
@@ -124,11 +138,26 @@ export class PlayerSim {
     }
 
     for (const qi of this.inputQueue) {
+      // Downed players can crawl slowly — restrict input to movement only
+      const effectiveInput: InputState = this.downed
+        ? {
+            ...qi.input,
+            shoot: false,
+            reload: false,
+            sprint: false,
+            throwGrenade: false,
+            useGadget: false,
+            scope: false,
+            // Slow crawl speed by using crouch
+            crouch: true,
+          }
+        : qi.input;
+
       const result = movePlayer(
         this.position,
         this.velocity,
-        qi.input,
-        qi.dt,
+        effectiveInput,
+        this.downed ? qi.dt * DOWNED_SPEED_MULT : qi.dt,
         getVoxel
       );
       this.position = result.position;
@@ -138,22 +167,24 @@ export class PlayerSim {
       this.yaw = qi.input.yaw;
       this.pitch = qi.input.pitch;
       this.lastAckedSeq = qi.seq;
-      this.latestInput = qi.input;
+      this.latestInput = this.downed ? null : qi.input;
 
-      // Track sprint fire delay: sprinting resets the timer, otherwise count down
-      const isSprinting = qi.input.sprint && (qi.input.forward || qi.input.back || qi.input.left || qi.input.right);
-      if (isSprinting) {
-        this.sprintFireTimer = SPRINT_FIRE_DELAY;
-      } else if (this.sprintFireTimer > 0) {
-        this.sprintFireTimer -= qi.dt;
-      }
+      if (!this.downed) {
+        // Track sprint fire delay: sprinting resets the timer, otherwise count down
+        const isSprinting = qi.input.sprint && (qi.input.forward || qi.input.back || qi.input.left || qi.input.right);
+        if (isSprinting) {
+          this.sprintFireTimer = SPRINT_FIRE_DELAY;
+        } else if (this.sprintFireTimer > 0) {
+          this.sprintFireTimer -= qi.dt;
+        }
 
-      // Track crouch state for eye offset calculation
-      this.crouching = qi.input.crouch && !qi.input.sprint;
+        // Track crouch state for eye offset calculation
+        this.crouching = qi.input.crouch && !qi.input.sprint;
 
-      // Start reload if client pressed reload
-      if (qi.input.reload && !this.reloading && this.ammo < this.weapon.magSize) {
-        this.startReload();
+        // Start reload if client pressed reload
+        if (qi.input.reload && !this.reloading && this.ammo < this.weapon.magSize) {
+          this.startReload();
+        }
       }
     }
     this.inputQueue = [];
@@ -161,17 +192,68 @@ export class PlayerSim {
 
   /**
    * Apply damage to this player.
-   * Returns true if the damage killed the player.
+   * Returns 'downed' if the player was just downed, 'killed' if a downed
+   * player was finished off, or null if still alive.
    */
-  takeDamage(amount: number): boolean {
-    if (!this.alive) return false;
+  takeDamage(amount: number): 'downed' | 'killed' | null {
+    if (!this.alive) return null;
+    // Downed players hit again are executed (finished off)
+    if (this.downed) {
+      this.alive = false;
+      this.downed = false;
+      this.deathTime = Date.now();
+      return 'killed';
+    }
     this.health = Math.max(0, this.health - amount);
     if (this.health <= 0) {
+      this.downed = true;
+      this.bleedoutTimer = BLEEDOUT_TIME;
+      this.reviveProgress = 0;
+      this.reviverId = null;
+      return 'downed';
+    }
+    return null;
+  }
+
+  /**
+   * Tick the bleedout timer for downed players.
+   * Returns true if the player bled out and fully died.
+   */
+  tickBleedout(dt: number): boolean {
+    if (!this.downed) return false;
+    this.bleedoutTimer -= dt;
+    if (this.bleedoutTimer <= 0) {
       this.alive = false;
+      this.downed = false;
       this.deathTime = Date.now();
       return true;
     }
     return false;
+  }
+
+  /**
+   * Progress a revive on this downed player.
+   * Returns true if the revive is now complete.
+   */
+  progressRevive(reviverId: string, dt: number, reviveTime: number): boolean {
+    if (!this.downed) return false;
+    this.reviverId = reviverId;
+    this.reviveProgress += dt / reviveTime;
+    if (this.reviveProgress >= 1) {
+      return true;
+    }
+    return false;
+  }
+
+  /** Complete a revive: restore the player to alive with given health */
+  completeRevive(health: number): void {
+    this.downed = false;
+    this.alive = true;
+    this.health = Math.min(MAX_HEALTH, health);
+    this.bleedoutTimer = 0;
+    this.reviveProgress = 0;
+    this.reviverId = null;
+    this.downedBy = null;
   }
 
   /**
@@ -180,7 +262,7 @@ export class PlayerSim {
    * Returns true if the shot is allowed.
    */
   tryFire(now: number): boolean {
-    if (!this.alive) return false;
+    if (!this.alive || this.downed) return false;
     if (this.reloading) return false;
     if (this.ammo <= 0) return false;
 
@@ -226,6 +308,11 @@ export class PlayerSim {
     this.velocity = { x: 0, y: 0, z: 0 };
     this.health = MAX_HEALTH;
     this.alive = true;
+    this.downed = false;
+    this.bleedoutTimer = 0;
+    this.reviveProgress = 0;
+    this.reviverId = null;
+    this.downedBy = null;
     this.ammo = this.weapon.magSize;
     this.reloading = false;
     this.reloadTimer = 0;
@@ -266,6 +353,7 @@ export class PlayerSim {
       inWater: this.inWater,
       health: this.health,
       alive: this.alive,
+      downed: this.downed,
       team: this.team,
       classId: this.classId,
       ammo: this.ammo,

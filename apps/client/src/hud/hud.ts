@@ -22,6 +22,10 @@ export interface HUDState {
   /** 0 = ready, 1 = full cooldown */
   gadgetCooldownPct: number;
   gadgetReady: boolean;
+  /** Display name of the currently equipped weapon */
+  weaponName: string;
+  /** Player yaw in radians for compass (0 = north / -Z) */
+  playerYaw: number;
 }
 
 // ── Internal helpers ───────────────────────────────────────────────
@@ -69,9 +73,9 @@ export class HUD {
   private healthText: HTMLDivElement;
 
   // Ammo
-  private ammoCount: HTMLDivElement;
+  private ammoBarContainer: HTMLDivElement;
   private ammoReload: HTMLDivElement;
-  private ammoClass: HTMLDivElement;
+  private weaponNameEl: HTMLDivElement;
 
   // Tickets
   private ticketsAlphaEl: HTMLSpanElement;
@@ -87,13 +91,22 @@ export class HUD {
 
   // Death overlay
   private deathOverlay: HTMLDivElement;
+  private deathTitle: HTMLDivElement;
   private deathKillerName: HTMLDivElement;
   private deathCountdown: HTMLDivElement;
   private deathInterval: number | null = null;
 
+  // Downed / revive overlay
+  private downedReviveBar: HTMLDivElement;
+  private downedReviveFill: HTMLDivElement;
+  private downedReviveText: HTMLDivElement;
+
   // Game over
   private gameoverOverlay: HTMLDivElement;
   private gameoverText: HTMLDivElement;
+
+  // Revive prompt (shown to alive players near downed teammates)
+  private revivePrompt: HTMLDivElement;
 
   // Gadget indicator
   private gadgetWrap: HTMLDivElement;
@@ -101,13 +114,24 @@ export class HUD {
   private gadgetCdFill: HTMLDivElement;
   private gadgetKey: HTMLDivElement;
 
+  // Compass
+  private compassStrip: HTMLDivElement;
+  private compassHeading: HTMLDivElement;
+
+  // Class indicator
+  private classLabel: HTMLDivElement;
+
+  /** Cached ammo bar elements for reuse */
+  private ammoBars: HTMLDivElement[] = [];
+  private lastMaxAmmo = 0;
+
   // ── Constructor ──────────────────────────────────────────────
 
   constructor() {
     injectHUDStyles();
     this.root = this.el('div', 'hud-root');
 
-    // Health
+    // ── Health (bottom-left) ──
     const healthWrap = this.el('div', 'hud-health');
     const barBg = this.el('div', 'hud-health-bar-bg');
     this.healthFill = this.el('div', 'hud-health-bar-fill');
@@ -117,18 +141,22 @@ export class HUD {
     healthWrap.appendChild(barBg);
     this.root.appendChild(healthWrap);
 
-    // Ammo
+    // Class label (above health bar)
+    this.classLabel = this.el('div', 'hud-class-label');
+    this.root.appendChild(this.classLabel);
+
+    // ── Ammo (bottom-right) ──
     const ammoWrap = this.el('div', 'hud-ammo');
-    this.ammoCount = this.el('div', 'hud-ammo-count');
+    this.weaponNameEl = this.el('div', 'hud-weapon-name');
+    this.ammoBarContainer = this.el('div', 'hud-ammo-bars');
     this.ammoReload = this.el('div', 'hud-ammo-reload');
     this.ammoReload.textContent = 'RELOADING';
-    this.ammoClass = this.el('div', 'hud-ammo-class');
-    ammoWrap.appendChild(this.ammoCount);
+    ammoWrap.appendChild(this.weaponNameEl);
+    ammoWrap.appendChild(this.ammoBarContainer);
     ammoWrap.appendChild(this.ammoReload);
-    ammoWrap.appendChild(this.ammoClass);
     this.root.appendChild(ammoWrap);
 
-    // Tickets
+    // ── Tickets (top-center) ──
     const ticketsWrap = this.el('div', 'hud-tickets');
     this.ticketsAlphaEl = this.el('span', 'hud-tickets-alpha') as HTMLSpanElement;
     this.ticketsBravoEl = this.el('span', 'hud-tickets-bravo') as HTMLSpanElement;
@@ -139,26 +167,38 @@ export class HUD {
     ticketsWrap.appendChild(this.ticketsBravoEl);
     this.root.appendChild(ticketsWrap);
 
-    // Kill feed
+    // ── Kill feed (top-right) ──
     this.killfeedContainer = this.el('div', 'hud-killfeed');
     this.root.appendChild(this.killfeedContainer);
 
-    // Hit marker
+    // ── Hit marker (center) ──
     this.hitmarker = this.el('div', 'hud-hitmarker');
     this.root.appendChild(this.hitmarker);
 
-    // Death overlay
+    // ── Death overlay (also used for downed state) ──
     this.deathOverlay = this.el('div', 'hud-death');
-    const deathTitle = this.el('div', 'hud-death-title');
-    deathTitle.textContent = 'YOU DIED';
+    this.deathTitle = this.el('div', 'hud-death-title');
+    this.deathTitle.textContent = 'YOU DIED';
     this.deathKillerName = this.el('div', 'hud-death-killer');
     this.deathCountdown = this.el('div', 'hud-death-countdown');
-    this.deathOverlay.appendChild(deathTitle);
+    // Revive progress bar (shown when downed and being revived)
+    this.downedReviveBar = this.el('div', 'hud-revive-bar');
+    this.downedReviveFill = this.el('div', 'hud-revive-fill');
+    this.downedReviveText = this.el('div', 'hud-revive-text');
+    this.downedReviveBar.appendChild(this.downedReviveFill);
+    this.deathOverlay.appendChild(this.deathTitle);
     this.deathOverlay.appendChild(this.deathKillerName);
     this.deathOverlay.appendChild(this.deathCountdown);
+    this.deathOverlay.appendChild(this.downedReviveBar);
+    this.deathOverlay.appendChild(this.downedReviveText);
     this.root.appendChild(this.deathOverlay);
 
-    // Gadget indicator
+    // ── Revive prompt (shown when alive and near a downed teammate) ──
+    this.revivePrompt = this.el('div', 'hud-revive-prompt');
+    this.revivePrompt.textContent = 'Hold [E] to revive';
+    this.root.appendChild(this.revivePrompt);
+
+    // ── Gadget indicator (bottom-left, above health) ──
     this.gadgetWrap = this.el('div', 'hud-gadget');
     this.gadgetName = this.el('div', 'hud-gadget-name');
     this.gadgetKey = this.el('div', 'hud-gadget-key');
@@ -171,7 +211,18 @@ export class HUD {
     this.gadgetWrap.appendChild(this.gadgetKey);
     this.root.appendChild(this.gadgetWrap);
 
-    // Game over
+    // ── Compass (bottom-center) ──
+    const compassWrap = this.el('div', 'hud-compass');
+    this.compassHeading = this.el('div', 'hud-compass-heading');
+    this.compassStrip = this.el('div', 'hud-compass-strip');
+    compassWrap.appendChild(this.compassHeading);
+    compassWrap.appendChild(this.compassStrip);
+    // Center tick mark
+    const centerTick = this.el('div', 'hud-compass-center');
+    compassWrap.appendChild(centerTick);
+    this.root.appendChild(compassWrap);
+
+    // ── Game over ──
     this.gameoverOverlay = this.el('div', 'hud-gameover');
     this.gameoverText = this.el('div', 'hud-gameover-text');
     this.gameoverOverlay.appendChild(this.gameoverText);
@@ -193,14 +244,19 @@ export class HUD {
     this.healthFill.style.backgroundColor = this.healthColor(pct);
     this.healthText.textContent = `${Math.round(state.health)}`;
 
-    // Ammo
-    this.ammoCount.innerHTML = `${state.ammo} <span>/ ${state.maxAmmo}</span>`;
+    // Class label
+    this.classLabel.textContent = state.className.toUpperCase();
+
+    // Weapon name
+    this.weaponNameEl.textContent = state.weaponName || state.className;
+
+    // Ammo bars
+    this.updateAmmoBars(state.ammo, state.maxAmmo);
     if (state.reloading) {
       this.ammoReload.classList.add('visible');
     } else {
       this.ammoReload.classList.remove('visible');
     }
-    this.ammoClass.textContent = state.className;
 
     // Score display — mode-aware
     if (state.gameMode === 'conquest') {
@@ -227,6 +283,9 @@ export class HUD {
     this.gadgetCdFill.style.width = `${cdPct * 100}%`;
     this.gadgetCdFill.style.backgroundColor = state.gadgetReady ? '#2ecc71' : '#e74c3c';
     this.gadgetKey.style.opacity = state.gadgetReady ? '1' : '0.4';
+
+    // Compass
+    this.updateCompass(state.playerYaw);
   }
 
   /**
@@ -347,11 +406,81 @@ export class HUD {
   }
 
   /**
-   * Hide the death overlay (called on respawn).
+   * Show the downed overlay with a bleedout countdown.
+   * @param bleedoutTime — seconds until bleedout death
+   * @param killerName — optional name of the player who downed us
+   */
+  showDowned(bleedoutTime: number, killerName?: string): void {
+    this.clearDeathInterval();
+
+    this.deathTitle.textContent = 'DOWNED';
+    this.deathTitle.style.color = '#f39c12';
+    this.deathOverlay.style.background = 'rgba(60, 20, 0, 0.55)';
+
+    if (killerName) {
+      this.deathKillerName.textContent = `Downed by ${killerName}`;
+      this.deathKillerName.style.display = 'block';
+    } else {
+      this.deathKillerName.style.display = 'none';
+    }
+
+    let remaining = Math.ceil(bleedoutTime);
+    this.deathCountdown.textContent = `Bleeding out in ${remaining}s...`;
+    this.downedReviveBar.style.display = 'none';
+    this.downedReviveText.textContent = 'Waiting for revive...';
+    this.downedReviveText.style.display = 'block';
+    this.deathOverlay.classList.add('visible');
+
+    this.deathInterval = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        this.deathCountdown.textContent = 'Bled out';
+        this.clearDeathInterval();
+      } else {
+        this.deathCountdown.textContent = `Bleeding out in ${remaining}s...`;
+      }
+    }, 1_000);
+  }
+
+  /**
+   * Update revive progress bar on the downed overlay.
+   * @param progress — 0 to 1
+   * @param reviverName — name of the player reviving us
+   */
+  updateReviveProgress(progress: number, reviverName?: string): void {
+    this.downedReviveBar.style.display = 'block';
+    this.downedReviveFill.style.width = `${Math.min(100, progress * 100)}%`;
+    if (reviverName) {
+      this.downedReviveText.textContent = `${reviverName} is reviving you...`;
+    }
+    this.downedReviveText.style.display = 'block';
+  }
+
+  /**
+   * Show or hide the "Hold [E] to revive" prompt for alive players near downed teammates.
+   * @param downedName — name of the downed teammate, or null to hide
+   */
+  showRevivePrompt(downedName: string | null): void {
+    if (downedName) {
+      this.revivePrompt.textContent = `Hold [E] to revive ${downedName}`;
+      this.revivePrompt.classList.add('visible');
+    } else {
+      this.revivePrompt.classList.remove('visible');
+    }
+  }
+
+  /**
+   * Hide the death/downed overlay (called on respawn or revive).
    */
   hideDeath(): void {
     this.clearDeathInterval();
     this.deathOverlay.classList.remove('visible');
+    // Reset styling for normal death overlay
+    this.deathTitle.textContent = 'YOU DIED';
+    this.deathTitle.style.color = '';
+    this.deathOverlay.style.background = '';
+    this.downedReviveBar.style.display = 'none';
+    this.downedReviveText.style.display = 'none';
   }
 
   /**
@@ -388,6 +517,75 @@ export class HUD {
   }
 
   // ── Private helpers ──────────────────────────────────────────
+
+  /** Cardinal/intercardinal labels for the compass */
+  private static readonly COMPASS_LABELS: Record<number, string> = {
+    0: 'N', 45: 'NE', 90: 'E', 135: 'SE',
+    180: 'S', 225: 'SW', 270: 'W', 315: 'NW',
+  };
+
+  /**
+   * Update the compass strip to reflect the player's heading.
+   * Shows a horizontal band of degree ticks scrolling under a center marker.
+   */
+  private updateCompass(yawRad: number): void {
+    // Convert yaw to compass degrees (0 = North, clockwise).
+    // In the engine yaw 0 means looking along -Z (north), increasing CW.
+    let deg = ((yawRad * 180) / Math.PI) % 360;
+    if (deg < 0) deg += 360;
+
+    this.compassHeading.textContent = `${Math.round(deg)}`;
+
+    // Build strip: show +/- 40 degrees around current heading
+    const halfSpan = 40;
+    let html = '';
+    for (let offset = -halfSpan; offset <= halfSpan; offset += 5) {
+      let d = Math.round(deg) + offset;
+      if (d < 0) d += 360;
+      if (d >= 360) d -= 360;
+
+      const label = HUD.COMPASS_LABELS[d];
+      const isMajor = d % 10 === 0;
+
+      if (label) {
+        html += `<span class="hud-compass-label">${label}</span>`;
+      } else if (isMajor) {
+        html += `<span class="hud-compass-major">${d}</span>`;
+      } else {
+        html += `<span class="hud-compass-tick">|</span>`;
+      }
+    }
+    this.compassStrip.innerHTML = html;
+  }
+
+  /**
+   * Render ammo as vertical bar indicators (like BattleBit).
+   * Each bar represents one round — filled bars are remaining ammo.
+   */
+  private updateAmmoBars(ammo: number, maxAmmo: number): void {
+    // Rebuild bar elements if mag size changed
+    if (maxAmmo !== this.lastMaxAmmo) {
+      this.lastMaxAmmo = maxAmmo;
+      this.ammoBarContainer.innerHTML = '';
+      this.ammoBars = [];
+      for (let i = 0; i < maxAmmo; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'hud-ammo-bar';
+        this.ammoBarContainer.appendChild(bar);
+        this.ammoBars.push(bar);
+      }
+    }
+
+    // Update filled/empty state
+    for (let i = 0; i < this.ammoBars.length; i++) {
+      const bar = this.ammoBars[i]!;
+      if (i < ammo) {
+        bar.classList.remove('empty');
+      } else {
+        bar.classList.add('empty');
+      }
+    }
+  }
 
   /** Create a typed DOM element with a CSS class. */
   private el<K extends keyof HTMLElementTagNameMap>(

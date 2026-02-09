@@ -19,6 +19,8 @@ export interface PlayerState {
   inWater: boolean;
   health: number;
   alive: boolean;
+  /** Player is downed (can be revived) but not yet dead */
+  downed: boolean;
   team: number;
   classId: string;
   ammo: number;
@@ -41,6 +43,8 @@ export interface InputState {
   useGadget: boolean;
   gadgetIndex: number;
   scope: boolean;
+  /** Hold to interact (revive downed teammate) */
+  interact: boolean;
   yaw: number;
   pitch: number;
 }
@@ -129,6 +133,22 @@ export interface DestructionEvent {
   fallDuration?: number;
 }
 
+/** Smoke grenade state for network sync (in-flight) */
+export interface SmokeGrenadeState {
+  id: number;
+  ownerId: string;
+  position: Vec3;
+  velocity: Vec3;
+  fuseRemaining: number;
+}
+
+/** Smoke deploy event sent to clients when smoke activates */
+export interface SmokeDeployEvent {
+  position: Vec3;
+  radius: number;
+  duration: number;
+}
+
 /** Scoreboard entry for each player */
 export interface ScoreboardEntry {
   id: string;
@@ -195,6 +215,9 @@ export type ServerMessage =
   | { type: 'hit_confirm'; targetId: string; damage: number; sourcePos: Vec3 }
   | { type: 'kill'; entry: KillEntry }
   | { type: 'death'; killerId: string; respawnTime: number; killerPos: Vec3 }
+  | { type: 'downed'; killerId: string; bleedoutTime: number; killerPos: Vec3 }
+  | { type: 'revive_progress'; reviverId: string; progress: number }
+  | { type: 'revived'; reviverId: string; health: number }
   | { type: 'respawn'; position: Vec3 }
   | { type: 'available_spawns'; spawns: SpawnPointOption[] }
   | { type: 'tickets'; alpha: number; bravo: number }
@@ -209,4 +232,6 @@ export type ServerMessage =
   | { type: 'enemy_spotted'; positions: Vec3[]; duration: number }
   | { type: 'voxel_update'; changes: { x: number; y: number; z: number; material: number }[] }
   | { type: 'destruction_event'; events: DestructionEvent[] }
-  | { type: 'chunks'; chunks: ChunkData[] };
+  | { type: 'chunks'; chunks: ChunkData[] }
+  | { type: 'smoke_grenades'; grenades: SmokeGrenadeState[] }
+  | { type: 'smoke_deploy'; event: SmokeDeployEvent };

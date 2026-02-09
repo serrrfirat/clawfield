@@ -29,6 +29,12 @@ import {
   setGroundAnchors,
   loadPalette,
   GRENADE_DESTRUCTION_RADIUS,
+  REVIVE_RADIUS,
+  REVIVE_TIME,
+  REVIVE_TIME_MEDIC,
+  REVIVE_HEALTH,
+  REVIVE_HEALTH_MEDIC,
+  GadgetId,
 } from '@clawfield/shared';
 import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
@@ -43,6 +49,7 @@ import {
 import { GrenadeManager, type GrenadeExplosionResult } from './grenade-manager.js';
 import { GadgetManager, type VoxelChange } from './gadget-manager.js';
 import { DestructionManager } from './destruction-manager.js';
+import { SmokeGrenadeManager } from './smoke-grenade-manager.js';
 import {
   loadBinaryMap,
   getConfiguredMapName,
@@ -71,6 +78,7 @@ export class GameLoop {
   private projectileManager = new ProjectileManager();
   private capturePointManager: CapturePointManager;
   private grenadeManager = new GrenadeManager();
+  private smokeGrenadeManager = new SmokeGrenadeManager();
   private gadgetManager = new GadgetManager();
   private destructionManager!: DestructionManager;
 
@@ -424,12 +432,15 @@ export class GameLoop {
       { id: 'bot3', name: 'Bot_3' },
     ];
 
-    for (const def of botDefs) {
-      const spawnPos = this.getSpawnPoint(Team.Bravo);
-      const bot = new DummyBot(def.id, def.name, Team.Bravo, spawnPos);
+    for (let i = 0; i < botDefs.length; i++) {
+      const def = botDefs[i];
+      // Alternate bots across both teams so each side has enemies
+      const team = i % 2 === 0 ? Team.Alpha : Team.Bravo;
+      const spawnPos = this.getSpawnPoint(team);
+      const bot = new DummyBot(def.id, def.name, team, spawnPos);
       this.bots.push(bot);
       this.players.set(bot.sim.id, bot.sim);
-      console.log(`Bot spawned: ${def.name} (${def.id}) - Team Bravo - ${bot.sim.classId}`);
+      console.log(`Bot spawned: ${def.name} (${def.id}) - Team ${team === Team.Alpha ? 'Alpha' : 'Bravo'} - ${bot.sim.classId}`);
     }
   }
 
@@ -763,7 +774,7 @@ export class GameLoop {
       // Record damage for assist tracking
       target.recordDamageFrom(hit.ownerId);
 
-      const killed = target.takeDamage(damage);
+      const result = target.takeDamage(damage);
 
       // Send hit confirmation to shooter (with sourcePos)
       const shooterClient = this.network.getClients().get(hit.ownerId);
@@ -787,7 +798,10 @@ export class GameLoop {
         });
       }
 
-      if (killed) {
+      if (result === 'downed') {
+        target.downedBy = shooter.id;
+        this.onPlayerDowned(shooter, target);
+      } else if (result === 'killed') {
         this.onPlayerKilled(shooter, target);
       }
     }
@@ -813,16 +827,39 @@ export class GameLoop {
       });
       // Destroy voxels in explosion radius
       this.destructionManager.explode(explosion.position, GRENADE_DESTRUCTION_RADIUS);
-      // Process kills from grenade damage
+      // Process downed/kills from grenade damage
       for (const hit of explosion.hits) {
         if (hit.killed) {
           const killer = this.players.get(explosion.ownerId);
           const victim = this.players.get(hit.playerId);
           if (killer && victim) {
-            this.onPlayerKilled(killer, victim, 'Grenade');
+            if (victim.downed) {
+              // Downed by the explosion
+              victim.downedBy = killer.id;
+              this.onPlayerDowned(killer, victim, 'Grenade');
+            } else if (!victim.alive) {
+              // Finished off
+              this.onPlayerKilled(killer, victim, 'Grenade');
+            }
           }
         }
       }
+    }
+
+    // Advance smoke grenades and process smoke deployments
+    const smokeDeploys = this.smokeGrenadeManager.update(
+      TICK_INTERVAL / 1000,
+      voxelGetter
+    );
+    for (const deploy of smokeDeploys) {
+      this.network.broadcast({
+        type: 'smoke_deploy',
+        event: {
+          position: deploy.position,
+          radius: deploy.radius,
+          duration: deploy.duration,
+        },
+      });
     }
 
     // Process gadget use
@@ -907,6 +944,12 @@ export class GameLoop {
       );
     }
 
+    // Process bleedout timers for downed players
+    this.processBleedouts(TICK_INTERVAL / 1000);
+
+    // Process revives: nearby alive teammates can revive downed players
+    this.processRevives(TICK_INTERVAL / 1000);
+
     // Update capture points
     const captureChanged = this.capturePointManager.update(TICK_INTERVAL / 1000, this.players);
 
@@ -949,6 +992,15 @@ export class GameLoop {
       this.network.broadcast({
         type: 'grenades',
         grenades: grenadeStates,
+      });
+    }
+
+    // Broadcast smoke grenade states to all clients
+    const smokeGrenadeStates = this.smokeGrenadeManager.getStates();
+    if (smokeGrenadeStates.length > 0) {
+      this.network.broadcast({
+        type: 'smoke_grenades',
+        grenades: smokeGrenadeStates,
       });
     }
 
@@ -1065,8 +1117,8 @@ export class GameLoop {
 
   private processShooting(now: number): void {
     for (const shooter of this.players.values()) {
-      // Dead players can't shoot
-      if (!shooter.alive) continue;
+      // Dead or downed players can't shoot
+      if (!shooter.alive || shooter.downed) continue;
 
       // Check if the player is holding fire
       const input = shooter.latestInput;
@@ -1160,7 +1212,7 @@ export class GameLoop {
   /** Process grenade throws from players who pressed the grenade key */
   private processGrenadeThrowing(now: number): void {
     for (const player of this.players.values()) {
-      if (!player.alive) continue;
+      if (!player.alive || player.downed) continue;
       const input = player.latestInput;
       if (!input || !input.throwGrenade) continue;
 
@@ -1181,14 +1233,23 @@ export class GameLoop {
       };
       const dir = aimDirection(player.yaw, player.pitch);
 
-      this.grenadeManager.spawn(player.id, player.team, eyePos, dir);
+      // Determine grenade type from selected gadget index
+      const classDef = CLASSES[player.classId as ClassId];
+      const gadgetIndex = input.gadgetIndex ?? 0;
+      const gadgetId = classDef?.gadgets[gadgetIndex];
+
+      if (gadgetId === GadgetId.SmokeGrenade) {
+        this.smokeGrenadeManager.spawn(player.id, eyePos, dir);
+      } else {
+        this.grenadeManager.spawn(player.id, player.team, eyePos, dir);
+      }
     }
   }
 
   /** Process gadget use from players who pressed the gadget key */
   private processGadgetUse(now: number): void {
     for (const player of this.players.values()) {
-      if (!player.alive) continue;
+      if (!player.alive || player.downed) continue;
       const input = player.latestInput;
       if (!input || !input.useGadget) continue;
 
@@ -1207,6 +1268,34 @@ export class GameLoop {
       player.lastGadgetTime = now;
       this.gadgetManager.spawn(player, gadgetIndex);
     }
+  }
+
+  /** Called when a player is downed (can still be revived) */
+  private onPlayerDowned(attacker: PlayerSim, victim: PlayerSim, weaponName?: string): void {
+    // Send downed message to victim
+    const victimClient = this.network.getClients().get(victim.id);
+    if (victimClient) {
+      this.network.send(victimClient, {
+        type: 'downed',
+        killerId: attacker.id,
+        bleedoutTime: victim.bleedoutTimer,
+        killerPos: { ...attacker.position },
+      });
+    }
+
+    // Broadcast kill-feed style notification (shows as DBNO in kill feed)
+    this.network.broadcast({
+      type: 'kill',
+      entry: {
+        killerId: attacker.id,
+        killerName: attacker.name,
+        victimId: victim.id,
+        victimName: victim.name,
+        weapon: (weaponName ?? attacker.weapon.name) + ' [DBNO]',
+      },
+    });
+
+    console.log(`DOWNED: ${attacker.name} -> ${victim.name} with ${weaponName ?? attacker.weapon.name}`);
   }
 
   private onPlayerKilled(killer: PlayerSim, victim: PlayerSim, weaponName?: string): void {
@@ -1270,11 +1359,114 @@ export class GameLoop {
     console.log(`KILL: ${killer.name} -> ${victim.name} with ${usedWeapon} | Tickets: Alpha=${this.ticketsAlpha} Bravo=${this.ticketsBravo}`);
   }
 
+  // --- Bleedout processing ---
+
+  private processBleedouts(dt: number): void {
+    for (const sim of this.players.values()) {
+      if (!sim.downed) continue;
+
+      const bledOut = sim.tickBleedout(dt);
+      if (bledOut) {
+        // Player bled out — credit the kill to whoever downed them
+        const killer = sim.downedBy ? this.players.get(sim.downedBy) : null;
+        if (killer) {
+          this.onPlayerKilled(killer, sim);
+        } else {
+          // No known killer — still process death
+          sim.deaths++;
+          const victimClient = this.network.getClients().get(sim.id);
+          if (victimClient) {
+            this.network.send(victimClient, {
+              type: 'death',
+              killerId: '',
+              respawnTime: RESPAWN_DELAY,
+              killerPos: { ...sim.position },
+            });
+          }
+        }
+        console.log(`BLEEDOUT: ${sim.name} bled out`);
+      }
+    }
+  }
+
+  // --- Revive processing ---
+
+  private processRevives(dt: number): void {
+    for (const downed of this.players.values()) {
+      if (!downed.downed) continue;
+
+      // Find the closest alive teammate within REVIVE_RADIUS who is holding interact
+      let closestReviver: PlayerSim | null = null;
+      let closestDist = Infinity;
+
+      for (const candidate of this.players.values()) {
+        if (candidate.id === downed.id) continue;
+        if (!candidate.alive || candidate.downed) continue;
+        if (candidate.team !== downed.team) continue;
+        // Reviver must be actively holding the interact key
+        if (!candidate.latestInput?.interact) continue;
+
+        const dx = candidate.position.x - downed.position.x;
+        const dy = candidate.position.y - downed.position.y;
+        const dz = candidate.position.z - downed.position.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (dist <= REVIVE_RADIUS && dist < closestDist) {
+          closestDist = dist;
+          closestReviver = candidate;
+        }
+      }
+
+      if (closestReviver) {
+        const isMedic = closestReviver.classId === ClassId.Medic;
+        const reviveTime = isMedic ? REVIVE_TIME_MEDIC : REVIVE_TIME;
+        const complete = downed.progressRevive(closestReviver.id, dt, reviveTime);
+
+        if (complete) {
+          // Revive complete
+          const reviveHealth = isMedic ? REVIVE_HEALTH_MEDIC : REVIVE_HEALTH;
+          downed.completeRevive(reviveHealth);
+
+          // Award score to reviver
+          closestReviver.score += 50;
+
+          // Notify the revived player
+          const victimClient = this.network.getClients().get(downed.id);
+          if (victimClient) {
+            this.network.send(victimClient, {
+              type: 'revived',
+              reviverId: closestReviver.id,
+              health: downed.health,
+            });
+          }
+
+          console.log(`REVIVE: ${closestReviver.name} revived ${downed.name} (${isMedic ? 'medic' : 'standard'})`);
+        } else {
+          // Send progress update to the downed player
+          const victimClient = this.network.getClients().get(downed.id);
+          if (victimClient) {
+            this.network.send(victimClient, {
+              type: 'revive_progress',
+              reviverId: closestReviver.id,
+              progress: downed.reviveProgress,
+            });
+          }
+        }
+      } else {
+        // No reviver nearby — reset progress
+        if (downed.reviveProgress > 0) {
+          downed.reviveProgress = 0;
+          downed.reviverId = null;
+        }
+      }
+    }
+  }
+
   // --- Respawn processing ---
 
   private processRespawns(now: number): void {
     for (const sim of this.players.values()) {
-      if (sim.alive) continue;
+      if (sim.alive || sim.downed) continue; // downed players are not yet dead
       if (sim.waitingToDeploy) continue; // Already sent to deploy screen
       if (now - sim.deathTime < RESPAWN_DELAY * 1000) continue;
 

@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const MODEL_PATH = '/models/soldier.glb';
 
 /** Cached soldier template (original loaded model) */
 let soldierTemplate: THREE.Group | null = null;
+/** Cached animation clips from the loaded GLB */
+let soldierAnimations: THREE.AnimationClip[] = [];
 let loadingPromise: Promise<THREE.Group | null> | null = null;
 
 /** Enable flat shading on all meshes in a scene graph */
@@ -37,8 +40,9 @@ export function loadSoldierModel(): Promise<THREE.Group | null> {
       MODEL_PATH,
       (gltf: GLTF) => {
         soldierTemplate = gltf.scene;
+        soldierAnimations = gltf.animations;
         applyFlatShading(soldierTemplate);
-        console.log('Soldier model loaded successfully');
+        console.log('Soldier model loaded successfully', `(${soldierAnimations.length} animations)`);
         resolve(soldierTemplate);
       },
       undefined,
@@ -71,10 +75,29 @@ export function createSoldierInstance(
 ): THREE.Group | null {
   if (!soldierTemplate) return null;
 
-  const instance = soldierTemplate.clone();
+  const instance = SkeletonUtils.clone(soldierTemplate) as THREE.Group;
 
-  // Compute bounding box of the template to scale it to player height
-  const bbox = new THREE.Box3().setFromObject(instance);
+  // Force world matrix update on the fresh clone before measuring
+  instance.updateMatrixWorld(true);
+
+  // Compute bounding box from visible meshes only — ignore IK helper bones
+  // which extend far beyond the visible model and inflate the box
+  const bbox = new THREE.Box3();
+  instance.traverse((child: THREE.Object3D) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.geometry.computeBoundingBox();
+      if (mesh.geometry.boundingBox) {
+        const meshBox = mesh.geometry.boundingBox.clone();
+        meshBox.applyMatrix4(mesh.matrixWorld);
+        bbox.union(meshBox);
+      }
+    }
+  });
+
+  // Fallback if no meshes found
+  if (bbox.isEmpty()) bbox.setFromObject(instance);
+
   const modelHeight = bbox.max.y - bbox.min.y;
   const scale = modelHeight > 0 ? playerHeight / modelHeight : 1;
   instance.scale.setScalar(scale);
@@ -83,29 +106,25 @@ export function createSoldierInstance(
   const scaledMinY = bbox.min.y * scale;
   instance.position.y = -scaledMinY;
 
-  // Tint all meshes to team color
+  // Tint all meshes to team color and fix skinned mesh rendering
   const color = new THREE.Color(teamColor);
   instance.traverse((child: THREE.Object3D) => {
     if ((child as THREE.Mesh).isMesh) {
       const mesh = child as THREE.Mesh;
-      const materials = Array.isArray(mesh.material)
-        ? mesh.material
-        : [mesh.material];
-      for (let i = 0; i < materials.length; i++) {
-        const orig = materials[i] as THREE.MeshStandardMaterial;
-        const mat = orig.clone();
-        // Blend the team color with the original model color
-        mat.color.lerp(color, 0.6);
-        mat.flatShading = true;
-        mat.needsUpdate = true;
-        if (Array.isArray(mesh.material)) {
-          mesh.material[i] = mat;
-        } else {
-          mesh.material = mat;
-        }
-      }
+      // Skinned meshes need frustum culling disabled — their bounding box
+      // doesn't auto-update with skeleton pose, causing them to be culled
+      mesh.frustumCulled = false;
+      // Replace with a bright Lambert material tinted to team color for voxel-style look
+      mesh.material = new THREE.MeshLambertMaterial({ color: teamColor });
     }
   });
 
   return instance;
+}
+
+/**
+ * Get the cached animation clips from the loaded soldier model.
+ */
+export function getSoldierAnimations(): THREE.AnimationClip[] {
+  return soldierAnimations;
 }

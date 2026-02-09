@@ -1,5 +1,12 @@
 import * as THREE from 'three';
-import { MAT_GRASS, MAT_DIRT, MAT_STONE, MAT_WALL, MAT_ROOF, MAT_WATER, MATERIAL_COLORS } from '@clawfield/shared';
+import {
+  MAT_GRASS, MAT_DIRT, MAT_STONE, MAT_WALL, MAT_ROOF, MAT_WATER,
+  MAT_SAND_LIGHT, MAT_SAND_DARK, MAT_GRASS_DARK, MAT_STONE_DARK,
+  MAT_CONCRETE, MAT_CONCRETE_DARK, MAT_WOOD, MAT_WOOD_DARK,
+  MAT_BRICK, MAT_ROOF_TILE, MAT_WATER_DEEP, MAT_ROAD,
+  MAT_WINDOW, MAT_METAL,
+  MATERIAL_COLORS,
+} from '@clawfield/shared';
 
 /**
  * Texture atlas configuration.
@@ -8,8 +15,9 @@ import { MAT_GRASS, MAT_DIRT, MAT_STONE, MAT_WALL, MAT_ROOF, MAT_WATER, MATERIAL
  * top face, side face, bottom face (some materials use the same tile for all).
  *
  * Atlas layout (ATLAS_COLS × ATLAS_ROWS grid of TILE_SIZE×TILE_SIZE tiles):
- *   Row 0: grass_top,  grass_side,  dirt,   stone,  wall,  roof
- *   Row 1: (reserved for future materials)
+ *   Row 0: grass_top, grass_side, dirt, stone, wall, roof, water, fallback
+ *   Row 1: sand_light, sand_dark, grass_dark, stone_dark, concrete, concrete_dark, wood, wood_dark
+ *   Row 2: brick, roof_tile, water_deep, road, window, metal
  */
 
 export const TILE_SIZE = 16; // pixels per tile
@@ -56,6 +64,76 @@ export const MATERIAL_TILES: Record<number, TileMapping> = {
     side: [6, 0],
     bottom: [6, 0],
   },
+  [MAT_SAND_LIGHT]: {
+    top: [0, 1],
+    side: [0, 1],
+    bottom: [0, 1],
+  },
+  [MAT_SAND_DARK]: {
+    top: [1, 1],
+    side: [1, 1],
+    bottom: [1, 1],
+  },
+  [MAT_GRASS_DARK]: {
+    top: [2, 1],
+    side: [2, 1],
+    bottom: [2, 1],
+  },
+  [MAT_STONE_DARK]: {
+    top: [3, 1],
+    side: [3, 1],
+    bottom: [3, 1],
+  },
+  [MAT_CONCRETE]: {
+    top: [4, 1],
+    side: [4, 1],
+    bottom: [4, 1],
+  },
+  [MAT_CONCRETE_DARK]: {
+    top: [5, 1],
+    side: [5, 1],
+    bottom: [5, 1],
+  },
+  [MAT_WOOD]: {
+    top: [6, 1],
+    side: [6, 1],
+    bottom: [6, 1],
+  },
+  [MAT_WOOD_DARK]: {
+    top: [7, 1],
+    side: [7, 1],
+    bottom: [7, 1],
+  },
+  [MAT_BRICK]: {
+    top: [0, 2],
+    side: [0, 2],
+    bottom: [0, 2],
+  },
+  [MAT_ROOF_TILE]: {
+    top: [1, 2],
+    side: [1, 2],
+    bottom: [1, 2],
+  },
+  [MAT_WATER_DEEP]: {
+    top: [2, 2],
+    side: [2, 2],
+    bottom: [2, 2],
+  },
+  [MAT_ROAD]: {
+    top: [3, 2],
+    side: [3, 2],
+    bottom: [3, 2],
+  },
+  [MAT_WINDOW]: {
+    top: [4, 2],
+    side: [4, 2],
+    bottom: [4, 2],
+  },
+  [MAT_METAL]: {
+    top: [5, 2],
+    side: [5, 2],
+    bottom: [5, 2],
+  },
 };
 
 /** Fallback tile for unknown materials */
@@ -95,7 +173,7 @@ export function createTextureAtlas(): THREE.CanvasTexture {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, ATLAS_WIDTH, ATLAS_HEIGHT);
 
-  // Draw each tile
+  // Draw each tile — Row 0: original materials
   drawGrassTop(ctx, 0, 0);
   drawGrassSide(ctx, 1, 0);
   drawDirt(ctx, 2, 0);
@@ -104,6 +182,24 @@ export function createTextureAtlas(): THREE.CanvasTexture {
   drawRoof(ctx, 5, 0);
   drawWater(ctx, 6, 0);
   drawFallback(ctx, 7, 0);
+
+  // Row 1: sand_light, sand_dark, grass_dark, stone_dark, concrete, concrete_dark, wood, wood_dark
+  drawNoiseTile(ctx, 0, 1, 0xd4b896, 700, 0.3, 25);
+  drawNoiseTile(ctx, 1, 1, 0xc4a67a, 710, 0.3, 25);
+  drawGrassDark(ctx, 2, 1);
+  drawStoneDark(ctx, 3, 1);
+  drawNoiseTile(ctx, 4, 1, 0xa0a0a0, 740, 0.2, 15);
+  drawNoiseTile(ctx, 5, 1, 0x808080, 750, 0.2, 15);
+  drawWoodTile(ctx, 6, 1, 0x8b6914, 760);
+  drawWoodTile(ctx, 7, 1, 0x6b4f10, 770);
+
+  // Row 2: brick, roof_tile, water_deep, road, window, metal
+  drawBrickTile(ctx, 0, 2, 0xa05228, 780);
+  drawRoofTileTile(ctx, 1, 2);
+  drawWaterDeep(ctx, 2, 2);
+  drawRoadTile(ctx, 3, 2);
+  drawWindowTile(ctx, 4, 2);
+  drawNoiseTile(ctx, 5, 2, 0x708090, 830, 0.25, 20);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.magFilter = THREE.NearestFilter;
@@ -365,4 +461,288 @@ function drawFallback(ctx: CanvasRenderingContext2D, col: number, row: number): 
   // so white (1,1,1) is neutral in the shader multiply.
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+}
+
+// --- New material tile drawing functions ---
+
+/** Generic noise tile: base color with random pixel variation */
+function drawNoiseTile(
+  ctx: CanvasRenderingContext2D, col: number, row: number,
+  hex: number, seed: number, density: number, amplitude: number,
+): void {
+  const ox = col * TILE_SIZE;
+  const oy = row * TILE_SIZE;
+  const [br, bg, bb] = hexToRgb(hex);
+  const rng = mulberry32(seed);
+
+  ctx.fillStyle = rgbStr(br, bg, bb);
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      if (rng() < density) {
+        const shift = Math.floor((rng() - 0.5) * amplitude * 2);
+        ctx.fillStyle = rgbStr(
+          Math.max(0, Math.min(255, br + shift)),
+          Math.max(0, Math.min(255, bg + shift)),
+          Math.max(0, Math.min(255, bb + shift)),
+        );
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  }
+}
+
+function drawGrassDark(ctx: CanvasRenderingContext2D, col: number, row: number): void {
+  const ox = col * TILE_SIZE;
+  const oy = row * TILE_SIZE;
+  const [br, bg, bb] = hexToRgb(0x4a7a33);
+  const rng = mulberry32(720);
+
+  ctx.fillStyle = rgbStr(br, bg, bb);
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      const v = rng();
+      if (v < 0.3) {
+        const shift = Math.floor((rng() - 0.5) * 35);
+        ctx.fillStyle = rgbStr(
+          Math.max(0, Math.min(255, br + shift)),
+          Math.max(0, Math.min(255, bg + shift + Math.floor(rng() * 10))),
+          Math.max(0, Math.min(255, bb + shift)),
+        );
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  }
+}
+
+function drawStoneDark(ctx: CanvasRenderingContext2D, col: number, row: number): void {
+  const ox = col * TILE_SIZE;
+  const oy = row * TILE_SIZE;
+  const rng = mulberry32(730);
+  const base = 0x66;
+
+  ctx.fillStyle = rgbStr(base, base, base);
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      if (rng() < 0.4) {
+        const shift = Math.floor((rng() - 0.5) * 40);
+        const c = Math.max(0, Math.min(255, base + shift));
+        ctx.fillStyle = rgbStr(c, c, c);
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  }
+
+  // Crack lines
+  ctx.fillStyle = rgbStr(0x44, 0x44, 0x44);
+  for (let i = 0; i < 3; i++) {
+    const sx = Math.floor(rng() * TILE_SIZE);
+    const sy = Math.floor(rng() * TILE_SIZE);
+    for (let j = 0; j < 4; j++) {
+      const px = (sx + j) % TILE_SIZE;
+      const py = (sy + Math.floor(rng() * 2)) % TILE_SIZE;
+      ctx.fillRect(ox + px, oy + py, 1, 1);
+    }
+  }
+}
+
+function drawWoodTile(ctx: CanvasRenderingContext2D, col: number, row: number, hex: number, seed: number): void {
+  const ox = col * TILE_SIZE;
+  const oy = row * TILE_SIZE;
+  const [br, bg, bb] = hexToRgb(hex);
+  const rng = mulberry32(seed);
+
+  ctx.fillStyle = rgbStr(br, bg, bb);
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+
+  // Horizontal wood grain lines
+  for (let y = 0; y < TILE_SIZE; y++) {
+    if (y % 3 === 0) {
+      const shift = -10 - Math.floor(rng() * 15);
+      ctx.fillStyle = rgbStr(
+        Math.max(0, br + shift),
+        Math.max(0, bg + shift),
+        Math.max(0, bb + shift),
+      );
+      ctx.fillRect(ox, oy + y, TILE_SIZE, 1);
+    }
+  }
+
+  // Noise over grain
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      if (rng() < 0.2) {
+        const shift = Math.floor((rng() - 0.5) * 20);
+        ctx.fillStyle = rgbStr(
+          Math.max(0, Math.min(255, br + shift)),
+          Math.max(0, Math.min(255, bg + shift)),
+          Math.max(0, Math.min(255, bb + shift)),
+        );
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  }
+}
+
+function drawBrickTile(ctx: CanvasRenderingContext2D, col: number, row: number, hex: number, seed: number): void {
+  const ox = col * TILE_SIZE;
+  const oy = row * TILE_SIZE;
+  const [br, bg, bb] = hexToRgb(hex);
+  const rng = mulberry32(seed);
+
+  ctx.fillStyle = rgbStr(br, bg, bb);
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+
+  // Mortar lines
+  const mortar = rgbStr(
+    Math.min(255, br + 40),
+    Math.min(255, bg + 40),
+    Math.min(255, bb + 40),
+  );
+  ctx.fillStyle = mortar;
+  for (let y = 0; y < TILE_SIZE; y += 4) {
+    ctx.fillRect(ox, oy + y, TILE_SIZE, 1);
+  }
+  for (let row2 = 0; row2 < 4; row2++) {
+    const offset = (row2 % 2) * 4;
+    for (let x = offset; x < TILE_SIZE; x += 8) {
+      ctx.fillRect(ox + x, oy + row2 * 4, 1, 4);
+    }
+  }
+
+  // Surface noise
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      if (rng() < 0.2) {
+        const shift = Math.floor((rng() - 0.5) * 25);
+        ctx.fillStyle = rgbStr(
+          Math.max(0, Math.min(255, br + shift)),
+          Math.max(0, Math.min(255, bg + shift)),
+          Math.max(0, Math.min(255, bb + shift)),
+        );
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  }
+}
+
+function drawRoofTileTile(ctx: CanvasRenderingContext2D, col: number, row: number): void {
+  const ox = col * TILE_SIZE;
+  const oy = row * TILE_SIZE;
+  const [br, bg, bb] = hexToRgb(0x8b4513);
+  const rng = mulberry32(790);
+
+  ctx.fillStyle = rgbStr(br, bg, bb);
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+
+  // Overlapping tile pattern (horizontal lines with alternating offset)
+  for (let y = 0; y < TILE_SIZE; y += 4) {
+    const shift = -15;
+    ctx.fillStyle = rgbStr(
+      Math.max(0, br + shift),
+      Math.max(0, bg + shift),
+      Math.max(0, bb + shift),
+    );
+    ctx.fillRect(ox, oy + y, TILE_SIZE, 1);
+  }
+
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      if (rng() < 0.2) {
+        const shift = Math.floor((rng() - 0.5) * 25);
+        ctx.fillStyle = rgbStr(
+          Math.max(0, Math.min(255, br + shift)),
+          Math.max(0, Math.min(255, bg + shift)),
+          Math.max(0, Math.min(255, bb + shift)),
+        );
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  }
+}
+
+function drawWaterDeep(ctx: CanvasRenderingContext2D, col: number, row: number): void {
+  const ox = col * TILE_SIZE;
+  const oy = row * TILE_SIZE;
+  const [br, bg, bb] = hexToRgb(0x1a4c80);
+  const rng = mulberry32(800);
+
+  ctx.fillStyle = rgbStr(br, bg, bb);
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      const wave = Math.sin((x + y * 0.5) * 0.8) * 0.5 + 0.5;
+      if (rng() < wave * 0.25) {
+        const shift = Math.floor(rng() * 20);
+        ctx.fillStyle = rgbStr(
+          Math.min(255, br + shift),
+          Math.min(255, bg + shift),
+          Math.min(255, bb + shift + 8),
+        );
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  }
+}
+
+function drawRoadTile(ctx: CanvasRenderingContext2D, col: number, row: number): void {
+  const ox = col * TILE_SIZE;
+  const oy = row * TILE_SIZE;
+  const [br, bg, bb] = hexToRgb(0x555555);
+  const rng = mulberry32(810);
+
+  ctx.fillStyle = rgbStr(br, bg, bb);
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+
+  // Asphalt speckle noise
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      if (rng() < 0.4) {
+        const shift = Math.floor((rng() - 0.5) * 30);
+        const c = Math.max(0, Math.min(255, br + shift));
+        ctx.fillStyle = rgbStr(c, c, c);
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  }
+}
+
+function drawWindowTile(ctx: CanvasRenderingContext2D, col: number, row: number): void {
+  const ox = col * TILE_SIZE;
+  const oy = row * TILE_SIZE;
+  const [br, bg, bb] = hexToRgb(0x87ceeb);
+  const rng = mulberry32(820);
+
+  ctx.fillStyle = rgbStr(br, bg, bb);
+  ctx.fillRect(ox, oy, TILE_SIZE, TILE_SIZE);
+
+  // Subtle reflection streaks
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      const diag = Math.sin((x - y) * 0.5) * 0.5 + 0.5;
+      if (rng() < diag * 0.2) {
+        const shift = Math.floor(rng() * 20);
+        ctx.fillStyle = rgbStr(
+          Math.min(255, br + shift),
+          Math.min(255, bg + shift),
+          Math.min(255, bb + shift),
+        );
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  }
+
+  // Window frame (darker border, 1px)
+  const frame = rgbStr(0x60, 0x60, 0x60);
+  ctx.fillStyle = frame;
+  ctx.fillRect(ox, oy, TILE_SIZE, 1);
+  ctx.fillRect(ox, oy + TILE_SIZE - 1, TILE_SIZE, 1);
+  ctx.fillRect(ox, oy, 1, TILE_SIZE);
+  ctx.fillRect(ox + TILE_SIZE - 1, oy, 1, TILE_SIZE);
 }
