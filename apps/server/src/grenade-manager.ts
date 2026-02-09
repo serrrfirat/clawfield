@@ -178,12 +178,12 @@ export class GrenadeManager {
 
           // Linear falloff: full damage at center, zero at edge
           const damage = GRENADE_DAMAGE * (1 - distance / GRENADE_DAMAGE_RADIUS);
-          const killed = player.takeDamage(Math.round(damage));
+          const result = player.takeDamage(Math.round(damage));
 
           hits.push({
             playerId: player.id,
             damage: Math.round(damage),
-            killed,
+            killed: result === 'downed' || result === 'killed',
           });
         }
 

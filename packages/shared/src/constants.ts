@@ -278,3 +278,26 @@ export const GADGET_CLAYMORE_DURATION = 60;
 
 /** Scoreboard broadcast interval in ticks (5 seconds at 20Hz) */
 export const SCOREBOARD_BROADCAST_INTERVAL = 100;
+
+// --- Revive system constants ---
+
+/** Time in seconds before a downed player bleeds out and fully dies */
+export const BLEEDOUT_TIME = 15;
+
+/** Time in seconds for a non-medic to revive a downed player */
+export const REVIVE_TIME = 5;
+
+/** Time in seconds for a medic to revive a downed player */
+export const REVIVE_TIME_MEDIC = 2.5;
+
+/** Radius in meters within which a player can revive a downed teammate */
+export const REVIVE_RADIUS = 2.5;
+
+/** Health restored on revive by a non-medic */
+export const REVIVE_HEALTH = 30;
+
+/** Health restored on revive by a medic */
+export const REVIVE_HEALTH_MEDIC = 75;
+
+/** Movement speed multiplier for downed players (crawling) */
+export const DOWNED_SPEED_MULT = 0.15;

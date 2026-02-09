@@ -19,6 +19,8 @@ export interface PlayerState {
   inWater: boolean;
   health: number;
   alive: boolean;
+  /** Player is downed (can be revived) but not yet dead */
+  downed: boolean;
   team: number;
   classId: string;
   ammo: number;
@@ -41,6 +43,8 @@ export interface InputState {
   useGadget: boolean;
   gadgetIndex: number;
   scope: boolean;
+  /** Hold to interact (revive downed teammate) */
+  interact: boolean;
   yaw: number;
   pitch: number;
 }
@@ -174,6 +178,9 @@ export type ServerMessage =
   | { type: 'hit_confirm'; targetId: string; damage: number; sourcePos: Vec3 }
   | { type: 'kill'; entry: KillEntry }
   | { type: 'death'; killerId: string; respawnTime: number; killerPos: Vec3 }
+  | { type: 'downed'; killerId: string; bleedoutTime: number; killerPos: Vec3 }
+  | { type: 'revive_progress'; reviverId: string; progress: number }
+  | { type: 'revived'; reviverId: string; health: number }
   | { type: 'respawn'; position: Vec3 }
   | { type: 'available_spawns'; spawns: SpawnPointOption[] }
   | { type: 'tickets'; alpha: number; bravo: number }

@@ -14,6 +14,7 @@ export class RemotePlayer {
   readonly mesh: THREE.Object3D;
   team: number;
   alive: boolean = true;
+  downed: boolean = false;
 
   private states: { time: number; state: PlayerState }[] = [];
   private labelEl: HTMLDivElement;
@@ -73,6 +74,7 @@ export class RemotePlayer {
   pushState(state: PlayerState): void {
     // Update visibility based on alive status
     this.alive = state.alive;
+    this.downed = state.downed;
     this.mesh.visible = state.alive;
     this.labelEl.style.display = state.alive ? 'block' : 'none';
 

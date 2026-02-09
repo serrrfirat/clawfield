@@ -215,6 +215,7 @@ export class InputCapture {
         useGadget: false,
         gadgetIndex: this.selectedGadgetIndex,
         scope: false,
+        interact: false,
         yaw: this.yaw,
         pitch: this.pitch,
       };
@@ -237,6 +238,7 @@ export class InputCapture {
       useGadget,
       gadgetIndex: this.selectedGadgetIndex,
       scope: this.rightMouseDown,
+      interact: this.keys.has('KeyE'),
       yaw: this.yaw,
       pitch: this.pitch,
     };
