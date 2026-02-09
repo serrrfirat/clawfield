@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { WeaponStats } from '@clawfield/shared';
-import { WEAPONS, WeaponId, CLASSES, ClassId, fireInterval } from '@clawfield/shared';
+import type { WeaponStats, WeaponLoadout } from '@clawfield/shared';
+import { WEAPONS, WeaponId, CLASSES, ClassId, fireInterval, applyAttachments } from '@clawfield/shared';
 import { Viewmodel } from './viewmodel';
 import type { InputCapture } from './input';
 import { soundManager, SoundId } from '../audio/sound-manager';
@@ -10,8 +10,6 @@ import type { ParticleSystem } from '../combat/particle-system';
 const DEFAULT_FOV = 75;
 /** Scoped-in FOV (zoomed) */
 const SCOPED_FOV = 25;
-/** FOV interpolation speed (higher = faster transition) */
-const SCOPE_LERP_SPEED = 12;
 /** Weapons that support scoping */
 const SCOPE_WEAPONS = new Set<WeaponId>([WeaponId.SniperRifle, WeaponId.DMR]);
 
@@ -44,8 +42,10 @@ const MUZZLE_FLASH_COLORS: [number, number, number][] = [
  * but corrected by authoritative server state.
  */
 export class WeaponController {
-  /** Current weapon stats */
+  /** Current weapon stats (with attachments applied) */
   weapon: WeaponStats;
+  /** Base weapon stats (without attachments) */
+  private baseWeapon: WeaponStats;
 
   /** Local ammo tracking (display only) */
   ammo: number;
@@ -82,16 +82,34 @@ export class WeaponController {
   /** Particle system for muzzle flash effects */
   private particles: ParticleSystem | null = null;
 
+  // ── Weapon feel state ──────────────────────────────────────────
+
+  /** Current ADS interpolation (0 = hip, 1 = fully aimed) */
+  private adsAmount = 0;
+
+  /** Current spread bloom accumulation (radians above base spread) */
+  private currentBloom = 0;
+
+  /** Weapon sway phase (time accumulator for sine oscillation) */
+  private swayPhase = 0;
+
+  /** View bob phase (accumulates based on movement) */
+  private bobPhase = 0;
+
+  /** Current weapon loadout */
+  private currentLoadout: WeaponLoadout = {};
+
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, classId: string = 'assault') {
     const classDef = CLASSES[classId as ClassId] ?? CLASSES[ClassId.Assault];
-    this.weapon = WEAPONS[classDef.defaultPrimary];
+    this.baseWeapon = WEAPONS[classDef.defaultPrimary];
+    this.weapon = { ...this.baseWeapon };
     this.ammo = this.weapon.magSize;
     this.maxAmmo = this.weapon.magSize;
     this.scene = scene;
     this.camera = camera;
 
     this.viewmodel = new Viewmodel(camera);
-    this.viewmodel.setWeaponType(this.weapon.name);
+    this.viewmodel.setWeaponType(this.weapon.id);
 
     this.createHitMarkerElement();
     this.createScopeOverlay();
@@ -100,6 +118,14 @@ export class WeaponController {
   /** Set the particle system used for muzzle flash effects */
   setParticleSystem(ps: ParticleSystem): void {
     this.particles = ps;
+  }
+
+  /** Apply a weapon loadout (attachments) */
+  setLoadout(loadout: WeaponLoadout): void {
+    this.currentLoadout = loadout;
+    this.weapon = applyAttachments(this.baseWeapon, loadout);
+    this.maxAmmo = this.weapon.magSize;
+    this.viewmodel.setAttachments(loadout);
   }
 
   /** Create the hit marker "X" element in the DOM */
@@ -128,23 +154,35 @@ export class WeaponController {
     return SCOPE_WEAPONS.has(this.weapon.id);
   }
 
+  /** Get current effective spread (base + bloom, reduced when ADS) */
+  getEffectiveSpread(): number {
+    const hipSpread = this.weapon.spread + this.currentBloom;
+    const adsMultiplier = 1 - this.adsAmount * (1 - this.weapon.adsSpreadMultiplier);
+    return hipSpread * adsMultiplier;
+  }
+
   /** Update scope state based on input */
   updateScope(wantsScope: boolean, dt: number): void {
     const shouldScope = wantsScope && this.canScope && !this.reloading;
     this.scoped = shouldScope;
 
-    // Smoothly interpolate FOV
+    // Smoothly interpolate FOV using weapon-specific ADS speed
+    const scopeLerpSpeed = 12 * this.weapon.adsSpeed;
     const targetFov = this.scoped ? SCOPED_FOV : DEFAULT_FOV;
     const currentFov = this.camera.fov;
-    const newFov = currentFov + (targetFov - currentFov) * Math.min(1, SCOPE_LERP_SPEED * dt);
+    const newFov = currentFov + (targetFov - currentFov) * Math.min(1, scopeLerpSpeed * dt);
     if (Math.abs(newFov - currentFov) > 0.01) {
       this.camera.fov = newFov;
       this.camera.updateProjectionMatrix();
     }
 
+    // Update ADS amount for non-scoped weapons (affects spread/sway)
+    const adsTarget = wantsScope && !this.reloading ? 1 : 0;
+    const adsLerpSpeed = 10 * this.weapon.adsSpeed;
+    this.adsAmount += (adsTarget - this.adsAmount) * Math.min(1, adsLerpSpeed * dt);
+
     // Show/hide scope overlay
     if (this.scopeOverlay) {
-      // Show overlay when mostly zoomed in (FOV below midpoint)
       const midFov = (DEFAULT_FOV + SCOPED_FOV) / 2;
       this.scopeOverlay.style.display = this.camera.fov < midFov ? 'block' : 'none';
     }
@@ -153,8 +191,8 @@ export class WeaponController {
     this.viewmodel.setVisible(!this.scoped);
   }
 
-  /** Update fire cooldown, tracers, and viewmodel each frame */
-  update(dt: number): void {
+  /** Update fire cooldown, tracers, bloom, sway, bob, and viewmodel each frame */
+  update(dt: number, isMoving: boolean, isSprinting: boolean): void {
     if (this.fireCooldown > 0) {
       this.fireCooldown -= dt;
     }
@@ -173,8 +211,49 @@ export class WeaponController {
       }
     }
 
+    // ── Spread bloom recovery ──────────────────────────────────
+    if (this.currentBloom > 0) {
+      this.currentBloom = Math.max(0, this.currentBloom - this.weapon.spreadRecovery * dt);
+    }
+
+    // ── Weapon sway (idle drift when aiming) ───────────────────
+    this.swayPhase += dt;
+
+    // ── View bob (movement bounce) ─────────────────────────────
+    if (isMoving && !isSprinting) {
+      this.bobPhase += dt * 8; // walking bob speed
+    } else if (isSprinting) {
+      this.bobPhase += dt * 12; // sprint bob speed
+    }
+    // Bob decays to zero when stopped (phase freezes, no bob applied)
+
+    // Apply sway + bob to viewmodel position
+    this.applyWeaponMotion(dt, isMoving, isSprinting);
+
     // Update viewmodel recoil animation
     this.viewmodel.update(dt);
+  }
+
+  /** Apply weapon sway and view bob to the viewmodel */
+  private applyWeaponMotion(_dt: number, isMoving: boolean, isSprinting: boolean): void {
+    const sway = this.weapon.aimSway * this.adsAmount;
+    const swayX = Math.sin(this.swayPhase * 1.1) * sway * 0.5;
+    const swayY = Math.sin(this.swayPhase * 0.9) * sway * 0.3;
+
+    let bobX = 0;
+    let bobY = 0;
+    if (isMoving) {
+      const intensity = this.weapon.bobIntensity * (isSprinting ? 1.5 : 1.0);
+      bobX = Math.sin(this.bobPhase) * 0.003 * intensity;
+      bobY = Math.abs(Math.sin(this.bobPhase * 2)) * 0.004 * intensity;
+    }
+
+    // Only apply sway offset to the viewmodel rotation (doesn't affect aim)
+    if (!this.viewmodel.group.visible) return;
+    // We add a tiny rotation offset for sway feel
+    const existingRotX = this.viewmodel.group.rotation.x;
+    this.viewmodel.group.rotation.x = existingRotX + swayY + bobY * 0.5;
+    this.viewmodel.group.rotation.y = swayX + bobX * 0.5;
   }
 
   /**
@@ -208,13 +287,14 @@ export class WeaponController {
     this.fireTracer();
     this.viewmodel.onFire();
 
+    // Add spread bloom per shot
+    this.currentBloom += this.weapon.spreadBloom;
+
     // Play weapon fire sound
     const weaponSound = WeaponController.WEAPON_SOUND_MAP[this.weapon.name] ?? SoundId.ShootRifle;
     soundManager.play(weaponSound);
 
-    // Apply recoil to the player's aim (modifies InputCapture so
-    // subsequent frames start from the recoiled position, matching
-    // Ravenfield's ApplyRecoil approach)
+    // Apply recoil to the player's aim
     if (inputCapture) {
       this.applyRecoil(inputCapture);
     }
@@ -223,7 +303,6 @@ export class WeaponController {
   /**
    * Apply weapon recoil: kickback pushes pitch up, random deviation
    * adds small random yaw/pitch offset. Values are in radians.
-   * Ported from Ravenfield's Weapon.cs recoil system.
    */
   private applyRecoil(inputCapture: InputCapture): void {
     const kick = this.weapon.recoilKick;
@@ -309,16 +388,20 @@ export class WeaponController {
   /** Change weapon class */
   setClass(classId: string): void {
     const classDef = CLASSES[classId as ClassId] ?? CLASSES[ClassId.Assault];
-    this.weapon = WEAPONS[classDef.defaultPrimary];
+    this.baseWeapon = WEAPONS[classDef.defaultPrimary];
+    this.weapon = applyAttachments(this.baseWeapon, this.currentLoadout);
     this.ammo = this.weapon.magSize;
     this.maxAmmo = this.weapon.magSize;
     this.reloading = false;
     this.fireCooldown = 0;
     this.scoped = false;
+    this.adsAmount = 0;
+    this.currentBloom = 0;
     this.camera.fov = DEFAULT_FOV;
     this.camera.updateProjectionMatrix();
     if (this.scopeOverlay) this.scopeOverlay.style.display = 'none';
-    this.viewmodel.setWeaponType(this.weapon.name);
+    this.viewmodel.setWeaponType(this.weapon.id);
+    this.viewmodel.setAttachments(this.currentLoadout);
   }
 
   /** Show a brief muzzle flash PointLight at camera position */

@@ -55,8 +55,15 @@ export class LocalPlayer {
 
   /** Run a local physics tick and return the input to send to server */
   update(dt: number): { seq: number; input: InputState; dt: number } | null {
-    // Update weapon cooldowns
-    this.weaponCtrl.update(dt);
+    // Determine movement state for weapon feel (sway/bob)
+    const moveSpeed = Math.sqrt(
+      this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z,
+    );
+    const isMoving = this.grounded && moveSpeed > 1;
+    const isCurrentlySprinting = isMoving && this.wasSprinting;
+
+    // Update weapon cooldowns, bloom, sway, bob
+    this.weaponCtrl.update(dt, isMoving, isCurrentlySprinting);
 
     if (!this.input.locked) {
       this.cameraCtrl.update(this.position, this.input.yaw, this.input.pitch, false, dt);
