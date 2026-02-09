@@ -497,6 +497,11 @@ export class HUD {
     this.gameoverOverlay.classList.add('visible');
   }
 
+  /** Hide the game-over screen (when returning to lobby). */
+  hideGameOver(): void {
+    this.gameoverOverlay.classList.remove('visible');
+  }
+
   /**
    * Remove all HUD DOM elements and clear timers.
    */

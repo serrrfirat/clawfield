@@ -171,6 +171,19 @@ export interface GadgetState {
   lifetime: number;
 }
 
+// --- Room / Lobby types ---
+
+/** Server phase for the room lifecycle */
+export type ServerPhase = 'idle' | 'lobby' | 'in_game' | 'post_game';
+
+/** Player info for the lobby screen */
+export interface LobbyPlayer {
+  id: string;
+  name: string;
+  team: number;
+  isHost: boolean;
+}
+
 // --- WebSocket protocol messages ---
 
 /** Kill feed entry */
@@ -196,7 +209,13 @@ export type ClientMessage =
   | { type: 'rejoin'; sessionToken: string }
   | { type: 'input'; seq: number; input: InputState; dt: number }
   | { type: 'select_class'; classId: string }
-  | { type: 'deploy'; classId: string; weaponId: string; spawnPointId: string };
+  | { type: 'deploy'; classId: string; weaponId: string; spawnPointId: string }
+  | { type: 'create_room'; name: string }
+  | { type: 'join_room'; name: string; roomCode: string }
+  | { type: 'lobby_set_team'; team: number }
+  | { type: 'lobby_set_mode'; gameMode: GameMode }
+  | { type: 'start_game' }
+  | { type: 'return_to_menu' };
 
 export type ServerMessage =
   | {
@@ -237,4 +256,11 @@ export type ServerMessage =
   | { type: 'destruction_event'; events: DestructionEvent[] }
   | { type: 'chunks'; chunks: ChunkData[] }
   | { type: 'smoke_grenades'; grenades: SmokeGrenadeState[] }
-  | { type: 'smoke_deploy'; event: SmokeDeployEvent };
+  | { type: 'smoke_deploy'; event: SmokeDeployEvent }
+  | { type: 'room_created'; roomCode: string; playerId: string }
+  | { type: 'room_joined'; roomCode: string; playerId: string; hostId: string }
+  | { type: 'room_error'; message: string }
+  | { type: 'lobby_state'; players: LobbyPlayer[]; gameMode: GameMode; hostId: string; roomCode: string; phase: ServerPhase }
+  | { type: 'game_starting'; countdown: number }
+  | { type: 'return_to_lobby' }
+  | { type: 'room_closed' };

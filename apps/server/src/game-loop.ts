@@ -74,6 +74,13 @@ const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 /** How often to check for stale sessions (in ticks) */
 const SESSION_CLEANUP_INTERVAL = 20 * 30; // every 30 seconds
 
+/** Lobby player info passed to GameLoop at start */
+export interface LobbyPlayerInfo {
+  clientId: string;
+  name: string;
+  team: number;
+}
+
 /**
  * Server game loop: fixed-timestep at 20Hz.
  * Manages players, processes inputs, runs physics, validates combat, broadcasts state.
@@ -123,7 +130,22 @@ export class GameLoop {
   // --- Game mode ---
   private gameMode: GameMode = 'tdm';
 
-  constructor(port: number) {
+  // --- Tick timer reference ---
+  private tickTimer: ReturnType<typeof setInterval> | null = null;
+
+  // --- Game over callback ---
+  private onGameOverCallback: ((winner: number) => void) | null = null;
+
+  constructor(
+    network: NetworkServer,
+    lobbyPlayers: LobbyPlayerInfo[],
+    gameMode: GameMode,
+    onGameOver: (winner: number) => void
+  ) {
+    this.network = network;
+    this.gameMode = gameMode;
+    this.onGameOverCallback = onGameOver;
+
     // Try to load the configured binary map; fall back to test map
     this.loadMap();
     this.capturePointManager = new CapturePointManager(this.mapCapturePoints);
@@ -132,16 +154,125 @@ export class GameLoop {
     // Spawn dummy bots on Team Bravo for target practice
     this.spawnBots();
 
-    this.network = new NetworkServer(
-      port,
-      (client, msg) => this.handleMessage(client, msg),
-      (client) => this.handleConnect(client),
-      (client) => this.handleDisconnect(client)
-    );
+    // Send welcome to each lobby player
+    for (const lp of lobbyPlayers) {
+      const client = this.network.getClients().get(lp.clientId);
+      if (client) {
+        client.name = lp.name;
+        this.welcomePlayer(client, lp.team);
+      }
+    }
 
     // Start the game loop
-    setInterval(() => this.update(), TICK_INTERVAL);
-    console.log(`Game loop started at ${1000 / TICK_INTERVAL}Hz`);
+    this.tickTimer = setInterval(() => this.update(), TICK_INTERVAL);
+    console.log(`Game loop started at ${1000 / TICK_INTERVAL}Hz (mode: ${gameMode})`);
+  }
+
+  /** Send welcome to a player and set them up in the game */
+  private welcomePlayer(client: Client, team: number): void {
+    const classId = ClassId.Assault;
+    const tempPos = this.getSpawnPoint(team);
+    const sim = new PlayerSim(client.id, client.name, tempPos);
+    sim.team = team;
+    sim.selectClass(classId);
+    sim.alive = false;
+    sim.waitingToDeploy = true;
+    this.players.set(client.id, sim);
+
+    // Determine initial chunks to send
+    const spawnCx = Math.floor(tempPos.x / CHUNK_SIZE);
+    const spawnCy = Math.floor(tempPos.y / CHUNK_SIZE);
+    const spawnCz = Math.floor(tempPos.z / CHUNK_SIZE);
+    const nearbyKeys = getChunksInRadius(spawnCx, spawnCy, spawnCz, STREAM_RADIUS);
+
+    const mapData: ChunkData[] = [];
+    const clientSent = new Set<string>();
+
+    for (const key of nearbyKeys) {
+      const voxels = this.chunks.get(key);
+      if (voxels) {
+        mapData.push({ key, voxels: Array.from(voxels) });
+        clientSent.add(key);
+      }
+    }
+
+    this.sentChunks.set(client.id, clientSent);
+
+    this.network.send(client, {
+      type: 'welcome',
+      id: client.id,
+      team,
+      mapData,
+      palette: this.palette.length > 0 ? this.palette : undefined,
+      waterIndices: this.waterIndices,
+      mapName: this.mapDisplayName,
+      objectives: this.mapObjectives,
+      objectPlacements: this.objectPlacements.length > 0 ? this.objectPlacements : undefined,
+      gameMode: this.gameMode,
+    });
+
+    // Send available spawns for the deploy screen
+    this.network.send(client, {
+      type: 'available_spawns',
+      spawns: this.getAvailableSpawns(team),
+    });
+
+    // Notify other players
+    this.network.broadcastExcept(client.id, {
+      type: 'player_joined',
+      id: client.id,
+      name: client.name,
+      team,
+    });
+
+    // Notify new player about existing players
+    for (const [id, player] of this.players) {
+      if (id !== client.id) {
+        this.network.send(client, {
+          type: 'player_joined',
+          id,
+          name: player.name,
+          team: player.team,
+        });
+      }
+    }
+
+    // Send current ticket state
+    this.network.send(client, {
+      type: 'tickets',
+      alpha: this.ticketsAlpha,
+      bravo: this.ticketsBravo,
+    });
+
+    // Send capture point state
+    this.network.send(client, {
+      type: 'capture_points',
+      points: this.capturePointManager.getStates(),
+    });
+    const scores = this.capturePointManager.getScores();
+    this.network.send(client, {
+      type: 'conquest_score',
+      alpha: scores.alpha,
+      bravo: scores.bravo,
+    });
+
+    console.log(`Player joined game: ${client.name} (${client.id}) - Team ${team === Team.Alpha ? 'Alpha' : 'Bravo'}`);
+  }
+
+  /** Stop the game loop and clean up all state */
+  destroy(): void {
+    if (this.tickTimer) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = null;
+    }
+    this.players.clear();
+    this.bots = [];
+    this.projectileManager = new ProjectileManager();
+    this.grenadeManager = new GrenadeManager();
+    this.gadgetManager = new GadgetManager();
+    this.sentChunks.clear();
+    this.gameOver = true;
+    console.log('GameLoop destroyed');
   }
 
   /** Attempt to load a configured binary map; fall back to Oasis, then test map if missing */
@@ -572,55 +703,14 @@ export class GameLoop {
     return this.getSpawnPoint(team);
   }
 
-  // --- Connection handlers ---
+  // --- Connection handlers (public so RoomManager can delegate) ---
 
-  private handleConnect(_client: Client): void {
-    // Wait for 'join' message before creating player
+  handleConnect(_client: Client): void {
+    // No-op; players are set up via welcomePlayer in the constructor
   }
 
-  private handleMessage(client: Client, msg: ClientMessage): void {
+  handleMessage(client: Client, msg: ClientMessage): void {
     switch (msg.type) {
-      case 'join': {
-        client.name = msg.name;
-
-        // First human player to join sets the game mode
-        const humanCount = Array.from(this.players.values()).filter(
-          p => !this.bots.some(b => b.sim.id === p.id) && !p.disconnected
-        ).length;
-        if (humanCount === 0 && msg.gameMode) {
-          this.gameMode = msg.gameMode;
-          console.log(`Game mode set to: ${this.gameMode}`);
-        }
-
-        // Assign team
-        const team = this.assignTeam();
-
-        // Determine class
-        const classId = (Object.values(ClassId).includes(msg.classId as ClassId))
-          ? msg.classId as ClassId
-          : ClassId.Assault;
-
-        // Create player in waiting-to-deploy state (no immediate spawn)
-        const tempPos = this.getSpawnPoint(team);
-        const sim = new PlayerSim(client.id, msg.name, tempPos);
-        sim.team = team;
-        sim.selectClass(classId);
-        sim.alive = false;
-        sim.waitingToDeploy = true;
-
-        // Generate session token for reconnection
-        const sessionToken = randomUUID();
-        sim.sessionToken = sessionToken;
-        this.sessions.set(sessionToken, sim);
-
-        this.players.set(client.id, sim);
-
-        this.sendWelcomeState(client, sim);
-
-        console.log(`Player joined: ${msg.name} (${client.id}) - Team ${team === Team.Alpha ? 'Alpha' : 'Bravo'} - ${classId}`);
-        break;
-      }
-
       case 'rejoin': {
         const sim = this.sessions.get(msg.sessionToken);
         if (!sim || !sim.disconnected) {
@@ -696,7 +786,8 @@ export class GameLoop {
     }
   }
 
-  private handleDisconnect(client: Client): void {
+  handleDisconnect(client: Client): void {
+    // Only remove real players, not bots
     const isBot = this.bots.some((b) => b.sim.id === client.id);
 
     if (!isBot) {
@@ -1633,6 +1724,7 @@ export class GameLoop {
         winner,
       });
       console.log(`GAME OVER: Team ${winner === Team.Alpha ? 'Alpha' : 'Bravo'} wins! (${this.gameMode})`);
+      this.onGameOverCallback?.(winner);
     }
   }
 }

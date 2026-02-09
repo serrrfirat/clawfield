@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { WeaponId, AttachmentId, AttachmentSlot } from '@clawfield/shared';
 import type { WeaponLoadout } from '@clawfield/shared';
+import { getWeaponModelGroup, hasWeaponModel } from './weapon-model-loader';
 
 // ── Colour palette ─────────────────────────────────────────────────
 
@@ -535,8 +536,8 @@ const SLOT_FOR_ATTACHMENT: Record<AttachmentId, AttachmentSlot> = {
 export class Viewmodel {
   readonly group: THREE.Group;
 
-  /** Rest position relative to camera */
-  private readonly restPosition = new THREE.Vector3(0.3, -0.25, -0.5);
+  /** Rest position relative to camera — centered like BattleBit */
+  private readonly restPosition = new THREE.Vector3(0.15, -0.22, -0.45);
 
   /** Recoil state */
   private recoilTime = 0;
@@ -561,19 +562,107 @@ export class Viewmodel {
   /** Current weapon ID */
   private currentWeaponId: WeaponId = WeaponId.AssaultRifle;
 
+  /** Idle sway phase (always ticking) */
+  private swayTime = 0;
+
+  /** Walk bob phase and state */
+  private bobTime = 0;
+  private isMoving = false;
+  private isSprinting = false;
+
+  /** Smoothed bob offset for interpolation */
+  private smoothBobX = 0;
+  private smoothBobY = 0;
+
+  /** Hands group (procedural forearms/hands) */
+  private handsGroup: THREE.Group;
+
   constructor(camera: THREE.PerspectiveCamera) {
     this.group = new THREE.Group();
     this.weaponGroup = new THREE.Group();
+    this.handsGroup = new THREE.Group();
     this.group.add(this.weaponGroup);
+    this.group.add(this.handsGroup);
 
     // Position at bottom-right of view
     this.group.position.copy(this.restPosition);
+
+    // Build procedural hands
+    this.buildHands();
 
     // Attach to camera
     camera.add(this.group);
 
     // Build default weapon
     this.buildWeapon(WeaponId.AssaultRifle);
+  }
+
+  /** Build procedural arms + hands that extend from body to weapon grip */
+  private buildHands(): void {
+    // Clear existing
+    while (this.handsGroup.children.length > 0) {
+      const child = this.handsGroup.children[0];
+      this.handsGroup.remove(child);
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+        (child.material as THREE.Material).dispose();
+      }
+    }
+
+    const skinColor = 0xc8956c;
+    const sleeveColor = 0x3a4a35; // olive drab
+    const skinMat = new THREE.MeshLambertMaterial({ color: skinColor });
+    const sleeveMat = new THREE.MeshLambertMaterial({ color: sleeveColor });
+
+    // ── Right arm (trigger hand) — extends from lower-right toward grip ──
+    // Upper arm (goes off-screen toward body)
+    const rUpperArm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 0.06), sleeveMat);
+    rUpperArm.position.set(0.06, -0.22, 0.15);
+    rUpperArm.rotation.z = -0.2;
+    rUpperArm.rotation.x = 0.3;
+    this.handsGroup.add(rUpperArm);
+
+    // Forearm
+    const rForearm = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.16, 0.055), sleeveMat.clone());
+    rForearm.position.set(0.04, -0.10, 0.06);
+    rForearm.rotation.x = 0.6;
+    this.handsGroup.add(rForearm);
+
+    // Right hand/fist wrapping the pistol grip
+    const rHand = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.055, 0.07), skinMat);
+    rHand.position.set(0.03, -0.06, 0.01);
+    this.handsGroup.add(rHand);
+
+    // Trigger finger
+    const rFinger = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.04), skinMat.clone());
+    rFinger.position.set(0.01, -0.045, -0.02);
+    this.handsGroup.add(rFinger);
+
+    // ── Left arm (forend/pump grip) — extends from lower-left toward forend ──
+    // Upper arm
+    const lUpperArm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 0.06), sleeveMat.clone());
+    lUpperArm.position.set(-0.06, -0.22, -0.05);
+    lUpperArm.rotation.z = 0.3;
+    lUpperArm.rotation.x = 0.2;
+    this.handsGroup.add(lUpperArm);
+
+    // Forearm — reaching forward to forend
+    const lForearm = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.14, 0.055), sleeveMat.clone());
+    lForearm.position.set(-0.04, -0.10, -0.14);
+    lForearm.rotation.x = 0.5;
+    lForearm.rotation.z = 0.15;
+    this.handsGroup.add(lForearm);
+
+    // Left hand wrapping the forend
+    const lHand = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.055, 0.07), skinMat.clone());
+    lHand.position.set(-0.02, -0.055, -0.2);
+    this.handsGroup.add(lHand);
+  }
+
+  /** Update movement state for bob/sway animation */
+  setMovementState(moving: boolean, sprinting: boolean): void {
+    this.isMoving = moving;
+    this.isSprinting = sprinting;
   }
 
   /** Build the 3D model for a given weapon */
@@ -583,6 +672,22 @@ export class Viewmodel {
     this.clearAttachments();
 
     this.currentWeaponId = weaponId;
+
+    // Try loaded GLB model first, fall back to procedural
+    if (hasWeaponModel(weaponId)) {
+      const glbGroup = getWeaponModelGroup(weaponId);
+      if (glbGroup) {
+        this.weaponGroup.add(glbGroup);
+        console.log(`[Viewmodel] Using GLB model for ${weaponId}`);
+        // Use procedural builder just for mount points and recoil config
+        const parts = MODEL_BUILDERS[weaponId]();
+        this.mountPoints = parts.mountPoints;
+        this.recoilScale = parts.recoilScale;
+        this.recoilDuration = parts.recoilDuration;
+        return;
+      }
+    }
+
     const builder = MODEL_BUILDERS[weaponId];
     const parts = builder();
 
@@ -640,27 +745,56 @@ export class Viewmodel {
   }
 
   /**
-   * Animate recoil recovery each frame.
+   * Animate recoil, idle sway, and walk bob each frame.
    *
    * BattleBit-style: sharp snap back with asymmetric timing.
-   * The kick phase is very fast (30% of duration), the return
-   * is slower (70%). Combined with visual recoil drift for
-   * sustained fire feel.
+   * Idle sway: gentle figure-8 breathing motion.
+   * Walk bob: rhythmic side-to-side and up-down bounce.
    */
   update(dt: number): void {
+    // ── Idle sway (always ticking) ──
+    this.swayTime += dt;
+    // Figure-8 breathing pattern using Lissajous curves
+    const idleSwayX = Math.sin(this.swayTime * 1.2) * 0.003;
+    const idleSwayY = Math.sin(this.swayTime * 0.8) * 0.002;
+    const idleRotX = Math.sin(this.swayTime * 0.9) * 0.004;
+    const idleRotY = Math.sin(this.swayTime * 1.1) * 0.003;
+
+    // ── Walk bob ──
+    if (this.isMoving) {
+      const bobSpeed = this.isSprinting ? 14 : 9;
+      this.bobTime += dt * bobSpeed;
+    }
+    // Smooth bob targets (decays when stopped)
+    const bobIntensity = this.isMoving ? (this.isSprinting ? 1.4 : 1.0) : 0;
+    const targetBobX = Math.sin(this.bobTime) * 0.012 * bobIntensity;
+    const targetBobY = Math.abs(Math.sin(this.bobTime * 2)) * 0.008 * bobIntensity;
+    // Smooth interpolation for natural start/stop
+    const bobLerp = this.isMoving ? 8 : 5;
+    this.smoothBobX += (targetBobX - this.smoothBobX) * Math.min(1, bobLerp * dt);
+    this.smoothBobY += (targetBobY - this.smoothBobY) * Math.min(1, bobLerp * dt);
+
+    // Walk bob rotation (slight tilt as you step)
+    const bobRotZ = this.smoothBobX * 0.8;  // roll with bob
+    const bobRotX = this.smoothBobY * 0.3;  // slight pitch with bounce
+
     // Decay visual recoil smoothly (always runs, even when not in recoil animation)
     const recoverySpeed = 8;
     this.visualRecoilPitch += (0 - this.visualRecoilPitch) * Math.min(1, recoverySpeed * dt);
     this.visualRecoilYaw += (0 - this.visualRecoilYaw) * Math.min(1, recoverySpeed * dt);
 
     if (!this.inRecoil) {
-      // Apply only visual recoil drift when not in active kick animation
+      // Combine idle sway + walk bob + visual recoil drift
       this.group.position.set(
-        this.restPosition.x + this.visualRecoilYaw * 0.3,
-        this.restPosition.y,
+        this.restPosition.x + idleSwayX + this.smoothBobX + this.visualRecoilYaw * 0.3,
+        this.restPosition.y + idleSwayY + this.smoothBobY,
         this.restPosition.z,
       );
-      this.group.rotation.set(this.visualRecoilPitch, this.visualRecoilYaw, 0);
+      this.group.rotation.set(
+        this.visualRecoilPitch + idleRotX + bobRotX,
+        this.visualRecoilYaw + idleRotY,
+        bobRotZ,
+      );
       return;
     }
 
@@ -668,35 +802,31 @@ export class Viewmodel {
     const t = Math.min(this.recoilTime / this.recoilDuration, 1);
 
     // Asymmetric kick curve: fast snap (0-0.3), slow return (0.3-1.0)
-    // This gives the "punch" feeling of BattleBit
     let kickAmount: number;
     if (t < 0.3) {
-      // Sharp snap to peak (ease-out)
       const tSnap = t / 0.3;
       kickAmount = 1 - Math.pow(1 - tSnap, 2);
     } else {
-      // Slower return (ease-in-out)
       const tReturn = (t - 0.3) / 0.7;
       kickAmount = 1 - tReturn * tReturn;
     }
 
-    // Scale the kick by weapon-specific intensity
     const kick = kickAmount * this.recoilScale;
 
-    // Position kick: backwards (Z) with slight upward (Y) and side wobble
+    // Position kick + sway + bob
     const sideKick = Math.sin(this.shotCount * 2.1) * kick * 0.008;
     this.group.position.set(
-      this.restPosition.x + sideKick + this.visualRecoilYaw * 0.3,
-      this.restPosition.y + kick * 0.025,
+      this.restPosition.x + sideKick + idleSwayX + this.smoothBobX + this.visualRecoilYaw * 0.3,
+      this.restPosition.y + kick * 0.025 + idleSwayY + this.smoothBobY,
       this.restPosition.z + kick * 0.12,
     );
 
-    // Rotation kick: pitch up, slight roll for weapon character
+    // Rotation kick + sway + bob
     const rollKick = Math.sin(this.shotCount * 1.7) * kick * 0.015;
     this.group.rotation.set(
-      -kick * 0.1 + this.visualRecoilPitch,
-      this.visualRecoilYaw,
-      rollKick,
+      -kick * 0.1 + this.visualRecoilPitch + idleRotX + bobRotX,
+      this.visualRecoilYaw + idleRotY,
+      rollKick + bobRotZ,
     );
 
     if (t >= 1) {

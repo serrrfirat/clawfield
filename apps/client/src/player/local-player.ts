@@ -45,11 +45,12 @@ export class LocalPlayer {
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
     getVoxel: VoxelGetter,
-    classId: string = 'assault'
+    classId: string = 'assault',
+    weaponId: string = ''
   ) {
     this.input = new InputCapture();
     this.cameraCtrl = new CameraController(camera);
-    this.weaponCtrl = new WeaponController(scene, camera, classId);
+    this.weaponCtrl = new WeaponController(scene, camera, classId, weaponId);
     this.getVoxel = getVoxel;
 
     // Wire up camera shake between weapon controller and camera

@@ -44,6 +44,20 @@
 - [x] Priority chunk streaming (distance + look-direction sorting)
 - [x] Transparent water face sorting (back-to-front per-chunk)
 
+### Map Pipeline: Google 3D Tiles → Voxel World
+- [x] CLI tool scaffolding (tools/geo-tiles/cli.ts, types.ts)
+- [x] Coordinate math (geo-utils.ts: lat/lon ↔ ECEF ↔ local ENU)
+- [x] Tile fetcher (traverse tileset.json, download GLBs, cache)
+- [x] Tile merger (parse GLB binary, extract geometry/textures, ECEF → ENU transform)
+- [x] Voxelizer (column raycasting with spatial grid acceleration, color sampling)
+- [x] Color classifier (semantic rules + k-means clustering → material IDs)
+- [x] Building detector (flood fill exterior, BSP room subdivision, stairs/doorways)
+- [x] Meta generator (spawn points on roads, capture points at intersections)
+- [x] Map writer (CLWF binary, verified against map-loader.ts format)
+- [ ] End-to-end test with real Google 3D Tiles API key
+- [ ] Draco-compressed GLB support (draco3dgltf WASM decoder)
+- [ ] Progress bars and caching polish
+
 ### Phase 3: AI Game Master
 - [ ] State aggregator (collects match state every 60s)
 - [ ] LLM integration (Claude/OpenClaw API calls)
@@ -53,7 +67,7 @@
 
 ### Phase 4: Scale & Deploy
 - [ ] Scale to 24v24 (bot filling, performance optimization)
-- [ ] Matchmaking & lobby system
+- [x] Room code lobby system (host/join, 4-letter codes, team selection, return after game-over)
 - [ ] Authentication (guest + account)
 - [ ] Cloud deployment (one server per match)
 - [ ] Binary protocol (replace JSON for bandwidth)

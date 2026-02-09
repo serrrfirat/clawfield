@@ -134,9 +134,11 @@ export class WeaponController {
   /** Current suppression amount (0-1, decays over time) */
   private suppressionAmount = 0;
 
-  constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, classId: string = 'assault') {
+  constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, classId: string = 'assault', weaponId: string = '') {
     const classDef = CLASSES[classId as ClassId] ?? CLASSES[ClassId.Assault];
-    this.baseWeapon = WEAPONS[classDef.defaultPrimary];
+    // Use selected weapon if valid, otherwise fall back to class default
+    const selectedWeaponId = weaponId && WEAPONS[weaponId as WeaponId] ? weaponId as WeaponId : classDef.defaultPrimary;
+    this.baseWeapon = WEAPONS[selectedWeaponId];
     this.weapon = { ...this.baseWeapon };
     this.ammo = this.weapon.magSize;
     this.maxAmmo = this.weapon.magSize;
@@ -316,24 +318,18 @@ export class WeaponController {
 
   /** Apply weapon sway and view bob to the viewmodel */
   private applyWeaponMotion(_dt: number, isMoving: boolean, isSprinting: boolean): void {
+    // Pass movement state to viewmodel for its own bob/sway calculation
+    this.viewmodel.setMovementState(isMoving, isSprinting);
+
+    // ADS sway (additional layer on top of viewmodel's idle sway)
     const sway = this.weapon.aimSway * this.adsAmount;
     const swayX = Math.sin(this.swayPhase * 1.1) * sway * 0.5;
     const swayY = Math.sin(this.swayPhase * 0.9) * sway * 0.3;
 
-    let bobX = 0;
-    let bobY = 0;
-    if (isMoving) {
-      const intensity = this.weapon.bobIntensity * (isSprinting ? 1.5 : 1.0);
-      bobX = Math.sin(this.bobPhase) * 0.003 * intensity;
-      bobY = Math.abs(Math.sin(this.bobPhase * 2)) * 0.004 * intensity;
-    }
-
-    // Only apply sway offset to the viewmodel rotation (doesn't affect aim)
     if (!this.viewmodel.group.visible) return;
-    // We add a tiny rotation offset for sway feel
-    const existingRotX = this.viewmodel.group.rotation.x;
-    this.viewmodel.group.rotation.x = existingRotX + swayY + bobY * 0.5;
-    this.viewmodel.group.rotation.y = swayX + bobX * 0.5;
+    // Layer ADS sway on top of what viewmodel.update() already applied
+    this.viewmodel.group.rotation.x += swayY;
+    this.viewmodel.group.rotation.y += swayX;
   }
 
   /**
@@ -503,9 +499,10 @@ export class WeaponController {
   }
 
   /** Change weapon class */
-  setClass(classId: string): void {
+  setClass(classId: string, weaponId: string = ''): void {
     const classDef = CLASSES[classId as ClassId] ?? CLASSES[ClassId.Assault];
-    this.baseWeapon = WEAPONS[classDef.defaultPrimary];
+    const selectedWeaponId = weaponId && WEAPONS[weaponId as WeaponId] ? weaponId as WeaponId : classDef.defaultPrimary;
+    this.baseWeapon = WEAPONS[selectedWeaponId];
     this.weapon = applyAttachments(this.baseWeapon, this.currentLoadout);
     this.ammo = this.weapon.magSize;
     this.maxAmmo = this.weapon.magSize;

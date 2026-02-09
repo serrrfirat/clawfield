@@ -22,7 +22,9 @@ import { Scoreboard } from './hud/scoreboard';
 import { soundManager } from './audio/sound-manager';
 import { DeployScreen } from './hud/deploy-screen';
 import { MainMenu } from './hud/main-menu';
+import { LobbyScreen } from './hud/lobby-screen';
 import { loadSoldierModel } from './player/model-loader';
+import { preloadWeaponModels } from './player/weapon-model-loader';
 import { RadialMenu } from './hud/radial-menu';
 import { CoverPreview } from './combat/cover-preview';
 import { SoundId } from './audio/sound-manager';
@@ -54,6 +56,7 @@ export const gameState = {
   conquestScoreBravo: 0,
   selectedClass: 'assault',
   selectedClassName: 'Assault',
+  selectedWeapon: '' as string,
   gameMode: 'tdm' as GameMode,
   lastGadgetUseTime: 0,
   selectedGadgetIndex: 0,
@@ -275,8 +278,11 @@ function handleServerMessage(msg: ServerMessage): void {
       hud.hideDeath();
       if (!localPlayer) {
         // First spawn — create local player
-        localPlayer = new LocalPlayer(renderer.scene, renderer.camera, voxelGetter, gameState.selectedClass);
+        localPlayer = new LocalPlayer(renderer.scene, renderer.camera, voxelGetter, gameState.selectedClass, gameState.selectedWeapon);
         localPlayer.weaponCtrl.setParticleSystem(particleSystem);
+      } else {
+        // Subsequent spawn — update class and weapon
+        localPlayer.weaponCtrl.setClass(gameState.selectedClass, gameState.selectedWeapon);
       }
       // Apply selected attachments to the weapon
       localPlayer.weaponCtrl.setLoadout(gameState.selectedLoadout);
@@ -444,6 +450,55 @@ function handleServerMessage(msg: ServerMessage): void {
         chunks.set(cd.key, voxels);
         worldRenderer.setChunk(cd.key, voxels);
       }
+      break;
+    }
+
+    case 'room_created': {
+      gameState.myId = msg.playerId;
+      mainMenu.hide();
+      lobbyScreen.show(msg.playerId, lobbyCallbacks);
+      console.log(`Room created: ${msg.roomCode}`);
+      break;
+    }
+
+    case 'room_joined': {
+      gameState.myId = msg.playerId;
+      mainMenu.hide();
+      lobbyScreen.show(msg.playerId, lobbyCallbacks);
+      console.log(`Joined room: ${msg.roomCode} (host: ${msg.hostId})`);
+      break;
+    }
+
+    case 'room_error': {
+      mainMenu.showError(msg.message);
+      console.warn(`Room error: ${msg.message}`);
+      break;
+    }
+
+    case 'lobby_state': {
+      lobbyScreen.update(msg.players, msg.gameMode, msg.hostId, msg.roomCode);
+      break;
+    }
+
+    case 'game_starting': {
+      lobbyScreen.hide();
+      // welcome message will follow, which sets up the game
+      break;
+    }
+
+    case 'return_to_lobby': {
+      resetClientGameState();
+      lobbyScreen.show(gameState.myId ?? '', lobbyCallbacks);
+      console.log('Returned to lobby');
+      break;
+    }
+
+    case 'room_closed': {
+      resetClientGameState();
+      lobbyScreen.hide();
+      mainMenu.show(onMainMenuChoice);
+      mainMenu.showError('Room was closed by the host.');
+      console.log('Room closed');
       break;
     }
   }
@@ -1006,6 +1061,7 @@ const damageIndicator = new DamageIndicatorSystem();
 const scoreboard = new Scoreboard();
 const deployScreen = new DeployScreen();
 const mainMenu = new MainMenu();
+const lobbyScreen = new LobbyScreen();
 
 function showDeployScreen(spawns: SpawnPointOption[]): void {
   deployScreen.show(
@@ -1014,6 +1070,7 @@ function showDeployScreen(spawns: SpawnPointOption[]): void {
     gameState.capturePoints,
     (choice) => {
       gameState.selectedClass = choice.classId;
+      gameState.selectedWeapon = choice.weaponId;
       gameState.selectedLoadout = choice.loadout;
       // Look up display name from CLASSES
       const cls = Object.values(CLASSES).find(c => c.id === choice.classId);
@@ -1029,26 +1086,104 @@ function showDeployScreen(spawns: SpawnPointOption[]): void {
   );
 }
 
+/** Reset all client-side game state for returning to lobby */
+function resetClientGameState(): void {
+  // Clear local player reference (no dispose method — GC will clean up)
+  localPlayer = null;
+
+  // Dispose all remote players
+  for (const remote of remotePlayers.values()) {
+    remote.dispose(renderer.scene);
+  }
+  remotePlayers.clear();
+
+  // Clear chunks and reload world renderer with empty map
+  chunks.clear();
+  worldRenderer.loadAll(chunks);
+
+  // Clear renderer visuals by sending empty server state
+  projectileRenderer.updateFromServer([]);
+  grenadeRenderer.updateFromServer([]);
+  gadgetRenderer.updateFromServer([]);
+  capturePointRenderer.updateFromServer([]);
+  knownGadgetIds.clear();
+
+  // Hide game UI
+  deployScreen.hide();
+  hud.hideDeath();
+  hud.hideGameOver();
+
+  // Reset game state
+  gameState.myTeam = -1;
+  gameState.ticketsAlpha = 75;
+  gameState.ticketsBravo = 75;
+  gameState.kills = [];
+  gameState.alive = true;
+  gameState.downed = false;
+  gameState.health = 100;
+  gameState.ammo = 30;
+  gameState.maxAmmo = 30;
+  gameState.reloading = false;
+  gameState.inWater = false;
+  gameState.gameOver = false;
+  gameState.winner = -1;
+  gameState.capturePoints = [];
+  gameState.conquestScoreAlpha = 0;
+  gameState.conquestScoreBravo = 0;
+
+  console.log('Client game state reset');
+}
+
+// --- Lobby callbacks ---
+const lobbyCallbacks = {
+  onSetTeam: (team: number) => {
+    network.send({ type: 'lobby_set_team', team });
+  },
+  onSetMode: (mode: GameMode) => {
+    network.send({ type: 'lobby_set_mode', gameMode: mode });
+  },
+  onStartGame: () => {
+    network.send({ type: 'start_game' });
+  },
+  onLeave: () => {
+    network.send({ type: 'return_to_menu' });
+    lobbyScreen.hide();
+    mainMenu.show(onMainMenuChoice);
+  },
+};
+
+// --- Main menu handler ---
+function onMainMenuChoice(choice: { action: string; name: string; roomCode?: string }): void {
+  // Connect first (if not already), then send room message
+  const sendRoomMessage = () => {
+    if (choice.action === 'host') {
+      network.send({ type: 'create_room', name: choice.name });
+    } else {
+      network.send({ type: 'join_room', name: choice.name, roomCode: choice.roomCode ?? '' });
+    }
+  };
+
+  if (network.connected) {
+    sendRoomMessage();
+  } else {
+    mainMenu.showError('Connecting to server...');
+    network.onConnected = sendRoomMessage;
+    network.onConnectionFailed = () => {
+      mainMenu.showError('Could not connect to server. Is it running?');
+    };
+    network.connect();
+  }
+}
+
 // --- Start ---
 console.log('Clawfield client starting...');
 
-// Preload 3D soldier model (non-blocking; falls back to box if missing)
+// Preload 3D models (non-blocking; falls back to procedural if missing)
 loadSoldierModel();
+preloadWeaponModels();
 
-// Show the main menu — player picks name and game mode before connecting
-mainMenu.show((choice) => {
-  mainMenu.hide();
-
-  // Connect and join with chosen name + mode (or rejoin existing session)
-  network.onConnected = () => {
-    if (network.sessionToken) {
-      network.rejoin(network.sessionToken);
-    } else {
-      network.join(choice.name, choice.gameMode);
-    }
-  };
-  network.connect();
-});
+// Show the main menu
+mainMenu.show(onMainMenuChoice);
 
 // Init sound on first user click (browser requires user gesture for AudioContext)
 // If a sound pack exists at /sounds/default/, it will be loaded asynchronously.

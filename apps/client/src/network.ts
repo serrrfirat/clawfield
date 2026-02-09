@@ -49,6 +49,8 @@ export class NetworkClient {
   private handler: MessageHandler;
   private _connected = false;
   private _onConnected: (() => void) | null = null;
+  private _onConnectionFailed: (() => void) | null = null;
+  private _autoReconnect = false;
 
   /** Session token for reconnection (set after welcome) */
   sessionToken: string | null = null;
@@ -66,17 +68,33 @@ export class NetworkClient {
     this._onConnected = cb;
   }
 
+  /** Register a callback fired when connection attempt fails. */
+  set onConnectionFailed(cb: (() => void) | null) {
+    this._onConnectionFailed = cb;
+  }
+
   connect(): void {
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = location.hostname || 'localhost';
-    this.ws = new WebSocket(`${protocol}//${host}:${SERVER_PORT}`);
+    // VITE_SERVER_URL can be set to e.g. "wss://clawfield-server.up.railway.app"
+    const serverUrl = import.meta.env.VITE_SERVER_URL;
+    let wsUrl: string;
+    if (serverUrl) {
+      wsUrl = serverUrl;
+    } else {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = location.hostname || 'localhost';
+      wsUrl = `${protocol}//${host}:${SERVER_PORT}`;
+    }
+    this.ws = new WebSocket(wsUrl);
     // Request binary frames so we can handle the flag-byte protocol
     this.ws.binaryType = 'arraybuffer';
 
     this.ws.onopen = () => {
       this._connected = true;
+      this._autoReconnect = true;
       console.log('Connected to server');
-      this._onConnected?.();
+      const cb = this._onConnected;
+      this._onConnected = null;
+      cb?.();
     };
 
     this.ws.onmessage = (event) => {
@@ -95,14 +113,26 @@ export class NetworkClient {
     };
 
     this.ws.onclose = () => {
+      const wasConnected = this._connected;
       this._connected = false;
+
+      if (!wasConnected) {
+        // Connection attempt failed (never opened)
+        console.log('Failed to connect to server');
+        this._onConnectionFailed?.();
+        this._onConnected = null;
+        return;
+      }
+
       console.log('Disconnected from server');
-      // Try to reconnect after 2 seconds
-      setTimeout(() => this.connect(), 2000);
+      // Auto-reconnect only if we were previously connected
+      if (this._autoReconnect) {
+        setTimeout(() => this.connect(), 2000);
+      }
     };
 
-    this.ws.onerror = (err) => {
-      console.error('WebSocket error', err);
+    this.ws.onerror = (_err) => {
+      // onerror always fires before onclose; onclose handles the logic
     };
   }
 

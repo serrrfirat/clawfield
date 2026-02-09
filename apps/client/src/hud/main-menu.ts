@@ -1,21 +1,20 @@
-import type { GameMode } from '@clawfield/shared';
-
 export interface MainMenuChoice {
+  action: 'host' | 'join';
   name: string;
-  gameMode: GameMode;
+  roomCode?: string;
 }
 
 /**
- * Main menu / mode selection screen.
- * Shown before the player connects to the game.
- * Lets the player enter a name, pick TDM or Conquest, and join.
+ * Main menu screen.
+ * Lets the player enter a name, then HOST a new room or JOIN with a code.
  */
 export class MainMenu {
   private root: HTMLDivElement;
   private nameInput: HTMLInputElement;
-  private modeCards: HTMLDivElement;
-  private playBtn: HTMLButtonElement;
-  private selectedMode: GameMode = 'tdm';
+  private codeInput: HTMLInputElement;
+  private hostBtn: HTMLButtonElement;
+  private joinBtn: HTMLButtonElement;
+  private errorEl: HTMLDivElement;
   private onPlay: ((choice: MainMenuChoice) => void) | null = null;
   private visible = true;
 
@@ -34,25 +33,42 @@ export class MainMenu {
               maxlength="16" placeholder="Player_${Math.floor(Math.random() * 1000)}" spellcheck="false" />
           </div>
 
-          <div class="menu-label">SELECT GAME MODE</div>
-          <div class="menu-mode-cards"></div>
+          <button class="menu-host-btn">HOST GAME</button>
 
-          <button class="menu-play-btn">PLAY</button>
+          <div class="menu-divider"><span>OR</span></div>
+
+          <div class="menu-join-section">
+            <label class="menu-label" for="menu-code-input">ROOM CODE</label>
+            <div class="menu-join-row">
+              <input id="menu-code-input" class="menu-code-input" type="text"
+                maxlength="4" placeholder="ABCD" spellcheck="false" />
+              <button class="menu-join-btn">JOIN GAME</button>
+            </div>
+          </div>
+
+          <div class="menu-error"></div>
         </div>
       </div>
     `;
     document.body.appendChild(this.root);
 
     this.nameInput = this.root.querySelector('.menu-name-input')!;
-    this.modeCards = this.root.querySelector('.menu-mode-cards')!;
-    this.playBtn = this.root.querySelector('.menu-play-btn')!;
+    this.codeInput = this.root.querySelector('.menu-code-input')!;
+    this.hostBtn = this.root.querySelector('.menu-host-btn')!;
+    this.joinBtn = this.root.querySelector('.menu-join-btn')!;
+    this.errorEl = this.root.querySelector('.menu-error')!;
 
-    this.buildModeCards();
     this.injectStyles();
 
-    this.playBtn.addEventListener('click', () => this.handlePlay());
-    this.nameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.handlePlay();
+    // Force uppercase on code input
+    this.codeInput.addEventListener('input', () => {
+      this.codeInput.value = this.codeInput.value.toUpperCase().replace(/[^A-Z]/g, '');
+    });
+
+    this.hostBtn.addEventListener('click', () => this.handleHost());
+    this.joinBtn.addEventListener('click', () => this.handleJoin());
+    this.codeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.handleJoin();
     });
   }
 
@@ -60,6 +76,7 @@ export class MainMenu {
     this.onPlay = onPlay;
     this.visible = true;
     this.root.style.display = '';
+    this.errorEl.textContent = '';
     this.nameInput.focus();
   }
 
@@ -73,53 +90,30 @@ export class MainMenu {
     return this.visible;
   }
 
-  private handlePlay(): void {
+  showError(message: string): void {
+    this.errorEl.textContent = message;
+  }
+
+  private getName(): string {
+    const raw = this.nameInput.value.trim();
+    return raw || this.nameInput.placeholder;
+  }
+
+  private handleHost(): void {
     if (!this.onPlay) return;
-    const rawName = this.nameInput.value.trim();
-    const name = rawName || this.nameInput.placeholder;
-    this.onPlay({ name, gameMode: this.selectedMode });
+    this.errorEl.textContent = '';
+    this.onPlay({ action: 'host', name: this.getName() });
   }
 
-  private buildModeCards(): void {
-    const modes: Array<{ id: GameMode; name: string; desc: string; detail: string }> = [
-      {
-        id: 'tdm',
-        name: 'TEAM DEATHMATCH',
-        desc: 'Classic team combat. Eliminate the enemy team to drain their tickets.',
-        detail: '75 tickets per team  |  First to 0 loses',
-      },
-      {
-        id: 'conquest',
-        name: 'CONQUEST',
-        desc: 'Capture and hold flag objectives across the map to earn points.',
-        detail: '3 capture points  |  200 point lead to win',
-      },
-    ];
-
-    this.modeCards.innerHTML = '';
-    for (const mode of modes) {
-      const card = document.createElement('div');
-      card.className = 'menu-mode-card' + (mode.id === this.selectedMode ? ' selected' : '');
-      card.dataset.mode = mode.id;
-      card.innerHTML = `
-        <div class="menu-mode-name">${mode.name}</div>
-        <div class="menu-mode-desc">${mode.desc}</div>
-        <div class="menu-mode-detail">${mode.detail}</div>
-      `;
-      card.addEventListener('click', () => {
-        this.selectedMode = mode.id;
-        this.updateModeSelection();
-      });
-      this.modeCards.appendChild(card);
+  private handleJoin(): void {
+    if (!this.onPlay) return;
+    this.errorEl.textContent = '';
+    const code = this.codeInput.value.trim().toUpperCase();
+    if (code.length !== 4) {
+      this.errorEl.textContent = 'Enter a 4-letter room code.';
+      return;
     }
-  }
-
-  private updateModeSelection(): void {
-    const cards = this.modeCards.querySelectorAll('.menu-mode-card');
-    cards.forEach((card) => {
-      const el = card as HTMLDivElement;
-      el.classList.toggle('selected', el.dataset.mode === this.selectedMode);
-    });
+    this.onPlay({ action: 'join', name: this.getName(), roomCode: code });
   }
 
   private injectStyles(): void {
@@ -197,50 +191,8 @@ export class MainMenu {
       .menu-name-input:focus {
         border-color: #4caf50;
       }
-      .menu-mode-cards {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 4px;
-      }
-      .menu-mode-card {
-        padding: 16px 20px;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.15s;
-      }
-      .menu-mode-card:hover {
-        background: rgba(255,255,255,0.08);
-        border-color: rgba(255,255,255,0.2);
-      }
-      .menu-mode-card.selected {
-        background: rgba(76,175,80,0.12);
-        border-color: #4caf50;
-        box-shadow: 0 0 20px rgba(76, 175, 80, 0.1);
-      }
-      .menu-mode-name {
-        font-size: 18px;
-        font-weight: bold;
-        color: #fff;
-        letter-spacing: 2px;
-      }
-      .menu-mode-desc {
-        font-size: 12px;
-        color: #aaa;
-        margin-top: 6px;
-        line-height: 1.4;
-      }
-      .menu-mode-detail {
-        font-size: 10px;
-        color: #666;
-        margin-top: 6px;
-        letter-spacing: 1px;
-      }
-      .menu-play-btn {
-        margin-top: 16px;
+      .menu-host-btn {
+        margin-top: 8px;
         padding: 16px 0;
         width: 100%;
         background: #4caf50;
@@ -254,12 +206,90 @@ export class MainMenu {
         cursor: pointer;
         transition: all 0.15s;
       }
-      .menu-play-btn:hover {
+      .menu-host-btn:hover {
         background: #66bb6a;
         box-shadow: 0 0 30px rgba(76, 175, 80, 0.25);
       }
-      .menu-play-btn:active {
+      .menu-host-btn:active {
         background: #388e3c;
+      }
+      .menu-divider {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        color: #555;
+        font-size: 12px;
+        letter-spacing: 4px;
+        margin: 4px 0;
+      }
+      .menu-divider::before,
+      .menu-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(255,255,255,0.1);
+      }
+      .menu-join-section {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .menu-join-row {
+        display: flex;
+        gap: 10px;
+      }
+      .menu-code-input {
+        flex: 1;
+        padding: 12px 16px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 6px;
+        color: #fff;
+        font-family: monospace;
+        font-size: 20px;
+        font-weight: bold;
+        letter-spacing: 8px;
+        text-align: center;
+        text-transform: uppercase;
+        outline: none;
+        transition: border-color 0.15s;
+        box-sizing: border-box;
+      }
+      .menu-code-input::placeholder {
+        color: #444;
+        letter-spacing: 8px;
+      }
+      .menu-code-input:focus {
+        border-color: #4caf50;
+      }
+      .menu-join-btn {
+        padding: 12px 24px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        color: #fff;
+        font-family: monospace;
+        font-size: 14px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .menu-join-btn:hover {
+        background: rgba(255,255,255,0.15);
+        border-color: rgba(255,255,255,0.3);
+      }
+      .menu-join-btn:active {
+        background: rgba(255,255,255,0.05);
+      }
+      .menu-error {
+        color: #ef5350;
+        font-size: 13px;
+        min-height: 20px;
+        text-align: center;
       }
     `;
     document.head.appendChild(style);

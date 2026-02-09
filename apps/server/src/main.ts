@@ -1,6 +1,8 @@
 import { SERVER_PORT } from '@clawfield/shared';
-import { GameLoop } from './game-loop.js';
+import { RoomManager } from './room-manager.js';
+
+const port = parseInt(process.env.PORT || String(SERVER_PORT), 10);
 
 console.log('Clawfield server starting...');
-new GameLoop(SERVER_PORT);
-console.log(`Server running on port ${SERVER_PORT}`);
+new RoomManager(port);
+console.log(`Server running on port ${port}`);
