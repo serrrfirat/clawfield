@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PLAYER_HEIGHT, CROUCH_HEIGHT } from '@clawfield/shared';
 import type { Vec3 } from '@clawfield/shared';
+import { CameraShake } from './camera-shake';
 
 /** Eye offset from top of hitbox */
 const EYE_INSET = 0.1;
@@ -13,10 +14,14 @@ const CROUCH_LERP_SPEED = 10;
  * Updates camera position and rotation based on player state.
  * Smoothly transitions eye height when crouching/standing.
  * Supports a death cam mode that lerps to look at the killer.
+ * Integrates procedural camera shake for weapon feedback.
  */
 export class CameraController {
   private camera: THREE.PerspectiveCamera;
   private currentEyeOffset = PLAYER_HEIGHT - EYE_INSET;
+
+  /** Procedural camera shake (fire, hit, explosion) */
+  readonly shake = new CameraShake();
 
   // --- Death cam state ---
   private deathCamActive = false;
@@ -101,9 +106,14 @@ export class CameraController {
       position.z
     );
 
+    // Update camera shake
+    this.shake.update(dt);
+
     // Euler order YXZ: yaw around Y, then pitch around X
+    // Layer procedural shake offsets on top of player look angles
     this.camera.rotation.order = 'YXZ';
-    this.camera.rotation.y = -yaw;
-    this.camera.rotation.x = pitch;
+    this.camera.rotation.y = -yaw + this.shake.yawOffset;
+    this.camera.rotation.x = pitch + this.shake.pitchOffset;
+    this.camera.rotation.z = this.shake.rollOffset;
   }
 }

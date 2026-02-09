@@ -252,13 +252,19 @@ class SoundManager {
 
     switch (soundId) {
       case SoundId.ShootRifle:
-        return this.makeNoiseBurst(0.08, 800, 'lowpass', 0.9);
+        return this.makeLayeredShot(0.1, 600, 1200, 2.5);
       case SoundId.ShootSmg:
-        return this.makeNoiseBurst(0.05, 2500, 'lowpass', 0.8);
+        return this.makeLayeredShot(0.07, 1200, 2800, 2.0);
       case SoundId.ShootShotgun:
-        return this.makeNoiseBurst(0.1, 400, 'lowpass', 1.0);
+        return this.makeLayeredShot(0.14, 200, 600, 3.0);
       case SoundId.ShootSniper:
-        return this.makeNoiseBurst(0.06, 3000, 'highpass', 0.85);
+        return this.makeLayeredShot(0.12, 800, 3500, 3.5);
+      case SoundId.ShootTail:
+        return this.makeNoiseBurst(0.3, 300, 'lowpass', 0.4);
+      case SoundId.ShootBass:
+        return this.makeBassThump(0.08);
+      case SoundId.BulletCrack:
+        return this.makeBulletCrack();
       case SoundId.Reload:
         return this.makeNoiseBurst(0.05, 1500, 'bandpass', 0.6);
       case SoundId.FootstepGrass:
@@ -272,7 +278,7 @@ class SoundManager {
       case SoundId.Explosion:
         return this.makeExplosion();
       case SoundId.HitConfirmDing:
-        return this.makeSineTone(1200, 0.1);
+        return this.makeHitDing();
       case SoundId.GrenadeBounce:
         return this.makeNoiseBurst(0.03, 2000, 'bandpass', 0.5);
       case SoundId.AmbientWind:
@@ -404,6 +410,181 @@ class SoundManager {
 
     const gainNode = ctx.createGain();
     source.connect(gainNode);
+
+    return { source, gainNode, duration };
+  }
+
+  /**
+   * Create a layered weapon shot sound: combines a mid-frequency crack
+   * with a bass punch and a filtered tail, all in one buffer.
+   * Much punchier and more realistic than a simple noise burst.
+   */
+  private makeLayeredShot(
+    duration: number,
+    bassFreq: number,
+    crackFreq: number,
+    punchiness: number,
+  ): { source: AudioBufferSourceNode; gainNode: GainNode; duration: number } {
+    const ctx = this.ctx!;
+    const sampleRate = ctx.sampleRate;
+    // Total duration includes the reverb tail
+    const totalDuration = duration + 0.15;
+    const length = Math.ceil(sampleRate * totalDuration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const tNorm = i / length;
+
+      // Layer 1: Sharp transient crack (first 5-15ms)
+      const crackEnv = t < 0.002 ? t / 0.002 : Math.exp(-t * 80);
+      const crack = (Math.random() * 2 - 1) * crackEnv * 0.8;
+
+      // Layer 2: Mid-frequency body (main tone)
+      const bodyEnv = Math.exp(-t * punchiness * 10);
+      const body = Math.sin(2 * Math.PI * bassFreq * t + Math.random() * 0.1) * bodyEnv * 0.5;
+
+      // Layer 3: High-frequency noise (metallic crack)
+      const noiseEnv = Math.exp(-t * 40);
+      const noise = (Math.random() * 2 - 1) * noiseEnv * 0.3;
+
+      // Layer 4: Low bass thump (sub-bass punch)
+      const bassEnv = Math.exp(-t * 15);
+      const bass = Math.sin(2 * Math.PI * (bassFreq * 0.5) * t) * bassEnv * 0.6;
+
+      // Layer 5: Reverb tail (filtered noise, long decay)
+      const tailEnv = Math.pow(1 - tNorm, 0.8) * (t > 0.02 ? 1 : t / 0.02);
+      const tail = (Math.random() * 2 - 1) * tailEnv * 0.08;
+
+      data[i] = Math.max(-1, Math.min(1, crack + body + noise + bass + tail));
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    // Bandpass filter to shape the overall sound
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'peaking';
+    filter.frequency.value = crackFreq;
+    filter.Q.value = 0.7;
+    filter.gain.value = 3;
+
+    const gainNode = ctx.createGain();
+    source.connect(filter);
+    filter.connect(gainNode);
+
+    return { source, gainNode, duration: totalDuration };
+  }
+
+  /**
+   * Create a low-frequency bass thump for weapon fire.
+   * Layered on top of the main shot for visceral impact.
+   */
+  private makeBassThump(
+    duration: number,
+  ): { source: AudioBufferSourceNode; gainNode: GainNode; duration: number } {
+    const ctx = this.ctx!;
+    const sampleRate = ctx.sampleRate;
+    const length = Math.ceil(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      // Fast attack, moderate decay sub-bass sine
+      const env = t < 0.005 ? t / 0.005 : Math.exp(-t * 20);
+      // Frequency drops slightly over time (pitch down effect)
+      const freq = 80 - t * 200;
+      data[i] = Math.sin(2 * Math.PI * Math.max(30, freq) * t) * env;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 150;
+
+    const gainNode = ctx.createGain();
+    source.connect(filter);
+    filter.connect(gainNode);
+
+    return { source, gainNode, duration };
+  }
+
+  /**
+   * BattleBit-style hit confirm: sharp two-tone ding with metallic ring.
+   * Much more satisfying than a plain sine tone.
+   */
+  private makeHitDing(): {
+    source: AudioBufferSourceNode;
+    gainNode: GainNode;
+    duration: number;
+  } {
+    const ctx = this.ctx!;
+    const duration = 0.15;
+    const sampleRate = ctx.sampleRate;
+    const length = Math.ceil(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      // Sharp attack with fast decay
+      const env = t < 0.002 ? t / 0.002 : Math.exp(-t * 25);
+      // Two tones for a richer "ding"
+      const tone1 = Math.sin(2 * Math.PI * 1400 * t) * 0.6;
+      const tone2 = Math.sin(2 * Math.PI * 2100 * t) * 0.4;
+      // Metallic shimmer
+      const shimmer = Math.sin(2 * Math.PI * 3800 * t) * Math.exp(-t * 50) * 0.15;
+      data[i] = (tone1 + tone2 + shimmer) * env;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const gainNode = ctx.createGain();
+    source.connect(gainNode);
+
+    return { source, gainNode, duration };
+  }
+
+  /**
+   * Create a supersonic bullet crack/whizz sound.
+   * Short, sharp, with a frequency sweep.
+   */
+  private makeBulletCrack(): {
+    source: AudioBufferSourceNode;
+    gainNode: GainNode;
+    duration: number;
+  } {
+    const ctx = this.ctx!;
+    const duration = 0.06;
+    const sampleRate = ctx.sampleRate;
+    const length = Math.ceil(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      // Sharp crack with descending frequency sweep
+      const env = Math.exp(-t * 60);
+      const freq = 4000 - t * 30000; // High to low sweep
+      data[i] = Math.sin(2 * Math.PI * Math.max(500, freq) * t) * env * 0.7
+        + (Math.random() * 2 - 1) * env * 0.3;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 1000;
+
+    const gainNode = ctx.createGain();
+    source.connect(filter);
+    filter.connect(gainNode);
 
     return { source, gainNode, duration };
   }

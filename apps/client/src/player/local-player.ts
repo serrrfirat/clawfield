@@ -51,6 +51,9 @@ export class LocalPlayer {
     this.cameraCtrl = new CameraController(camera);
     this.weaponCtrl = new WeaponController(scene, camera, classId);
     this.getVoxel = getVoxel;
+
+    // Wire up camera shake between weapon controller and camera
+    this.weaponCtrl.setCameraShake(this.cameraCtrl.shake);
   }
 
   /** Run a local physics tick and return the input to send to server */
@@ -62,8 +65,8 @@ export class LocalPlayer {
     const isMoving = this.grounded && moveSpeed > 1;
     const isCurrentlySprinting = isMoving && this.wasSprinting;
 
-    // Update weapon cooldowns, bloom, sway, bob
-    this.weaponCtrl.update(dt, isMoving, isCurrentlySprinting);
+    // Update weapon cooldowns, bloom, sway, bob, and recoil recovery
+    this.weaponCtrl.update(dt, isMoving, isCurrentlySprinting, this.input);
 
     if (!this.input.locked) {
       this.cameraCtrl.update(this.position, this.input.yaw, this.input.pitch, false, dt);
@@ -94,6 +97,8 @@ export class LocalPlayer {
     const canFireFromSprint = !isSprinting && this.sprintFireTimer <= 0;
 
     // Gate shoot input through weapon controller (fire rate, ammo)
+    // Track firing state for recoil recovery system
+    this.weaponCtrl.setFiring(inputState.shoot && canFireFromSprint);
     if (inputState.shoot && canFireFromSprint && this.weaponCtrl.canFire()) {
       this.weaponCtrl.onFire(this.input);
     } else {
