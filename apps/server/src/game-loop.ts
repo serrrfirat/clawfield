@@ -31,6 +31,7 @@ import {
   REVIVE_TIME_MEDIC,
   REVIVE_HEALTH,
   REVIVE_HEALTH_MEDIC,
+  GadgetId,
 } from '@clawfield/shared';
 import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
@@ -44,6 +45,7 @@ import {
 } from './capture-point-manager.js';
 import { GrenadeManager, type GrenadeExplosionResult } from './grenade-manager.js';
 import { GadgetManager, type VoxelChange } from './gadget-manager.js';
+import { SmokeGrenadeManager } from './smoke-grenade-manager.js';
 import {
   loadBinaryMap,
   getConfiguredMapName,
@@ -72,6 +74,7 @@ export class GameLoop {
   private projectileManager = new ProjectileManager();
   private capturePointManager: CapturePointManager;
   private grenadeManager = new GrenadeManager();
+  private smokeGrenadeManager = new SmokeGrenadeManager();
   private gadgetManager = new GadgetManager();
 
   // --- Map palette (hex colors) ---
@@ -826,6 +829,22 @@ export class GameLoop {
       }
     }
 
+    // Advance smoke grenades and process smoke deployments
+    const smokeDeploys = this.smokeGrenadeManager.update(
+      TICK_INTERVAL / 1000,
+      voxelGetter
+    );
+    for (const deploy of smokeDeploys) {
+      this.network.broadcast({
+        type: 'smoke_deploy',
+        event: {
+          position: deploy.position,
+          radius: deploy.radius,
+          duration: deploy.duration,
+        },
+      });
+    }
+
     // Process gadget use
     this.processGadgetUse(now);
 
@@ -902,6 +921,15 @@ export class GameLoop {
       this.network.broadcast({
         type: 'grenades',
         grenades: grenadeStates,
+      });
+    }
+
+    // Broadcast smoke grenade states to all clients
+    const smokeGrenadeStates = this.smokeGrenadeManager.getStates();
+    if (smokeGrenadeStates.length > 0) {
+      this.network.broadcast({
+        type: 'smoke_grenades',
+        grenades: smokeGrenadeStates,
       });
     }
 
@@ -1134,7 +1162,16 @@ export class GameLoop {
       };
       const dir = aimDirection(player.yaw, player.pitch);
 
-      this.grenadeManager.spawn(player.id, player.team, eyePos, dir);
+      // Determine grenade type from selected gadget index
+      const classDef = CLASSES[player.classId as ClassId];
+      const gadgetIndex = input.gadgetIndex ?? 0;
+      const gadgetId = classDef?.gadgets[gadgetIndex];
+
+      if (gadgetId === GadgetId.SmokeGrenade) {
+        this.smokeGrenadeManager.spawn(player.id, eyePos, dir);
+      } else {
+        this.grenadeManager.spawn(player.id, player.team, eyePos, dir);
+      }
     }
   }
 

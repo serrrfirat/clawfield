@@ -207,6 +207,26 @@ export const GRENADE_MAX_COUNT = 2;
 /** Grenade cooldown between throws (seconds) */
 export const GRENADE_COOLDOWN = 1.0;
 
+// --- Smoke grenade constants ---
+
+/** Smoke grenade throw speed in m/s */
+export const SMOKE_GRENADE_THROW_SPEED = 16;
+
+/** Smoke grenade fuse time before smoke deploys (seconds) */
+export const SMOKE_GRENADE_FUSE_TIME = 2;
+
+/** Smoke cloud radius in meters */
+export const SMOKE_GRENADE_RADIUS = 6;
+
+/** Smoke cloud duration in seconds */
+export const SMOKE_GRENADE_DURATION = 15;
+
+/** Smoke grenade bounce factor */
+export const SMOKE_GRENADE_BOUNCINESS = 0.3;
+
+/** Smoke grenade bounce drag */
+export const SMOKE_GRENADE_BOUNCE_DRAG = 0.3;
+
 // --- Gadget constants ---
 
 /** Medkit heal radius in meters */

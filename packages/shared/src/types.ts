@@ -112,6 +112,22 @@ export interface ExplosionEvent {
   ownerId: string;
 }
 
+/** Smoke grenade state for network sync (in-flight) */
+export interface SmokeGrenadeState {
+  id: number;
+  ownerId: string;
+  position: Vec3;
+  velocity: Vec3;
+  fuseRemaining: number;
+}
+
+/** Smoke deploy event sent to clients when smoke activates */
+export interface SmokeDeployEvent {
+  position: Vec3;
+  radius: number;
+  duration: number;
+}
+
 /** Scoreboard entry for each player */
 export interface ScoreboardEntry {
   id: string;
@@ -194,4 +210,6 @@ export type ServerMessage =
   | { type: 'gadgets'; gadgets: GadgetState[] }
   | { type: 'enemy_spotted'; positions: Vec3[]; duration: number }
   | { type: 'voxel_update'; changes: { x: number; y: number; z: number; material: number }[] }
-  | { type: 'chunks'; chunks: ChunkData[] };
+  | { type: 'chunks'; chunks: ChunkData[] }
+  | { type: 'smoke_grenades'; grenades: SmokeGrenadeState[] }
+  | { type: 'smoke_deploy'; event: SmokeDeployEvent };
