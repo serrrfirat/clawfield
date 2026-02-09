@@ -8,6 +8,10 @@ export enum SoundId {
   ShootSmg = 'shoot_smg',
   ShootShotgun = 'shoot_shotgun',
   ShootSniper = 'shoot_sniper',
+  /** Distant echo / tail for weapon shots (layered on top of main shot) */
+  ShootTail = 'shoot_tail',
+  /** Low-frequency bass punch layered on weapon fire */
+  ShootBass = 'shoot_bass',
   Reload = 'reload',
   FootstepGrass = 'footstep_grass',
   FootstepStone = 'footstep_stone',
@@ -23,6 +27,8 @@ export enum SoundId {
   GadgetSpot = 'gadget_spot',
   GadgetCover = 'gadget_cover',
   GadgetDeploy = 'gadget_deploy',
+  /** Bullet whizz/crack when a projectile passes near the player */
+  BulletCrack = 'bullet_crack',
 }
 
 export interface SoundConfig {
@@ -46,11 +52,14 @@ export interface SoundPackManifest {
 }
 
 export const SOUND_CONFIGS: Record<SoundId, SoundConfig> = {
-  // Weapons: volume 0.5, no loop, spatial
-  [SoundId.ShootRifle]: { volume: 0.5, loop: false, spatial: true },
-  [SoundId.ShootSmg]: { volume: 0.5, loop: false, spatial: true },
-  [SoundId.ShootShotgun]: { volume: 0.6, loop: false, spatial: true },
-  [SoundId.ShootSniper]: { volume: 0.5, loop: false, spatial: true },
+  // Weapons: louder base volume for punchier feel
+  [SoundId.ShootRifle]: { volume: 0.65, loop: false, spatial: true },
+  [SoundId.ShootSmg]: { volume: 0.6, loop: false, spatial: true },
+  [SoundId.ShootShotgun]: { volume: 0.75, loop: false, spatial: true },
+  [SoundId.ShootSniper]: { volume: 0.7, loop: false, spatial: true },
+  // Layered sound components
+  [SoundId.ShootTail]: { volume: 0.2, loop: false, spatial: true },
+  [SoundId.ShootBass]: { volume: 0.35, loop: false, spatial: false },
   [SoundId.Reload]: { volume: 0.4, loop: false, spatial: true },
 
   // Footsteps: volume 0.3, no loop, spatial
@@ -64,8 +73,8 @@ export const SOUND_CONFIGS: Record<SoundId, SoundConfig> = {
   // Explosion: volume 0.7, no loop, spatial
   [SoundId.Explosion]: { volume: 0.7, loop: false, spatial: true },
 
-  // UI sounds: volume 0.4, no loop, non-spatial
-  [SoundId.HitConfirmDing]: { volume: 0.4, loop: false, spatial: false },
+  // UI sounds: louder hit confirm for BattleBit-style feedback
+  [SoundId.HitConfirmDing]: { volume: 0.55, loop: false, spatial: false },
   [SoundId.CaptureTick]: { volume: 0.4, loop: false, spatial: false },
 
   // Grenade bounce: spatial
@@ -80,4 +89,7 @@ export const SOUND_CONFIGS: Record<SoundId, SoundConfig> = {
   [SoundId.GadgetSpot]: { volume: 0.4, loop: false, spatial: false },
   [SoundId.GadgetCover]: { volume: 0.6, loop: false, spatial: true },
   [SoundId.GadgetDeploy]: { volume: 0.4, loop: false, spatial: false },
+
+  // Bullet crack: supersonic whizz when projectiles pass near player
+  [SoundId.BulletCrack]: { volume: 0.45, loop: false, spatial: true },
 };
