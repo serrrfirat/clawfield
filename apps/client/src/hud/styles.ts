@@ -1,5 +1,6 @@
 /**
  * HUD Stylesheet — injected at runtime into <head>.
+ * BattleBit-inspired military FPS aesthetic.
  * All HUD elements use position:fixed so they overlay the 3D canvas.
  */
 
@@ -10,7 +11,7 @@ const CSS = /* css */ `
   position: fixed;
   inset: 0;
   pointer-events: none;
-  font-family: monospace;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   color: #fff;
   z-index: 100;
   user-select: none;
@@ -22,15 +23,15 @@ const CSS = /* css */ `
   position: fixed;
   bottom: 24px;
   left: 24px;
-  width: 200px;
+  width: 220px;
   z-index: 100;
 }
 
 .hud-health-bar-bg {
   width: 100%;
-  height: 22px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  height: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   position: relative;
   overflow: hidden;
 }
@@ -49,13 +50,27 @@ const CSS = /* css */ `
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
   letter-spacing: 1px;
 }
 
-/* ───────────────── Ammo counter (bottom-right) ───────────────── */
+/* ───────────────── Class label (bottom-left, above health) ───────────────── */
+
+.hud-class-label {
+  position: fixed;
+  bottom: 86px;
+  left: 24px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* ───────────────── Ammo (bottom-right) ───────────────── */
 
 .hud-ammo {
   position: fixed;
@@ -63,26 +78,44 @@ const CSS = /* css */ `
   right: 24px;
   text-align: right;
   z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
 }
 
-.hud-ammo-count {
-  font-size: 36px;
-  font-weight: bold;
+.hud-weapon-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-  line-height: 1;
+  text-transform: uppercase;
 }
 
-.hud-ammo-count span {
-  font-size: 18px;
-  opacity: 0.7;
+.hud-ammo-bars {
+  display: flex;
+  gap: 1px;
+  align-items: flex-end;
+  height: 20px;
+}
+
+.hud-ammo-bar {
+  width: 3px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  transition: background 0.1s ease, height 0.1s ease;
+}
+
+.hud-ammo-bar.empty {
+  background: rgba(255, 255, 255, 0.15);
+  height: 10px;
 }
 
 .hud-ammo-reload {
-  font-size: 14px;
+  font-size: 13px;
   color: #f1c40f;
-  font-weight: bold;
+  font-weight: 700;
   letter-spacing: 2px;
-  margin-top: 2px;
   visibility: hidden;
 }
 
@@ -91,40 +124,100 @@ const CSS = /* css */ `
   animation: hud-blink 0.6s infinite;
 }
 
-.hud-ammo-class {
-  font-size: 11px;
-  opacity: 0.6;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-top: 4px;
-}
-
 @keyframes hud-blink {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.3; }
+}
+
+/* ───────────────── Compass (bottom-center) ───────────────── */
+
+.hud-compass {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.hud-compass-heading {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.hud-compass-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 18px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.hud-compass-strip > span {
+  display: inline-block;
+  width: 18px;
+  text-align: center;
+  font-size: 10px;
+  opacity: 0.6;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.hud-compass-label {
+  font-weight: 700;
+  font-size: 12px !important;
+  opacity: 1 !important;
+  color: #f6c343;
+}
+
+.hud-compass-major {
+  font-weight: 600;
+  font-size: 10px;
+  opacity: 0.8 !important;
+}
+
+.hud-compass-tick {
+  opacity: 0.3 !important;
+  font-size: 8px !important;
+}
+
+.hud-compass-center {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
 }
 
 /* ───────────────── Team tickets (top-center) ───────────────── */
 
 .hud-tickets {
   position: fixed;
-  top: 16px;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 6px 18px;
-  font-size: 15px;
-  font-weight: bold;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 700;
   letter-spacing: 1px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 100;
 }
 
 .hud-tickets-alpha {
-  color: #3498db;
+  color: #4aa3df;
 }
 
 .hud-tickets-bravo {
@@ -132,35 +225,37 @@ const CSS = /* css */ `
 }
 
 .hud-tickets-sep {
-  opacity: 0.4;
+  opacity: 0.25;
+  font-weight: 300;
 }
 
 .hud-tickets-highlight {
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
 }
 
 /* ───────────────── Kill feed (top-right) ───────────────── */
 
 .hud-killfeed {
   position: fixed;
-  top: 16px;
+  top: 48px;
   right: 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   z-index: 100;
-  max-width: 340px;
+  max-width: 360px;
 }
 
 .hud-killfeed-entry {
   background: rgba(0, 0, 0, 0.5);
-  padding: 4px 10px;
+  padding: 4px 12px;
   font-size: 12px;
   white-space: nowrap;
   opacity: 1;
   transition: opacity 0.4s ease;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 .hud-killfeed-entry.fading {
@@ -168,12 +263,13 @@ const CSS = /* css */ `
 }
 
 .hud-killfeed-weapon {
-  opacity: 0.5;
+  opacity: 0.45;
   margin: 0 6px;
+  font-size: 11px;
 }
 
 .hud-killfeed-alpha {
-  color: #3498db;
+  color: #4aa3df;
 }
 
 .hud-killfeed-bravo {
@@ -247,7 +343,7 @@ const CSS = /* css */ `
 
 .hud-death-title {
   font-size: 48px;
-  font-weight: bold;
+  font-weight: 700;
   color: #e74c3c;
   letter-spacing: 6px;
   text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9);
@@ -290,7 +386,7 @@ const CSS = /* css */ `
 
 .hud-gameover-text {
   font-size: 64px;
-  font-weight: bold;
+  font-weight: 700;
   letter-spacing: 8px;
   text-shadow: 2px 4px 12px rgba(0, 0, 0, 0.9);
 }
@@ -309,7 +405,7 @@ const CSS = /* css */ `
   position: fixed;
   bottom: 56px;
   left: 24px;
-  width: 200px;
+  width: 220px;
   z-index: 100;
   display: flex;
   flex-direction: column;
@@ -318,7 +414,7 @@ const CSS = /* css */ `
 
 .hud-gadget-name {
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 600;
   letter-spacing: 1px;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   text-transform: uppercase;
@@ -326,9 +422,9 @@ const CSS = /* css */ `
 
 .hud-gadget-cooldown {
   width: 100%;
-  height: 6px;
+  height: 5px;
   background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
 }
 
@@ -339,7 +435,7 @@ const CSS = /* css */ `
 
 .hud-gadget-key {
   font-size: 10px;
-  opacity: 0.6;
+  opacity: 0.5;
   letter-spacing: 1px;
 }
 `;
