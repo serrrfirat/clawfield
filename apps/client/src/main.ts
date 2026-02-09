@@ -475,7 +475,7 @@ function gameLoop(): void {
 
   // Update remote players
   for (const remote of remotePlayers.values()) {
-    remote.update(renderer.camera);
+    remote.update(dt, renderer.camera);
   }
 
   // Update minimap
