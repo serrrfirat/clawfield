@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId, REVIVE_RADIUS } from '@clawfield/shared';
-import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef } from '@clawfield/shared';
+import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef, WeaponLoadout } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer, setFogUniforms } from './voxel/world-renderer';
 import { deserializeChunks } from './voxel/test-map';
@@ -51,6 +51,7 @@ export const gameState = {
   gameMode: 'tdm' as GameMode,
   lastGadgetUseTime: 0,
   selectedGadgetIndex: 0,
+  selectedLoadout: {} as WeaponLoadout,
 };
 
 // --- State ---
@@ -244,6 +245,8 @@ function handleServerMessage(msg: ServerMessage): void {
         localPlayer = new LocalPlayer(renderer.scene, renderer.camera, voxelGetter, gameState.selectedClass);
         localPlayer.weaponCtrl.setParticleSystem(particleSystem);
       }
+      // Apply selected attachments to the weapon
+      localPlayer.weaponCtrl.setLoadout(gameState.selectedLoadout);
       localPlayer.onRespawn(msg.position);
       break;
     }
@@ -718,6 +721,7 @@ function showDeployScreen(spawns: SpawnPointOption[]): void {
     gameState.capturePoints,
     (choice) => {
       gameState.selectedClass = choice.classId;
+      gameState.selectedLoadout = choice.loadout;
       // Look up display name from CLASSES
       const cls = Object.values(CLASSES).find(c => c.id === choice.classId);
       gameState.selectedClassName = cls?.name ?? 'Assault';
