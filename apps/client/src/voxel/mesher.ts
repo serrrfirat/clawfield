@@ -1,5 +1,5 @@
 import { CHUNK_SIZE, MATERIAL_COLORS, isWater } from '@clawfield/shared';
-import { FALLBACK_TILE } from './texture-atlas';
+import { FALLBACK_TILE, getTileForFace, MATERIAL_TILES } from './texture-atlas';
 
 /** A quad produced by the greedy mesher */
 export interface MeshQuad {
@@ -207,26 +207,34 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
       shade = 0.88; // Z-facing sides
     }
 
-    // All materials: vertex color = palette RGB * shade.
-    // The atlas samples a white fallback tile so the shader multiply is neutral:
-    // white(1,1,1) * paletteRGB * shade = paletteRGB * shade.
-    // This avoids the UV interpolation bug (floor(interpolated_uv) gives wrong
-    // tiles for greedy-merged quads) and the palette mismatch where map palettes
-    // use different colors at indices 1-6 than the hardcoded atlas tile mapping.
-    const hex = MATERIAL_COLORS[quad.material] ?? 0xff00ff;
-    const sr = ((hex >> 16) & 0xff) / 255 * shade;
-    const sg = ((hex >> 8) & 0xff) / 255 * shade;
-    const sb = (hex & 0xff) / 255 * shade;
+    // Use atlas tile texture if the material has one, otherwise fall back to white tile
+    // (which passes palette RGB through via vertex colors)
+    const hasAtlasTile = MATERIAL_TILES[quad.material] !== undefined;
+    const tile = hasAtlasTile ? getTileForFace(quad.material, quad.face) : FALLBACK_TILE;
 
-    // Point all vertices to the center of the white fallback tile.
-    // All 4 vertices share the same UV, so interpolation is exact and
-    // floor(vUv) always yields the fallback tile index.
-    const fbU = FALLBACK_TILE[0] + 0.5;
-    const fbV = FALLBACK_TILE[1] + 0.5;
-    const uv0: [number, number] = [fbU, fbV];
-    const uv1: [number, number] = [fbU, fbV];
-    const uv2: [number, number] = [fbU, fbV];
-    const uv3: [number, number] = [fbU, fbV];
+    let sr: number, sg: number, sb: number;
+    if (hasAtlasTile) {
+      // Atlas texture provides color; vertex color is shade-only
+      sr = shade;
+      sg = shade;
+      sb = shade;
+    } else {
+      // Fallback: palette RGB * shade (atlas samples white tile = neutral)
+      const hex = MATERIAL_COLORS[quad.material] ?? 0xff00ff;
+      sr = ((hex >> 16) & 0xff) / 255 * shade;
+      sg = ((hex >> 8) & 0xff) / 255 * shade;
+      sb = (hex & 0xff) / 255 * shade;
+    }
+
+    // UV: tile base index. The shader uses fract(vWorldPosition) for local UV,
+    // so all 4 vertices share the same tile base (floor(vUv) = tileBase).
+    // Add 0.5 so floor() is stable across the quad.
+    const tileU = tile[0] + 0.5;
+    const tileV = tile[1] + 0.5;
+    const uv0: [number, number] = [tileU, tileV];
+    const uv1: [number, number] = [tileU, tileV];
+    const uv2: [number, number] = [tileU, tileV];
+    const uv3: [number, number] = [tileU, tileV];
 
     // Emit 4 unique vertices: v0, v1, v2, v3
     const verts = [v0, v1, v2, v3];

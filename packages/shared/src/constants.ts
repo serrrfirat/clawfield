@@ -46,13 +46,27 @@ export const MAT_STONE = 3;
 export const MAT_WALL = 4;
 export const MAT_ROOF = 5;
 export const MAT_WATER = 6;
+export const MAT_SAND_LIGHT = 7;
+export const MAT_SAND_DARK = 8;
+export const MAT_GRASS_DARK = 9;
+export const MAT_STONE_DARK = 10;
+export const MAT_CONCRETE = 11;
+export const MAT_CONCRETE_DARK = 12;
+export const MAT_WOOD = 13;
+export const MAT_WOOD_DARK = 14;
+export const MAT_BRICK = 15;
+export const MAT_ROOF_TILE = 16;
+export const MAT_WATER_DEEP = 17;
+export const MAT_ROAD = 18;
+export const MAT_WINDOW = 19;
+export const MAT_METAL = 20;
 
 /**
  * Runtime-configurable water indices.
- * Defaults to MAT_WATER (6) for the test map.
- * Maps with custom palettes (e.g. Shoreline) override via setWaterIndices().
+ * Defaults to MAT_WATER (6) and MAT_WATER_DEEP (17).
+ * Maps with custom palettes can override via setWaterIndices().
  */
-const _waterIndices = new Set<number>([MAT_WATER]);
+const _waterIndices = new Set<number>([MAT_WATER, MAT_WATER_DEEP]);
 
 /** Check if a voxel value is a water material */
 export function isWater(voxel: number): boolean {
@@ -73,6 +87,20 @@ export const MATERIAL_COLORS: Record<number, number> = {
   [MAT_WALL]: 0xa0a0a0,
   [MAT_ROOF]: 0x555555,
   [MAT_WATER]: 0x2389da,
+  [MAT_SAND_LIGHT]: 0xd4b896,
+  [MAT_SAND_DARK]: 0xc4a67a,
+  [MAT_GRASS_DARK]: 0x4a7a33,
+  [MAT_STONE_DARK]: 0x666666,
+  [MAT_CONCRETE]: 0xa0a0a0,
+  [MAT_CONCRETE_DARK]: 0x808080,
+  [MAT_WOOD]: 0x8b6914,
+  [MAT_WOOD_DARK]: 0x6b4f10,
+  [MAT_BRICK]: 0xa05228,
+  [MAT_ROOF_TILE]: 0x8b4513,
+  [MAT_WATER_DEEP]: 0x1a4c80,
+  [MAT_ROAD]: 0x555555,
+  [MAT_WINDOW]: 0x87ceeb,
+  [MAT_METAL]: 0x708090,
 };
 
 // --- Water physics constants ---
@@ -209,10 +237,10 @@ export const GADGET_SPOT_CONE = 0.15;
 export const GADGET_COVER_HP = 300;
 
 /** Deploy cover width in voxels */
-export const GADGET_COVER_WIDTH = 3;
+export const GADGET_COVER_WIDTH = 2;
 
 /** Deploy cover height in voxels */
-export const GADGET_COVER_HEIGHT = 3;
+export const GADGET_COVER_HEIGHT = 2;
 
 /** Deploy cover duration in seconds (auto-remove after this) */
 export const GADGET_COVER_DURATION = 45;
@@ -223,8 +251,30 @@ export const GADGET_COVER_DISTANCE = 2;
 /** Deploy cover material ID (uses wall material) */
 export const GADGET_COVER_MATERIAL = 4; // MAT_WALL
 
-/** Gadget cooldown in seconds */
+/** Gadget cooldown in seconds (legacy default) */
 export const GADGET_COOLDOWN = 15;
+
+/** Per-gadget cooldowns in seconds */
+export const GADGET_COOLDOWNS: Record<string, number> = {
+  medkit: 15,
+  bandage: 8,
+  ammo_box: 15,
+  repair_tool: 30,
+  spotting_scope: 15,
+  claymore: 20,
+};
+
+/** Bandage heal amount (instant self-heal) */
+export const GADGET_BANDAGE_HEAL = 30;
+
+/** Claymore proximity trigger radius in meters */
+export const GADGET_CLAYMORE_RADIUS = 3;
+
+/** Claymore explosion damage */
+export const GADGET_CLAYMORE_DAMAGE = 80;
+
+/** Claymore lifetime in seconds */
+export const GADGET_CLAYMORE_DURATION = 60;
 
 /** Scoreboard broadcast interval in ticks (5 seconds at 20Hz) */
 export const SCOREBOARD_BROADCAST_INTERVAL = 100;
