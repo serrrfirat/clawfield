@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId } from '@clawfield/shared';
+import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId, REVIVE_RADIUS } from '@clawfield/shared';
 import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer, setFogUniforms } from './voxel/world-renderer';
@@ -506,6 +506,28 @@ function gameLoop(): void {
   // Update remote players
   for (const remote of remotePlayers.values()) {
     remote.update(dt, renderer.camera);
+  }
+
+  // Check for nearby downed teammates and show revive prompt
+  if (localPlayer && gameState.alive && !gameState.downed) {
+    const cam = renderer.camera;
+    let nearestDownedName: string | null = null;
+    let nearestDist = Infinity;
+    for (const remote of remotePlayers.values()) {
+      if (!remote.downed || remote.team !== gameState.myTeam) continue;
+      const rp = remote.getPosition();
+      const dx = rp.x - cam.position.x;
+      const dy = rp.y - cam.position.y;
+      const dz = rp.z - cam.position.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (dist <= REVIVE_RADIUS && dist < nearestDist) {
+        nearestDist = dist;
+        nearestDownedName = remote.name;
+      }
+    }
+    hud.showRevivePrompt(nearestDownedName);
+  } else {
+    hud.showRevivePrompt(null);
   }
 
   // Update minimap

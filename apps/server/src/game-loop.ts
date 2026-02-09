@@ -1287,7 +1287,7 @@ export class GameLoop {
     for (const downed of this.players.values()) {
       if (!downed.downed) continue;
 
-      // Find the closest alive teammate within REVIVE_RADIUS
+      // Find the closest alive teammate within REVIVE_RADIUS who is holding interact
       let closestReviver: PlayerSim | null = null;
       let closestDist = Infinity;
 
@@ -1295,6 +1295,8 @@ export class GameLoop {
         if (candidate.id === downed.id) continue;
         if (!candidate.alive || candidate.downed) continue;
         if (candidate.team !== downed.team) continue;
+        // Reviver must be actively holding the interact key
+        if (!candidate.latestInput?.interact) continue;
 
         const dx = candidate.position.x - downed.position.x;
         const dy = candidate.position.y - downed.position.y;

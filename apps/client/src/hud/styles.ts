@@ -295,6 +295,30 @@ const CSS = /* css */ `
   display: none;
 }
 
+/* ───────────────── Revive prompt (for alive players near downed teammate) ───────────────── */
+
+.hud-revive-prompt {
+  position: fixed;
+  bottom: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 8px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #2ecc71;
+  letter-spacing: 1px;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  z-index: 120;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.hud-revive-prompt.visible {
+  opacity: 1;
+}
+
 /* ───────────────── Game over overlay ───────────────── */
 
 .hud-gameover {

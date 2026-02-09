@@ -43,6 +43,8 @@ export interface InputState {
   useGadget: boolean;
   gadgetIndex: number;
   scope: boolean;
+  /** Hold to interact (revive downed teammate) */
+  interact: boolean;
   yaw: number;
   pitch: number;
 }

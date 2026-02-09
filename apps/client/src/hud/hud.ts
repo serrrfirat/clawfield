@@ -101,6 +101,9 @@ export class HUD {
   private gameoverOverlay: HTMLDivElement;
   private gameoverText: HTMLDivElement;
 
+  // Revive prompt (shown to alive players near downed teammates)
+  private revivePrompt: HTMLDivElement;
+
   // Gadget indicator
   private gadgetWrap: HTMLDivElement;
   private gadgetName: HTMLDivElement;
@@ -170,6 +173,11 @@ export class HUD {
     this.deathOverlay.appendChild(this.downedReviveBar);
     this.deathOverlay.appendChild(this.downedReviveText);
     this.root.appendChild(this.deathOverlay);
+
+    // Revive prompt (shown when alive and near a downed teammate)
+    this.revivePrompt = this.el('div', 'hud-revive-prompt');
+    this.revivePrompt.textContent = 'Hold [E] to revive';
+    this.root.appendChild(this.revivePrompt);
 
     // Gadget indicator
     this.gadgetWrap = this.el('div', 'hud-gadget');
@@ -408,6 +416,19 @@ export class HUD {
       this.downedReviveText.textContent = `${reviverName} is reviving you...`;
     }
     this.downedReviveText.style.display = 'block';
+  }
+
+  /**
+   * Show or hide the "Hold [E] to revive" prompt for alive players near downed teammates.
+   * @param downedName — name of the downed teammate, or null to hide
+   */
+  showRevivePrompt(downedName: string | null): void {
+    if (downedName) {
+      this.revivePrompt.textContent = `Hold [E] to revive ${downedName}`;
+      this.revivePrompt.classList.add('visible');
+    } else {
+      this.revivePrompt.classList.remove('visible');
+    }
   }
 
   /**
