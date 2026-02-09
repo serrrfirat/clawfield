@@ -11,9 +11,16 @@ import {
   GADGET_AMMO_DURATION,
   GADGET_SPOT_DURATION,
   GADGET_SPOT_CONE,
+  GADGET_COVER_WIDTH,
+  GADGET_COVER_HEIGHT,
+  GADGET_COVER_DURATION,
+  GADGET_COVER_DISTANCE,
+  GADGET_COVER_MATERIAL,
   MAX_HEALTH,
   aimDirection,
   PLAYER_HEIGHT,
+  setVoxel,
+  getVoxel,
 } from '@clawfield/shared';
 import type { GadgetState } from '@clawfield/shared';
 import { PlayerSim } from './player-sim.js';
@@ -29,6 +36,16 @@ interface ActiveGadget {
   totalHealed?: number;
   // Ammo box specific
   ammoTimer?: number;
+  // Deploy cover specific — track placed voxel positions for removal
+  coverVoxels?: { x: number; y: number; z: number }[];
+}
+
+/** Voxel change for network sync */
+export interface VoxelChange {
+  x: number;
+  y: number;
+  z: number;
+  material: number;
 }
 
 interface SpottedEnemy {
@@ -43,6 +60,7 @@ interface SpottedEnemy {
  * - Medkit: area heal for friendly players over time
  * - AmmoBox: periodically restores ammo for nearby friendlies
  * - SpottingScope: instant cone-based enemy detection
+ * - DeployCover: places a temporary voxel wall in front of the player
  *
  * Grenade gadgets (Assault class) are handled by the existing GrenadeManager.
  */
@@ -50,6 +68,23 @@ export class GadgetManager {
   private gadgets = new Map<number, ActiveGadget>();
   private nextId = 1;
   private spottedEnemies: SpottedEnemy[] = [];
+  /** Reference to server chunk map for deploy cover voxel placement */
+  private chunks: Map<string, Uint8Array> | null = null;
+  /** Pending voxel changes to broadcast to clients */
+  private pendingVoxelChanges: VoxelChange[] = [];
+
+  /** Set the chunk map reference (called once from game loop) */
+  setChunks(chunks: Map<string, Uint8Array>): void {
+    this.chunks = chunks;
+  }
+
+  /** Drain pending voxel changes (called by game loop for broadcasting) */
+  drainVoxelChanges(): VoxelChange[] {
+    if (this.pendingVoxelChanges.length === 0) return [];
+    const changes = this.pendingVoxelChanges;
+    this.pendingVoxelChanges = [];
+    return changes;
+  }
 
   /** Returns gadget states for network sync */
   getStates(): GadgetState[] {
@@ -104,8 +139,13 @@ export class GadgetManager {
         break;
       }
 
+      case GadgetId.RepairTool: {
+        // Deploy Cover: place a voxel wall in front of the player
+        this.deployCover(player);
+        break;
+      }
+
       default:
-        // Other gadgets not yet implemented
         break;
     }
   }
@@ -120,6 +160,52 @@ export class GadgetManager {
       yaw: player.yaw,
       pitch: player.pitch,
     };
+  }
+
+  /** Deploy a temporary voxel wall in front of the player */
+  private deployCover(player: PlayerSim): void {
+    if (!this.chunks) return;
+
+    // Calculate position in front of the player
+    const dir = aimDirection(player.yaw, 0); // ignore pitch — wall is always vertical
+    const centerX = Math.floor(player.position.x + dir.x * GADGET_COVER_DISTANCE);
+    const baseY = Math.floor(player.position.y);
+    const centerZ = Math.floor(player.position.z + dir.z * GADGET_COVER_DISTANCE);
+
+    // Determine wall orientation: perpendicular to aim direction
+    // If aiming mostly along X, wall extends along Z (and vice versa)
+    const isXAligned = Math.abs(dir.x) > Math.abs(dir.z);
+
+    const placedVoxels: { x: number; y: number; z: number }[] = [];
+    const halfW = Math.floor(GADGET_COVER_WIDTH / 2);
+
+    for (let h = 0; h < GADGET_COVER_HEIGHT; h++) {
+      for (let w = -halfW; w <= halfW; w++) {
+        const wx = isXAligned ? centerX : centerX + w;
+        const wy = baseY + h;
+        const wz = isXAligned ? centerZ + w : centerZ;
+
+        // Only place if the voxel is air (don't overwrite existing geometry)
+        if (getVoxel(this.chunks, wx, wy, wz) === 0) {
+          setVoxel(this.chunks, wx, wy, wz, GADGET_COVER_MATERIAL);
+          placedVoxels.push({ x: wx, y: wy, z: wz });
+          this.pendingVoxelChanges.push({ x: wx, y: wy, z: wz, material: GADGET_COVER_MATERIAL });
+        }
+      }
+    }
+
+    if (placedVoxels.length > 0) {
+      const gadget: ActiveGadget = {
+        id: this.nextId++,
+        type: GadgetId.RepairTool, // Using RepairTool as the Engineer's deploy cover gadget
+        ownerId: player.id,
+        ownerTeam: player.team,
+        position: { x: centerX, y: baseY, z: centerZ },
+        lifetime: GADGET_COVER_DURATION,
+        coverVoxels: placedVoxels,
+      };
+      this.gadgets.set(gadget.id, gadget);
+    }
   }
 
   private _pendingSpot: {
@@ -187,6 +273,16 @@ export class GadgetManager {
       gadget.lifetime -= dt;
 
       if (gadget.lifetime <= 0) {
+        // Remove deploy cover voxels when lifetime expires
+        if (gadget.coverVoxels && this.chunks) {
+          for (const v of gadget.coverVoxels) {
+            // Only remove if the voxel is still our cover material
+            if (getVoxel(this.chunks, v.x, v.y, v.z) === GADGET_COVER_MATERIAL) {
+              setVoxel(this.chunks, v.x, v.y, v.z, 0);
+              this.pendingVoxelChanges.push({ x: v.x, y: v.y, z: v.z, material: 0 });
+            }
+          }
+        }
         this.gadgets.delete(id);
         continue;
       }

@@ -109,6 +109,11 @@ export class Viewmodel {
     (this.bodyMesh.material as THREE.MeshLambertMaterial).color.setHex(bodyColor);
   }
 
+  /** Show or hide the viewmodel (hidden when scoped) */
+  setVisible(visible: boolean): void {
+    this.group.visible = visible;
+  }
+
   /** Clean up */
   dispose(): void {
     this.bodyMesh.geometry.dispose();

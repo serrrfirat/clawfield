@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getVoxel, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES } from '@clawfield/shared';
+import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES } from '@clawfield/shared';
 import type { ServerMessage, PlayerState, KillEntry, GameMode } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer } from './voxel/world-renderer';
@@ -270,9 +270,18 @@ function handleServerMessage(msg: ServerMessage): void {
 
     case 'voxel_update': {
       // Apply voxel changes and remesh affected chunks
-      // Full voxel updates for deploy cover are Phase 2b
+      const affectedChunks = new Set<string>();
       for (const change of msg.changes) {
-        console.log(`Voxel update: (${change.x}, ${change.y}, ${change.z}) -> ${change.material}`);
+        setVoxelShared(chunks, change.x, change.y, change.z, change.material);
+        const { chunkKey } = worldToChunk(change.x, change.y, change.z);
+        affectedChunks.add(chunkKey);
+      }
+      // Remesh all affected chunks
+      for (const key of affectedChunks) {
+        const voxels = chunks.get(key);
+        if (voxels) {
+          worldRenderer.setChunk(key, voxels);
+        }
       }
       break;
     }

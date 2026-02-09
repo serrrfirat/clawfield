@@ -36,7 +36,7 @@ import {
   type CapturePointConfig,
 } from './capture-point-manager.js';
 import { GrenadeManager, type GrenadeExplosionResult } from './grenade-manager.js';
-import { GadgetManager } from './gadget-manager.js';
+import { GadgetManager, type VoxelChange } from './gadget-manager.js';
 import {
   loadBinaryMap,
   getConfiguredMapName,
@@ -98,6 +98,7 @@ export class GameLoop {
     // Try to load the configured binary map; fall back to test map
     this.loadMap();
     this.capturePointManager = new CapturePointManager(this.mapCapturePoints);
+    this.gadgetManager.setChunks(this.chunks);
 
     // Spawn dummy bots on Team Bravo for target practice
     this.spawnBots();
@@ -804,6 +805,15 @@ export class GameLoop {
 
     // Update gadgets
     const gadgetResult = this.gadgetManager.update(TICK_INTERVAL / 1000, this.players);
+
+    // Broadcast voxel changes from deploy cover (place/remove)
+    const voxelChanges = this.gadgetManager.drainVoxelChanges();
+    if (voxelChanges.length > 0) {
+      this.network.broadcast({
+        type: 'voxel_update',
+        changes: voxelChanges,
+      });
+    }
 
     // Send spotted enemies to all clients (client filters by team)
     if (gadgetResult.spottedPositions) {

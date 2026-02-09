@@ -63,7 +63,17 @@ export class LocalPlayer {
       return null;
     }
 
-    const inputState = this.input.consume();
+    // Reduce mouse sensitivity when scoped for precision aiming
+    const sensitivity = this.weaponCtrl.scoped ? 0.0008 : 0.002;
+    const inputState = this.input.consume(sensitivity);
+
+    // Update scope (right mouse button for Recon sniper/DMR)
+    this.weaponCtrl.updateScope(inputState.scope, dt);
+
+    // Scoping cancels sprint
+    if (this.weaponCtrl.scoped) {
+      inputState.sprint = false;
+    }
 
     // Track sprint-to-fire delay: when sprint is released, start a cooldown
     const isSprinting = inputState.sprint && (inputState.forward || inputState.back || inputState.left || inputState.right);
@@ -199,6 +209,8 @@ export class LocalPlayer {
   onDeath(killerPos?: Vec3): void {
     this.alive = false;
     this.input.disabled = true;
+    // Exit scope on death
+    this.weaponCtrl.updateScope(false, 0);
     if (killerPos) {
       this.cameraCtrl.enterDeathCam(killerPos);
     }

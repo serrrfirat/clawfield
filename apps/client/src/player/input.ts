@@ -13,6 +13,9 @@ export class InputCapture {
   /** Mouse button state (left button = shoot) */
   private mouseDown = false;
 
+  /** Right mouse button state (scope/ADS) */
+  private rightMouseDown = false;
+
   /** Reload pressed this frame (single-press, not held) */
   private reloadPressed = false;
 
@@ -75,12 +78,23 @@ export class InputCapture {
       if (e.button === 0 && this._locked) {
         this.mouseDown = true;
       }
+      if (e.button === 2 && this._locked) {
+        this.rightMouseDown = true;
+      }
     });
 
     document.addEventListener('mouseup', (e) => {
       if (e.button === 0) {
         this.mouseDown = false;
       }
+      if (e.button === 2) {
+        this.rightMouseDown = false;
+      }
+    });
+
+    // Prevent context menu on right click
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -98,6 +112,7 @@ export class InputCapture {
       // Reset mouse state when pointer lock changes
       if (!this._locked) {
         this.mouseDown = false;
+        this.rightMouseDown = false;
       }
     });
 
@@ -152,6 +167,7 @@ export class InputCapture {
         crouch: false,
         throwGrenade: false,
         useGadget: false,
+        scope: false,
         yaw: this.yaw,
         pitch: this.pitch,
       };
@@ -172,6 +188,7 @@ export class InputCapture {
       crouch: sprint ? false : crouch, // mutually exclusive
       throwGrenade,
       useGadget,
+      scope: this.rightMouseDown,
       yaw: this.yaw,
       pitch: this.pitch,
     };
