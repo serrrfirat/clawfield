@@ -1,6 +1,7 @@
 {
   "name": "Shoreline",
-  "description": "MVP coastal town with harbor, tunnel, bridge, and beach flank route.",
+  "description": "Generated from Shoreline mapdef",
+  "waterIndices": [14, 15],
   "spawn_points": {
     "alpha": [
       {
@@ -51,7 +52,7 @@
       "id": "B",
       "position": {
         "x": 6,
-        "y": 7,
+        "y": 11,
         "z": 0
       },
       "initialOwner": -1

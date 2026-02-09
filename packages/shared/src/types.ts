@@ -162,6 +162,7 @@ export type ServerMessage =
       team: number;
       mapData: ChunkData[];
       palette?: number[];
+      waterIndices?: number[];
       mapName?: string;
       objectives?: MapObjective[];
       gameMode: GameMode;

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES } from '@clawfield/shared';
+import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES } from '@clawfield/shared';
 import type { ServerMessage, PlayerState, KillEntry, GameMode } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer } from './voxel/world-renderer';
@@ -84,6 +84,10 @@ function handleServerMessage(msg: ServerMessage): void {
       // Load palette before building meshes so colors are correct
       if (msg.palette) {
         loadPalette(msg.palette);
+      }
+      // Set water material indices for physics and rendering
+      if (msg.waterIndices) {
+        setWaterIndices(msg.waterIndices);
       }
 
       // Load map from server (only nearby chunks in streaming mode)

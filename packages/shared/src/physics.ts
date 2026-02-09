@@ -8,7 +8,7 @@ import {
   PLAYER_HEIGHT,
   CROUCH_HEIGHT,
   MAX_PITCH,
-  MAT_WATER,
+  isWater,
   WATER_MOVE_SPEED,
   WATER_SWIM_UP_SPEED,
   WATER_SINK_SPEED,
@@ -54,7 +54,7 @@ function aabbOverlapsSolid(aabb: AABB, getVoxel: VoxelGetter): boolean {
     for (let y = startY; y <= endY; y++) {
       for (let z = startZ; z <= endZ; z++) {
         const v = getVoxel(x, y, z);
-        if (v !== 0 && v !== MAT_WATER) {
+        if (v !== 0 && !isWater(v)) {
           return true;
         }
       }
@@ -76,7 +76,8 @@ function isInWater(position: Vec3, height: number, getVoxel: VoxelGetter): boole
   ];
 
   for (const pt of points) {
-    if (getVoxel(Math.floor(pt.x), Math.floor(checkY), Math.floor(pt.z)) === MAT_WATER) {
+    const v = getVoxel(Math.floor(pt.x), Math.floor(checkY), Math.floor(pt.z));
+    if (isWater(v)) {
       return true;
     }
   }
@@ -247,7 +248,7 @@ function isGrounded(position: Vec3, getVoxel: VoxelGetter): boolean {
 
   for (const pt of points) {
     const v = getVoxel(Math.floor(pt.x), Math.floor(checkY), Math.floor(pt.z));
-    if (v !== 0 && v !== MAT_WATER) {
+    if (v !== 0 && !isWater(v)) {
       return true;
     }
   }

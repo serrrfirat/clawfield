@@ -47,6 +47,24 @@ export const MAT_WALL = 4;
 export const MAT_ROOF = 5;
 export const MAT_WATER = 6;
 
+/**
+ * Runtime-configurable water indices.
+ * Defaults to MAT_WATER (6) for the test map.
+ * Maps with custom palettes (e.g. Shoreline) override via setWaterIndices().
+ */
+const _waterIndices = new Set<number>([MAT_WATER]);
+
+/** Check if a voxel value is a water material */
+export function isWater(voxel: number): boolean {
+  return _waterIndices.has(voxel);
+}
+
+/** Set which palette indices count as water (called on map load) */
+export function setWaterIndices(indices: number[]): void {
+  _waterIndices.clear();
+  for (const i of indices) _waterIndices.add(i);
+}
+
 /** Material colors (hex). Populated at runtime for map palette. */
 export const MATERIAL_COLORS: Record<number, number> = {
   [MAT_GRASS]: 0x4a8c3f,
