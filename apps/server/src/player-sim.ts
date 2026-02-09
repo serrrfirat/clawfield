@@ -71,7 +71,7 @@ export class PlayerSim {
   crouching: boolean = false;
 
   /** Grenades remaining */
-  grenadeCount: number = 2;
+  grenadeCount: number = GRENADE_MAX_COUNT;
   /** Last grenade throw timestamp (ms) */
   lastGrenadeTime: number = 0;
 
@@ -319,7 +319,7 @@ export class PlayerSim {
     this.lastFireTime = 0;
     this.sprintFireTimer = 0;
     this.crouching = false;
-    this.grenadeCount = 2;
+    this.grenadeCount = GRENADE_MAX_COUNT;
     this.lastGrenadeTime = 0;
     this.lastGadgetTime = 0;
     this.recentDamagers.clear();

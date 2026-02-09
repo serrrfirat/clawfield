@@ -26,6 +26,9 @@ import {
   STREAM_CHECK_INTERVAL,
   CONQUEST_VICTORY_POINTS,
   setWaterIndices,
+  setGroundAnchors,
+  loadPalette,
+  GRENADE_DESTRUCTION_RADIUS,
   REVIVE_RADIUS,
   REVIVE_TIME,
   REVIVE_TIME_MEDIC,
@@ -45,6 +48,7 @@ import {
 } from './capture-point-manager.js';
 import { GrenadeManager, type GrenadeExplosionResult } from './grenade-manager.js';
 import { GadgetManager, type VoxelChange } from './gadget-manager.js';
+import { DestructionManager } from './destruction-manager.js';
 import { SmokeGrenadeManager } from './smoke-grenade-manager.js';
 import {
   loadBinaryMap,
@@ -76,6 +80,7 @@ export class GameLoop {
   private grenadeManager = new GrenadeManager();
   private smokeGrenadeManager = new SmokeGrenadeManager();
   private gadgetManager = new GadgetManager();
+  private destructionManager!: DestructionManager;
 
   // --- Map palette (hex colors) ---
   private palette: number[] = [];
@@ -145,6 +150,7 @@ export class GameLoop {
       `WARNING: Binary map not found for "${configuredMap}" (and Oasis fallback unavailable), using test map`
     );
     this.generateTestMap();
+    this.destructionManager = new DestructionManager(this.chunks);
     this.mapCapturePoints = DEFAULT_CAPTURE_POINTS.map((cp) => ({
       ...cp,
       position: { ...cp.position },
@@ -163,7 +169,11 @@ export class GameLoop {
     }
 
     this.chunks = mapData.chunks;
+    this.destructionManager = new DestructionManager(this.chunks);
     this.palette = mapData.palette;
+    if (mapData.palette.length > 0) {
+      loadPalette(mapData.palette);
+    }
     this.usingBinaryMap = true;
     this.mapName = mapName;
     this.mapDisplayName = mapName;
@@ -198,6 +208,9 @@ export class GameLoop {
       if (metadata.waterIndices) {
         this.waterIndices = metadata.waterIndices;
         setWaterIndices(metadata.waterIndices);
+      }
+      if (metadata.groundIndices) {
+        setGroundAnchors(metadata.groundIndices);
       }
       console.log(
         `Loaded map metadata for "${metadata.name}": ` +
@@ -741,11 +754,13 @@ export class GameLoop {
     this.processShooting(now);
 
     // Advance projectiles and collect hits
-    const projectileHits = this.projectileManager.update(
-      TICK_INTERVAL / 1000,
-      voxelGetter,
-      this.players
-    );
+    const { playerHits: projectileHits, voxelHits: projectileVoxelHits } =
+      this.projectileManager.update(TICK_INTERVAL / 1000, voxelGetter, this.players);
+
+    // Advance pending rubble drops (delayed voxel placement for falling sections)
+    this.destructionManager.update(now);
+
+    // Bullet voxel destruction disabled — only explosions destroy terrain for now
 
     // Process projectile hits: apply damage, send confirmations, handle kills
     for (const hit of projectileHits) {
@@ -810,6 +825,8 @@ export class GameLoop {
           ownerId: explosion.ownerId,
         },
       });
+      // Destroy voxels in explosion radius
+      this.destructionManager.explode(explosion.position, GRENADE_DESTRUCTION_RADIUS);
       // Process downed/kills from grenade damage
       for (const hit of explosion.hits) {
         if (hit.killed) {
@@ -851,12 +868,66 @@ export class GameLoop {
     // Update gadgets
     const gadgetResult = this.gadgetManager.update(TICK_INTERVAL / 1000, this.players);
 
-    // Broadcast voxel changes from deploy cover (place/remove)
-    const voxelChanges = this.gadgetManager.drainVoxelChanges();
-    if (voxelChanges.length > 0) {
+    // Merge voxel changes from gadgets and destruction, broadcast together
+    const gadgetVoxelChanges = this.gadgetManager.drainVoxelChanges();
+    const destructionVoxelChanges = this.destructionManager.drainChanges();
+    const allVoxelChanges = gadgetVoxelChanges.concat(destructionVoxelChanges);
+    if (allVoxelChanges.length > 0) {
       this.network.broadcast({
         type: 'voxel_update',
-        changes: voxelChanges,
+        changes: allVoxelChanges,
+      });
+    }
+
+    // Process crush zones: kill players caught under falling rubble
+    const crushZones = this.destructionManager.drainCrushZones();
+    for (const zone of crushZones) {
+      for (const player of this.players.values()) {
+        if (!player.alive) continue;
+        const px = player.position.x;
+        const py = player.position.y;
+        const pz = player.position.z;
+        // Check if player's feet or head are inside the crush volume
+        if (
+          px >= zone.min.x && px <= zone.max.x &&
+          pz >= zone.min.z && pz <= zone.max.z &&
+          py >= zone.min.y && (py + PLAYER_HEIGHT) >= zone.min.y &&
+          py <= zone.max.y
+        ) {
+          const killed = player.takeDamage(zone.damage);
+          if (killed) {
+            // Broadcast as environmental kill
+            this.network.broadcast({
+              type: 'kill',
+              entry: {
+                killerId: player.id,
+                killerName: player.name,
+                victimId: player.id,
+                victimName: player.name,
+                weapon: 'Crushed',
+              },
+            });
+            const victimClient = this.network.getClients().get(player.id);
+            if (victimClient) {
+              this.network.send(victimClient, {
+                type: 'death',
+                killerId: player.id,
+                respawnTime: RESPAWN_DELAY,
+                killerPos: { ...player.position },
+              });
+            }
+            console.log(`CRUSH: ${player.name} killed by falling rubble`);
+          }
+        }
+      }
+    }
+
+    // Broadcast destruction visual events (particles, debris, screen shake)
+    const destructionEvents = this.destructionManager.drainEvents();
+    if (destructionEvents.length > 0) {
+      this.network.broadcast({
+        type: 'destruction_event',
+        events: destructionEvents,
       });
     }
 

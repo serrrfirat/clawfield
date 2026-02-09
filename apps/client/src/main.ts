@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId, REVIVE_RADIUS, SMOKE_GRENADE_FUSE_TIME } from '@clawfield/shared';
-import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef, WeaponLoadout } from '@clawfield/shared';
+import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef, DestructionEvent, WeaponLoadout } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer, setFogUniforms } from './voxel/world-renderer';
 import { deserializeChunks } from './voxel/test-map';
@@ -13,6 +13,8 @@ import { CapturePointRenderer } from './combat/capture-point-renderer';
 import { GrenadeRenderer } from './combat/grenade-renderer';
 import { GadgetRenderer } from './combat/gadget-renderer';
 import { ParticleSystem } from './combat/particle-system';
+import { DebrisSystem } from './combat/debris-system';
+import { PhysicsDebrisSystem } from './combat/physics-debris';
 import { SmokeSystem } from './combat/smoke-system';
 import { Minimap } from './hud/minimap';
 import { DamageIndicatorSystem } from './hud/damage-indicator';
@@ -66,6 +68,8 @@ const remotePlayers = new Map<string, RemotePlayer>();
 const renderer = new Renderer();
 const worldRenderer = new WorldRenderer(renderer.scene);
 const particleSystem = new ParticleSystem(renderer.scene);
+const debrisSystem = new DebrisSystem(renderer.scene);
+const physicsDebrisSystem = new PhysicsDebrisSystem(renderer.scene);
 const projectileRenderer = new ProjectileRenderer(renderer.scene);
 projectileRenderer.setParticleSystem(particleSystem);
 const capturePointRenderer = new CapturePointRenderer(renderer.scene);
@@ -79,8 +83,14 @@ const coverPreview = new CoverPreview(renderer.scene);
 const weatherManager = new WeatherManager(renderer.scene, renderer.sunLight);
 const knownGadgetIds = new Set<number>();
 
+// --- Screen shake state ---
+let screenShakeIntensity = 0;
+const SCREEN_SHAKE_DECAY = 10; // per second
+
 // Voxel getter for physics
 const voxelGetter = (wx: number, wy: number, wz: number) => getVoxel(chunks, wx, wy, wz);
+debrisSystem.setVoxelGetter(voxelGetter);
+physicsDebrisSystem.setVoxelGetter(voxelGetter);
 
 // Color for underwater effect
 const underwaterColor = new THREE.Color(0x1a5276);
@@ -409,6 +419,13 @@ function handleServerMessage(msg: ServerMessage): void {
       break;
     }
 
+    case 'destruction_event': {
+      for (const evt of msg.events) {
+        handleDestructionEvent(evt);
+      }
+      break;
+    }
+
     case 'chunks': {
       // Streaming chunks from server as player moves
       for (const cd of msg.chunks) {
@@ -419,6 +436,214 @@ function handleServerMessage(msg: ServerMessage): void {
       break;
     }
   }
+}
+
+/** Handle destruction visual events — spawn debris + particles scaled by blast radius */
+function handleDestructionEvent(evt: DestructionEvent): void {
+  const materialColor = evt.materialColor || 0x888888;
+  const r = Math.max(1, evt.radius);
+
+  // ALL destroyed voxels become Rapier physics bodies
+  if (evt.voxels && evt.voxels.length > 0 && evt.voxelColors && evt.voxelColors.length > 0) {
+    physicsDebrisSystem.spawn(
+      evt.kind,
+      evt.voxels,
+      evt.voxelColors,
+      evt.impactDir ?? { x: 0, y: 0, z: 0 },
+      evt.position,
+      evt.voxelMaterials,
+    );
+  }
+
+  // Particle colors
+  const sparkColor: [number, number, number] = [
+    Math.min(1.0, ((materialColor >> 16) & 0xff) / 255 * 1.2 + 0.3),
+    Math.min(1.0, ((materialColor >> 8) & 0xff) / 255 * 0.8 + 0.1),
+    Math.min(1.0, (materialColor & 0xff) / 255 * 0.5),
+  ];
+  const dustColor: [number, number, number] = [0.75, 0.7, 0.6];
+  const smokeLight: [number, number, number] = [0.6, 0.58, 0.52];
+  const smokeDark: [number, number, number] = [0.4, 0.38, 0.33];
+
+  switch (evt.kind) {
+    case 'bullet':
+      // Small bright sparks
+      particleSystem.emit({
+        position: evt.position,
+        count: 5,
+        direction: { x: 0, y: 1, z: 0 },
+        speedMin: 3,
+        speedMax: 8,
+        spread: Math.PI * 0.5,
+        lifetimeMin: 0.1,
+        lifetimeMax: 0.3,
+        sizeMin: 0.1,
+        sizeMax: 0.25,
+        colors: [sparkColor],
+        gravityScale: 0.5,
+      });
+      // Tiny smoke wisp
+      particleSystem.emit({
+        position: evt.position,
+        count: 3,
+        direction: { x: 0, y: 1, z: 0 },
+        speedMin: 0.3,
+        speedMax: 0.8,
+        spread: Math.PI * 0.3,
+        lifetimeMin: 1.0,
+        lifetimeMax: 2.0,
+        sizeMin: 0.3,
+        sizeMax: 0.8,
+        colors: [smokeLight, smokeDark],
+        gravityScale: -0.05,
+      });
+      break;
+
+    case 'explosion': {
+      // --- DUST BURST: fast expanding ring ---
+      particleSystem.emit({
+        position: evt.position,
+        count: Math.round(10 * r),
+        speedMin: 2 * r,
+        speedMax: 5 * r,
+        spread: Math.PI * 2,
+        lifetimeMin: 0.8,
+        lifetimeMax: 2.0 + r * 0.5,
+        sizeMin: 0.8 + r * 0.3,
+        sizeMax: 2.0 + r * 0.8,
+        colors: [dustColor, [0.6, 0.55, 0.45]],
+        gravityScale: 0.1,
+      });
+      // --- SMOKE COLUMN: big, slow, lingering ---
+      particleSystem.emit({
+        position: evt.position,
+        count: Math.round(8 * r),
+        direction: { x: 0, y: 1, z: 0 },
+        speedMin: 0.5,
+        speedMax: 1.5 + r * 0.5,
+        spread: Math.PI * 0.5,
+        lifetimeMin: 3.0,
+        lifetimeMax: 6.0 + r,
+        sizeMin: 1.5 + r * 0.5,
+        sizeMax: 4.0 + r * 1.5,
+        colors: [smokeLight, smokeDark, dustColor],
+        gravityScale: -0.03,
+      });
+      // --- HOT SPARKS ---
+      particleSystem.emit({
+        position: evt.position,
+        count: Math.round(6 * r),
+        speedMin: 6,
+        speedMax: 15 + r * 3,
+        spread: Math.PI * 2,
+        lifetimeMin: 0.15,
+        lifetimeMax: 0.4,
+        sizeMin: 0.1,
+        sizeMax: 0.3,
+        colors: [sparkColor, [1.0, 0.9, 0.5], [1.0, 0.6, 0.2]],
+        gravityScale: 0.5,
+      });
+      addScreenShake(evt.position, 0.15 + r * 0.1);
+      break;
+    }
+
+    case 'crumble': {
+      // Falling dust
+      particleSystem.emit({
+        position: evt.position,
+        count: Math.round(6 * r),
+        direction: { x: 0, y: -1, z: 0 },
+        speedMin: 0.5,
+        speedMax: 2 + r,
+        spread: Math.PI * 0.5,
+        lifetimeMin: 0.6,
+        lifetimeMax: 1.5,
+        sizeMin: 0.5,
+        sizeMax: 1.2 + r * 0.3,
+        colors: [dustColor],
+        gravityScale: 0.15,
+      });
+      // Rising smoke
+      particleSystem.emit({
+        position: evt.position,
+        count: Math.round(5 * r),
+        direction: { x: 0, y: 1, z: 0 },
+        speedMin: 0.3,
+        speedMax: 1.0,
+        spread: Math.PI * 0.5,
+        lifetimeMin: 2.0,
+        lifetimeMax: 4.0 + r,
+        sizeMin: 1.0 + r * 0.3,
+        sizeMax: 2.5 + r * 0.5,
+        colors: [smokeLight, smokeDark],
+        gravityScale: -0.03,
+      });
+      addScreenShake(evt.position, 0.1 + r * 0.05);
+      break;
+    }
+
+    case 'collapse': {
+      // --- MASSIVE DUST CLOUD: building-scale ---
+      particleSystem.emit({
+        position: evt.position,
+        count: Math.round(15 * r),
+        speedMin: 1 + r,
+        speedMax: 5 + r * 2,
+        spread: Math.PI * 2,
+        lifetimeMin: 2.0,
+        lifetimeMax: 4.0 + r,
+        sizeMin: 2.0 + r * 0.5,
+        sizeMax: 4.0 + r * 1.5,
+        colors: [[0.8, 0.75, 0.65], [0.7, 0.65, 0.55], dustColor],
+        gravityScale: 0.05,
+      });
+      // --- TOWERING SMOKE PLUME ---
+      particleSystem.emit({
+        position: evt.position,
+        count: Math.round(12 * r),
+        direction: { x: 0, y: 1, z: 0 },
+        speedMin: 0.5 + r * 0.3,
+        speedMax: 2.0 + r,
+        spread: Math.PI * 0.6,
+        lifetimeMin: 4.0,
+        lifetimeMax: 8.0 + r,
+        sizeMin: 3.0 + r,
+        sizeMax: 6.0 + r * 2,
+        colors: [smokeLight, smokeDark, [0.5, 0.48, 0.42]],
+        gravityScale: -0.02,
+      });
+      // --- BRIGHT SPARKS ---
+      particleSystem.emit({
+        position: evt.position,
+        count: Math.round(8 * r),
+        speedMin: 5,
+        speedMax: 12 + r * 3,
+        spread: Math.PI * 2,
+        lifetimeMin: 0.2,
+        lifetimeMax: 0.6,
+        sizeMin: 0.15,
+        sizeMax: 0.4,
+        colors: [sparkColor, [1.0, 0.9, 0.6], [1.0, 0.5, 0.1]],
+        gravityScale: 0.3,
+      });
+      addScreenShake(evt.position, 0.2 + r * 0.12);
+      break;
+    }
+  }
+}
+
+/** Add screen shake based on distance to the event */
+function addScreenShake(eventPos: { x: number; y: number; z: number }, maxIntensity: number): void {
+  const cam = renderer.camera;
+  const dx = cam.position.x - eventPos.x;
+  const dy = cam.position.y - eventPos.y;
+  const dz = cam.position.z - eventPos.z;
+  const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  // Falloff: full intensity at 0m, zero at 30m
+  const falloff = Math.max(0, 1 - dist / 30);
+  const intensity = maxIntensity * falloff;
+  // Additive: multiple nearby events stack
+  screenShakeIntensity = Math.min(0.5, screenShakeIntensity + intensity);
 }
 
 const network = new NetworkClient(handleServerMessage);
@@ -534,8 +759,10 @@ function gameLoop(): void {
   // Update grenades
   grenadeRenderer.update(dt);
 
-  // Update particles (bullet impacts, explosion debris, muzzle flash)
+  // Update particles (dust, sparks) and debris cubes
   particleSystem.update(dt);
+  debrisSystem.update(dt);
+  physicsDebrisSystem.update(dt);
 
   // Update volumetric smoke clouds
   smokeSystem.update(dt);
@@ -736,6 +963,14 @@ function gameLoop(): void {
   if (localPlayer) {
     const cam = renderer.camera;
     worldRenderer.sortWater({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
+  }
+
+  // Apply screen shake (small random rotation offset, decaying)
+  if (screenShakeIntensity > 0.001) {
+    const cam = renderer.camera;
+    cam.rotation.x += (Math.random() - 0.5) * screenShakeIntensity * 0.1;
+    cam.rotation.y += (Math.random() - 0.5) * screenShakeIntensity * 0.1;
+    screenShakeIntensity *= Math.exp(-SCREEN_SHAKE_DECAY * dt);
   }
 
   // Render

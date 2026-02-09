@@ -58,6 +58,8 @@ export interface MapMetadata {
   objectives: MapObjectiveMetadata[];
   /** Palette indices that should be treated as water (for physics and rendering) */
   waterIndices?: number[];
+  /** Palette indices that are terrain (indestructible ground anchors) */
+  groundIndices?: number[];
 }
 
 function isVec3(value: unknown): value is Vec3 {
@@ -155,6 +157,13 @@ export function parseMapMetadata(value: unknown): MapMetadata | null {
     waterIndices = rawWater as number[];
   }
 
+  // Optional groundIndices: palette indices that are terrain (indestructible ground)
+  let groundIndices: number[] | undefined;
+  const rawGround = raw.groundIndices ?? raw.ground_indices;
+  if (Array.isArray(rawGround) && rawGround.every((v: unknown) => typeof v === 'number')) {
+    groundIndices = rawGround as number[];
+  }
+
   return {
     name: raw.name,
     spawnPoints: {
@@ -164,6 +173,7 @@ export function parseMapMetadata(value: unknown): MapMetadata | null {
     capturePoints,
     objectives,
     waterIndices,
+    groundIndices,
   };
 }
 

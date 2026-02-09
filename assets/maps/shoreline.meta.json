@@ -1,10 +1,8 @@
 {
   "name": "Shoreline",
   "description": "Generated from Shoreline mapdef",
-  "waterIndices": [
-    6,
-    17
-  ],
+  "waterIndices": [6, 17],
+  "groundIndices": [1, 2, 3, 4, 5, 6],
   "spawn_points": {
     "alpha": [
       {

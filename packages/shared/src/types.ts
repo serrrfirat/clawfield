@@ -112,6 +112,27 @@ export interface ExplosionEvent {
   ownerId: string;
 }
 
+/** Destruction visual event sent to clients for particle/debris feedback */
+export interface DestructionEvent {
+  position: Vec3;
+  kind: 'bullet' | 'explosion' | 'crumble' | 'collapse';
+  radius: number;
+  /** Palette color index of the destroyed material (for particle tinting) */
+  materialColor: number;
+  /** Individual voxel world positions (for collapse/crumble: debris falls from each) */
+  voxels?: Vec3[];
+  /** Per-voxel hex colors (parallel to voxels[]), for falling section rendering */
+  voxelColors?: number[];
+  /** Per-voxel palette material indices (parallel to voxels[]), for placing rubble back */
+  voxelMaterials?: number[];
+  /** How far (in voxels) the section drops. >0 triggers falling section animation. */
+  dropDistance?: number;
+  /** Direction the section tilts toward as it falls (normalized XZ) */
+  impactDir?: Vec3;
+  /** Duration of the fall animation in seconds */
+  fallDuration?: number;
+}
+
 /** Smoke grenade state for network sync (in-flight) */
 export interface SmokeGrenadeState {
   id: number;
@@ -210,6 +231,7 @@ export type ServerMessage =
   | { type: 'gadgets'; gadgets: GadgetState[] }
   | { type: 'enemy_spotted'; positions: Vec3[]; duration: number }
   | { type: 'voxel_update'; changes: { x: number; y: number; z: number; material: number }[] }
+  | { type: 'destruction_event'; events: DestructionEvent[] }
   | { type: 'chunks'; chunks: ChunkData[] }
   | { type: 'smoke_grenades'; grenades: SmokeGrenadeState[] }
   | { type: 'smoke_deploy'; event: SmokeDeployEvent };
