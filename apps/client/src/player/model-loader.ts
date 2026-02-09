@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const MODEL_PATH = '/models/soldier.glb';
 
 /** Cached soldier template (original loaded model) */
 let soldierTemplate: THREE.Group | null = null;
+/** Cached animation clips from the loaded GLB */
+let soldierAnimations: THREE.AnimationClip[] = [];
 let loadingPromise: Promise<THREE.Group | null> | null = null;
 
 /** Enable flat shading on all meshes in a scene graph */
@@ -37,8 +40,9 @@ export function loadSoldierModel(): Promise<THREE.Group | null> {
       MODEL_PATH,
       (gltf: GLTF) => {
         soldierTemplate = gltf.scene;
+        soldierAnimations = gltf.animations;
         applyFlatShading(soldierTemplate);
-        console.log('Soldier model loaded successfully');
+        console.log('Soldier model loaded successfully', `(${soldierAnimations.length} animations)`);
         resolve(soldierTemplate);
       },
       undefined,
@@ -71,7 +75,7 @@ export function createSoldierInstance(
 ): THREE.Group | null {
   if (!soldierTemplate) return null;
 
-  const instance = soldierTemplate.clone();
+  const instance = SkeletonUtils.clone(soldierTemplate) as THREE.Group;
 
   // Compute bounding box of the template to scale it to player height
   const bbox = new THREE.Box3().setFromObject(instance);
@@ -108,4 +112,11 @@ export function createSoldierInstance(
   });
 
   return instance;
+}
+
+/**
+ * Get the cached animation clips from the loaded soldier model.
+ */
+export function getSoldierAnimations(): THREE.AnimationClip[] {
+  return soldierAnimations;
 }

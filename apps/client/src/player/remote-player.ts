@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PLAYER_WIDTH, PLAYER_HEIGHT, INTERPOLATION_DELAY, TEAM_COLORS, Team } from '@clawfield/shared';
 import type { PlayerState } from '@clawfield/shared';
-import { createSoldierInstance } from './model-loader';
+import { createSoldierInstance, getSoldierAnimations } from './model-loader';
 
 /**
  * Renders a remote player as a 3D soldier model (or colored box fallback).
@@ -19,6 +19,8 @@ export class RemotePlayer {
   private labelEl: HTMLDivElement;
   /** Whether we're still using the fallback box (model not loaded yet) */
   private usingFallback: boolean = false;
+  /** Animation mixer for skeletal animations */
+  private mixer: THREE.AnimationMixer | null = null;
 
   constructor(id: string, name: string, scene: THREE.Scene, team: number) {
     this.id = id;
@@ -34,6 +36,15 @@ export class RemotePlayer {
       // Wrap in a Group so `.mesh.position` / `.mesh.rotation` work the same
       this.mesh = new THREE.Group();
       this.mesh.add(modelInstance);
+
+      // Set up animation mixer and play the idle animation
+      const clips = getSoldierAnimations();
+      if (clips.length > 0) {
+        this.mixer = new THREE.AnimationMixer(modelInstance);
+        const idleClip = clips.find(c => c.name.includes('Standing')) ?? clips[0];
+        const action = this.mixer.clipAction(idleClip);
+        action.play();
+      }
     } else {
       // Fallback: simple box mesh (identical to old behavior)
       this.usingFallback = true;
@@ -74,7 +85,9 @@ export class RemotePlayer {
   }
 
   /** Interpolate position between buffered server states */
-  update(camera: THREE.PerspectiveCamera): void {
+  update(dt: number, camera: THREE.PerspectiveCamera): void {
+    // Advance skeletal animation
+    this.mixer?.update(dt);
     const now = performance.now() - INTERPOLATION_DELAY;
 
     if (this.states.length < 2) {
@@ -128,6 +141,11 @@ export class RemotePlayer {
 
   /** Clean up mesh and label */
   dispose(scene: THREE.Scene): void {
+    if (this.mixer) {
+      this.mixer.stopAllAction();
+      this.mixer.uncacheRoot(this.mesh);
+      this.mixer = null;
+    }
     scene.remove(this.mesh);
     // Dispose geometry/materials recursively
     this.mesh.traverse((child: THREE.Object3D) => {
