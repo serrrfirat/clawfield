@@ -42,6 +42,29 @@ export interface WeaponStats {
   recoilKick: number;
   /** Random recoil deviation in radians (random yaw/pitch offset) */
   recoilRandom: number;
+
+  // --- Handling / weapon feel ---
+
+  /** ADS (aim-down-sight) transition speed multiplier (higher = faster). Default ~1.0 */
+  adsSpeed: number;
+  /** Spread multiplier while aiming down sights (lower = tighter). 0-1 */
+  adsSpreadMultiplier: number;
+  /** Movement speed multiplier while holding this weapon (1.0 = no penalty) */
+  moveSpeedMultiplier: number;
+  /** Weapon swap/draw time in seconds */
+  swapTime: number;
+  /** Aim sway amplitude in radians (idle weapon drift when scoped/ADS) */
+  aimSway: number;
+  /** View bob intensity multiplier while walking (higher = more bounce) */
+  bobIntensity: number;
+  /** Recoil recovery speed — how fast crosshair returns to center (rad/s) */
+  recoilRecovery: number;
+  /** Spread increase per shot (bloom). Radians added per bullet fired */
+  spreadBloom: number;
+  /** Spread recovery rate (rad/s) — how fast bloom settles back to base spread */
+  spreadRecovery: number;
+  /** Sprint-to-fire delay in seconds (time after releasing sprint before firing) */
+  sprintToFireTime: number;
 }
 
 /** All weapon definitions */
@@ -62,6 +85,17 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     primary: true,
     recoilKick: 0.015,
     recoilRandom: 0.005,
+    // Balanced all-rounder
+    adsSpeed: 1.0,
+    adsSpreadMultiplier: 0.4,
+    moveSpeedMultiplier: 0.92,
+    swapTime: 0.6,
+    aimSway: 0.002,
+    bobIntensity: 1.0,
+    recoilRecovery: 4.0,
+    spreadBloom: 0.003,
+    spreadRecovery: 6.0,
+    sprintToFireTime: 0.2,
   },
   [WeaponId.SMG_Assault]: {
     id: WeaponId.SMG_Assault,
@@ -79,6 +113,17 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     primary: true,
     recoilKick: 0.01,
     recoilRandom: 0.008,
+    // Snappy CQB weapon — fast ADS, high mobility, more bloom
+    adsSpeed: 1.4,
+    adsSpreadMultiplier: 0.5,
+    moveSpeedMultiplier: 0.97,
+    swapTime: 0.4,
+    aimSway: 0.001,
+    bobIntensity: 0.8,
+    recoilRecovery: 6.0,
+    spreadBloom: 0.005,
+    spreadRecovery: 8.0,
+    sprintToFireTime: 0.12,
   },
   [WeaponId.SMG_Medic]: {
     id: WeaponId.SMG_Medic,
@@ -96,6 +141,17 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     primary: true,
     recoilKick: 0.01,
     recoilRandom: 0.008,
+    // Support SMG — controllable, moderate speed
+    adsSpeed: 1.3,
+    adsSpreadMultiplier: 0.45,
+    moveSpeedMultiplier: 0.96,
+    swapTime: 0.45,
+    aimSway: 0.001,
+    bobIntensity: 0.85,
+    recoilRecovery: 5.5,
+    spreadBloom: 0.004,
+    spreadRecovery: 7.0,
+    sprintToFireTime: 0.14,
   },
   [WeaponId.Shotgun]: {
     id: WeaponId.Shotgun,
@@ -113,6 +169,17 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     primary: true,
     recoilKick: 0.03,
     recoilRandom: 0.015,
+    // Heavy pump — slow ADS, massive recoil kick, slow recovery
+    adsSpeed: 0.8,
+    adsSpreadMultiplier: 0.7,
+    moveSpeedMultiplier: 0.90,
+    swapTime: 0.65,
+    aimSway: 0.003,
+    bobIntensity: 1.3,
+    recoilRecovery: 2.0,
+    spreadBloom: 0.0,
+    spreadRecovery: 0.0,
+    sprintToFireTime: 0.25,
   },
   [WeaponId.Carbine]: {
     id: WeaponId.Carbine,
@@ -130,6 +197,17 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     primary: true,
     recoilKick: 0.015,
     recoilRandom: 0.005,
+    // Precise mid-range — tight ADS, moderate mobility
+    adsSpeed: 1.1,
+    adsSpreadMultiplier: 0.35,
+    moveSpeedMultiplier: 0.93,
+    swapTime: 0.55,
+    aimSway: 0.0025,
+    bobIntensity: 0.95,
+    recoilRecovery: 4.5,
+    spreadBloom: 0.002,
+    spreadRecovery: 5.0,
+    sprintToFireTime: 0.18,
   },
   [WeaponId.PDW]: {
     id: WeaponId.PDW,
@@ -147,6 +225,17 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     primary: true,
     recoilKick: 0.01,
     recoilRandom: 0.008,
+    // Bullet hose — fastest ADS, lightest, wild bloom
+    adsSpeed: 1.5,
+    adsSpreadMultiplier: 0.55,
+    moveSpeedMultiplier: 0.98,
+    swapTime: 0.35,
+    aimSway: 0.001,
+    bobIntensity: 0.7,
+    recoilRecovery: 7.0,
+    spreadBloom: 0.006,
+    spreadRecovery: 9.0,
+    sprintToFireTime: 0.1,
   },
   [WeaponId.SniperRifle]: {
     id: WeaponId.SniperRifle,
@@ -164,6 +253,17 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     primary: true,
     recoilKick: 0.04,
     recoilRandom: 0.002,
+    // Heavy precision — slowest ADS, heavy sway, huge kick
+    adsSpeed: 0.6,
+    adsSpreadMultiplier: 0.1,
+    moveSpeedMultiplier: 0.85,
+    swapTime: 0.8,
+    aimSway: 0.006,
+    bobIntensity: 1.4,
+    recoilRecovery: 1.5,
+    spreadBloom: 0.0,
+    spreadRecovery: 0.0,
+    sprintToFireTime: 0.35,
   },
   [WeaponId.DMR]: {
     id: WeaponId.DMR,
@@ -181,6 +281,17 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     primary: true,
     recoilKick: 0.025,
     recoilRandom: 0.003,
+    // Semi-auto precision — moderate ADS, moderate sway, snappy recovery
+    adsSpeed: 0.85,
+    adsSpreadMultiplier: 0.2,
+    moveSpeedMultiplier: 0.88,
+    swapTime: 0.7,
+    aimSway: 0.004,
+    bobIntensity: 1.2,
+    recoilRecovery: 3.0,
+    spreadBloom: 0.0,
+    spreadRecovery: 0.0,
+    sprintToFireTime: 0.28,
   },
 };
 
