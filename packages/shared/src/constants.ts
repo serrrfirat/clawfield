@@ -46,13 +46,27 @@ export const MAT_STONE = 3;
 export const MAT_WALL = 4;
 export const MAT_ROOF = 5;
 export const MAT_WATER = 6;
+export const MAT_SAND_LIGHT = 7;
+export const MAT_SAND_DARK = 8;
+export const MAT_GRASS_DARK = 9;
+export const MAT_STONE_DARK = 10;
+export const MAT_CONCRETE = 11;
+export const MAT_CONCRETE_DARK = 12;
+export const MAT_WOOD = 13;
+export const MAT_WOOD_DARK = 14;
+export const MAT_BRICK = 15;
+export const MAT_ROOF_TILE = 16;
+export const MAT_WATER_DEEP = 17;
+export const MAT_ROAD = 18;
+export const MAT_WINDOW = 19;
+export const MAT_METAL = 20;
 
 /**
  * Runtime-configurable water indices.
- * Defaults to MAT_WATER (6) for the test map.
- * Maps with custom palettes (e.g. Shoreline) override via setWaterIndices().
+ * Defaults to MAT_WATER (6) and MAT_WATER_DEEP (17).
+ * Maps with custom palettes can override via setWaterIndices().
  */
-const _waterIndices = new Set<number>([MAT_WATER]);
+const _waterIndices = new Set<number>([MAT_WATER, MAT_WATER_DEEP]);
 
 /** Check if a voxel value is a water material */
 export function isWater(voxel: number): boolean {
@@ -73,6 +87,20 @@ export const MATERIAL_COLORS: Record<number, number> = {
   [MAT_WALL]: 0xa0a0a0,
   [MAT_ROOF]: 0x555555,
   [MAT_WATER]: 0x2389da,
+  [MAT_SAND_LIGHT]: 0xd4b896,
+  [MAT_SAND_DARK]: 0xc4a67a,
+  [MAT_GRASS_DARK]: 0x4a7a33,
+  [MAT_STONE_DARK]: 0x666666,
+  [MAT_CONCRETE]: 0xa0a0a0,
+  [MAT_CONCRETE_DARK]: 0x808080,
+  [MAT_WOOD]: 0x8b6914,
+  [MAT_WOOD_DARK]: 0x6b4f10,
+  [MAT_BRICK]: 0xa05228,
+  [MAT_ROOF_TILE]: 0x8b4513,
+  [MAT_WATER_DEEP]: 0x1a4c80,
+  [MAT_ROAD]: 0x555555,
+  [MAT_WINDOW]: 0x87ceeb,
+  [MAT_METAL]: 0x708090,
 };
 
 // --- Water physics constants ---

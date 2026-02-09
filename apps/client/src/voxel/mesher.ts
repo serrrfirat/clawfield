@@ -1,20 +1,5 @@
-import { CHUNK_SIZE, MATERIAL_COLORS, isWater, MAT_GRASS, MAT_DIRT, MAT_STONE, MAT_WALL, MAT_ROOF, MAT_WATER } from '@clawfield/shared';
+import { CHUNK_SIZE, MATERIAL_COLORS, isWater } from '@clawfield/shared';
 import { FALLBACK_TILE, getTileForFace, MATERIAL_TILES } from './texture-atlas';
-
-/**
- * Original hardcoded colors for the 6 known materials. When a map loads a custom
- * palette that overrides these indices, the atlas tile textures would be wrong
- * (e.g. sand showing grass texture). We only use atlas tiles when the current
- * palette color matches the expected color.
- */
-const EXPECTED_COLORS: Record<number, number> = {
-  [MAT_GRASS]: 0x4a8c3f,
-  [MAT_DIRT]: 0x7a5c3a,
-  [MAT_STONE]: 0x888888,
-  [MAT_WALL]: 0xa0a0a0,
-  [MAT_ROOF]: 0x555555,
-  [MAT_WATER]: 0x2389da,
-};
 
 /** A quad produced by the greedy mesher */
 export interface MeshQuad {
@@ -222,12 +207,9 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
       shade = 0.88; // Z-facing sides
     }
 
-    // Determine tile and vertex color based on whether the material has matching atlas tiles.
-    // Only use atlas tiles when the palette color matches the expected hardcoded color —
-    // custom maps (e.g. Shoreline) override palette indices 1-6 with different colors,
-    // so the grass/dirt/stone textures would be wrong.
-    const hasAtlasTile = MATERIAL_TILES[quad.material] !== undefined
-      && MATERIAL_COLORS[quad.material] === EXPECTED_COLORS[quad.material];
+    // Use atlas tile texture if the material has one, otherwise fall back to white tile
+    // (which passes palette RGB through via vertex colors)
+    const hasAtlasTile = MATERIAL_TILES[quad.material] !== undefined;
     const tile = hasAtlasTile ? getTileForFace(quad.material, quad.face) : FALLBACK_TILE;
 
     let sr: number, sg: number, sb: number;
