@@ -611,6 +611,15 @@ function gameLoop(): void {
     }
   }
 
+  // Compute weapon name and player yaw for HUD
+  const weaponName = localPlayer?.weaponCtrl.weapon.name ?? '';
+  let playerYaw = 0;
+  if (localPlayer) {
+    const cam = renderer.camera;
+    const camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    playerYaw = Math.atan2(camDir.x, -camDir.z);
+  }
+
   // Update HUD
   hud.update({
     health: gameState.health,
@@ -628,6 +637,8 @@ function gameLoop(): void {
     gadgetName,
     gadgetCooldownPct,
     gadgetReady,
+    weaponName,
+    playerYaw,
   });
 
   // Update damage indicators

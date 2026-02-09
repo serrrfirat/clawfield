@@ -544,6 +544,13 @@ export class Viewmodel {
   private recoilScale = 1.0;
   private inRecoil = false;
 
+  /** Accumulated visual recoil for sustained fire (smoothed separately) */
+  private visualRecoilPitch = 0;
+  private visualRecoilYaw = 0;
+
+  /** Shot counter for alternating visual recoil direction */
+  private shotCount = 0;
+
   /** Current weapon meshes (for cleanup) */
   private weaponGroup: THREE.Group;
   /** Current attachment groups (for cleanup) */
@@ -625,34 +632,75 @@ export class Viewmodel {
   onFire(): void {
     this.inRecoil = true;
     this.recoilTime = 0;
+    this.shotCount++;
+
+    // Add visual recoil impulse (alternating yaw for weapon character)
+    this.visualRecoilPitch -= 0.03 * this.recoilScale;
+    this.visualRecoilYaw += (this.shotCount % 2 === 0 ? 1 : -1) * 0.01 * this.recoilScale;
   }
 
-  /** Animate recoil recovery each frame */
+  /**
+   * Animate recoil recovery each frame.
+   *
+   * BattleBit-style: sharp snap back with asymmetric timing.
+   * The kick phase is very fast (30% of duration), the return
+   * is slower (70%). Combined with visual recoil drift for
+   * sustained fire feel.
+   */
   update(dt: number): void {
-    if (!this.inRecoil) return;
+    // Decay visual recoil smoothly (always runs, even when not in recoil animation)
+    const recoverySpeed = 8;
+    this.visualRecoilPitch += (0 - this.visualRecoilPitch) * Math.min(1, recoverySpeed * dt);
+    this.visualRecoilYaw += (0 - this.visualRecoilYaw) * Math.min(1, recoverySpeed * dt);
+
+    if (!this.inRecoil) {
+      // Apply only visual recoil drift when not in active kick animation
+      this.group.position.set(
+        this.restPosition.x + this.visualRecoilYaw * 0.3,
+        this.restPosition.y,
+        this.restPosition.z,
+      );
+      this.group.rotation.set(this.visualRecoilPitch, this.visualRecoilYaw, 0);
+      return;
+    }
 
     this.recoilTime += dt;
     const t = Math.min(this.recoilTime / this.recoilDuration, 1);
 
-    // Recoil curve: kick back then return (sine curve peaks at t=0.5)
-    const kickAmount = Math.sin(t * Math.PI);
+    // Asymmetric kick curve: fast snap (0-0.3), slow return (0.3-1.0)
+    // This gives the "punch" feeling of BattleBit
+    let kickAmount: number;
+    if (t < 0.3) {
+      // Sharp snap to peak (ease-out)
+      const tSnap = t / 0.3;
+      kickAmount = 1 - Math.pow(1 - tSnap, 2);
+    } else {
+      // Slower return (ease-in-out)
+      const tReturn = (t - 0.3) / 0.7;
+      kickAmount = 1 - tReturn * tReturn;
+    }
 
     // Scale the kick by weapon-specific intensity
     const kick = kickAmount * this.recoilScale;
 
+    // Position kick: backwards (Z) with slight upward (Y) and side wobble
+    const sideKick = Math.sin(this.shotCount * 2.1) * kick * 0.008;
     this.group.position.set(
-      this.restPosition.x,
-      this.restPosition.y + kick * 0.02,
-      this.restPosition.z + kick * 0.1,
+      this.restPosition.x + sideKick + this.visualRecoilYaw * 0.3,
+      this.restPosition.y + kick * 0.025,
+      this.restPosition.z + kick * 0.12,
     );
 
-    // Upward rotation for recoil
-    this.group.rotation.set(-kick * 0.08, 0, 0);
+    // Rotation kick: pitch up, slight roll for weapon character
+    const rollKick = Math.sin(this.shotCount * 1.7) * kick * 0.015;
+    this.group.rotation.set(
+      -kick * 0.1 + this.visualRecoilPitch,
+      this.visualRecoilYaw,
+      rollKick,
+    );
 
     if (t >= 1) {
       this.inRecoil = false;
-      this.group.position.copy(this.restPosition);
-      this.group.rotation.set(0, 0, 0);
     }
   }
 

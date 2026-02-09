@@ -22,6 +22,10 @@ export interface HUDState {
   /** 0 = ready, 1 = full cooldown */
   gadgetCooldownPct: number;
   gadgetReady: boolean;
+  /** Display name of the currently equipped weapon */
+  weaponName: string;
+  /** Player yaw in radians for compass (0 = north / -Z) */
+  playerYaw: number;
 }
 
 // ── Internal helpers ───────────────────────────────────────────────
@@ -69,9 +73,9 @@ export class HUD {
   private healthText: HTMLDivElement;
 
   // Ammo
-  private ammoCount: HTMLDivElement;
+  private ammoBarContainer: HTMLDivElement;
   private ammoReload: HTMLDivElement;
-  private ammoClass: HTMLDivElement;
+  private weaponNameEl: HTMLDivElement;
 
   // Tickets
   private ticketsAlphaEl: HTMLSpanElement;
@@ -110,13 +114,24 @@ export class HUD {
   private gadgetCdFill: HTMLDivElement;
   private gadgetKey: HTMLDivElement;
 
+  // Compass
+  private compassStrip: HTMLDivElement;
+  private compassHeading: HTMLDivElement;
+
+  // Class indicator
+  private classLabel: HTMLDivElement;
+
+  /** Cached ammo bar elements for reuse */
+  private ammoBars: HTMLDivElement[] = [];
+  private lastMaxAmmo = 0;
+
   // ── Constructor ──────────────────────────────────────────────
 
   constructor() {
     injectHUDStyles();
     this.root = this.el('div', 'hud-root');
 
-    // Health
+    // ── Health (bottom-left) ──
     const healthWrap = this.el('div', 'hud-health');
     const barBg = this.el('div', 'hud-health-bar-bg');
     this.healthFill = this.el('div', 'hud-health-bar-fill');
@@ -126,18 +141,22 @@ export class HUD {
     healthWrap.appendChild(barBg);
     this.root.appendChild(healthWrap);
 
-    // Ammo
+    // Class label (above health bar)
+    this.classLabel = this.el('div', 'hud-class-label');
+    this.root.appendChild(this.classLabel);
+
+    // ── Ammo (bottom-right) ──
     const ammoWrap = this.el('div', 'hud-ammo');
-    this.ammoCount = this.el('div', 'hud-ammo-count');
+    this.weaponNameEl = this.el('div', 'hud-weapon-name');
+    this.ammoBarContainer = this.el('div', 'hud-ammo-bars');
     this.ammoReload = this.el('div', 'hud-ammo-reload');
     this.ammoReload.textContent = 'RELOADING';
-    this.ammoClass = this.el('div', 'hud-ammo-class');
-    ammoWrap.appendChild(this.ammoCount);
+    ammoWrap.appendChild(this.weaponNameEl);
+    ammoWrap.appendChild(this.ammoBarContainer);
     ammoWrap.appendChild(this.ammoReload);
-    ammoWrap.appendChild(this.ammoClass);
     this.root.appendChild(ammoWrap);
 
-    // Tickets
+    // ── Tickets (top-center) ──
     const ticketsWrap = this.el('div', 'hud-tickets');
     this.ticketsAlphaEl = this.el('span', 'hud-tickets-alpha') as HTMLSpanElement;
     this.ticketsBravoEl = this.el('span', 'hud-tickets-bravo') as HTMLSpanElement;
@@ -148,15 +167,15 @@ export class HUD {
     ticketsWrap.appendChild(this.ticketsBravoEl);
     this.root.appendChild(ticketsWrap);
 
-    // Kill feed
+    // ── Kill feed (top-right) ──
     this.killfeedContainer = this.el('div', 'hud-killfeed');
     this.root.appendChild(this.killfeedContainer);
 
-    // Hit marker
+    // ── Hit marker (center) ──
     this.hitmarker = this.el('div', 'hud-hitmarker');
     this.root.appendChild(this.hitmarker);
 
-    // Death overlay (also used for downed state)
+    // ── Death overlay (also used for downed state) ──
     this.deathOverlay = this.el('div', 'hud-death');
     this.deathTitle = this.el('div', 'hud-death-title');
     this.deathTitle.textContent = 'YOU DIED';
@@ -174,12 +193,12 @@ export class HUD {
     this.deathOverlay.appendChild(this.downedReviveText);
     this.root.appendChild(this.deathOverlay);
 
-    // Revive prompt (shown when alive and near a downed teammate)
+    // ── Revive prompt (shown when alive and near a downed teammate) ──
     this.revivePrompt = this.el('div', 'hud-revive-prompt');
     this.revivePrompt.textContent = 'Hold [E] to revive';
     this.root.appendChild(this.revivePrompt);
 
-    // Gadget indicator
+    // ── Gadget indicator (bottom-left, above health) ──
     this.gadgetWrap = this.el('div', 'hud-gadget');
     this.gadgetName = this.el('div', 'hud-gadget-name');
     this.gadgetKey = this.el('div', 'hud-gadget-key');
@@ -192,7 +211,18 @@ export class HUD {
     this.gadgetWrap.appendChild(this.gadgetKey);
     this.root.appendChild(this.gadgetWrap);
 
-    // Game over
+    // ── Compass (bottom-center) ──
+    const compassWrap = this.el('div', 'hud-compass');
+    this.compassHeading = this.el('div', 'hud-compass-heading');
+    this.compassStrip = this.el('div', 'hud-compass-strip');
+    compassWrap.appendChild(this.compassHeading);
+    compassWrap.appendChild(this.compassStrip);
+    // Center tick mark
+    const centerTick = this.el('div', 'hud-compass-center');
+    compassWrap.appendChild(centerTick);
+    this.root.appendChild(compassWrap);
+
+    // ── Game over ──
     this.gameoverOverlay = this.el('div', 'hud-gameover');
     this.gameoverText = this.el('div', 'hud-gameover-text');
     this.gameoverOverlay.appendChild(this.gameoverText);
@@ -214,14 +244,19 @@ export class HUD {
     this.healthFill.style.backgroundColor = this.healthColor(pct);
     this.healthText.textContent = `${Math.round(state.health)}`;
 
-    // Ammo
-    this.ammoCount.innerHTML = `${state.ammo} <span>/ ${state.maxAmmo}</span>`;
+    // Class label
+    this.classLabel.textContent = state.className.toUpperCase();
+
+    // Weapon name
+    this.weaponNameEl.textContent = state.weaponName || state.className;
+
+    // Ammo bars
+    this.updateAmmoBars(state.ammo, state.maxAmmo);
     if (state.reloading) {
       this.ammoReload.classList.add('visible');
     } else {
       this.ammoReload.classList.remove('visible');
     }
-    this.ammoClass.textContent = state.className;
 
     // Score display — mode-aware
     if (state.gameMode === 'conquest') {
@@ -248,6 +283,9 @@ export class HUD {
     this.gadgetCdFill.style.width = `${cdPct * 100}%`;
     this.gadgetCdFill.style.backgroundColor = state.gadgetReady ? '#2ecc71' : '#e74c3c';
     this.gadgetKey.style.opacity = state.gadgetReady ? '1' : '0.4';
+
+    // Compass
+    this.updateCompass(state.playerYaw);
   }
 
   /**
@@ -479,6 +517,75 @@ export class HUD {
   }
 
   // ── Private helpers ──────────────────────────────────────────
+
+  /** Cardinal/intercardinal labels for the compass */
+  private static readonly COMPASS_LABELS: Record<number, string> = {
+    0: 'N', 45: 'NE', 90: 'E', 135: 'SE',
+    180: 'S', 225: 'SW', 270: 'W', 315: 'NW',
+  };
+
+  /**
+   * Update the compass strip to reflect the player's heading.
+   * Shows a horizontal band of degree ticks scrolling under a center marker.
+   */
+  private updateCompass(yawRad: number): void {
+    // Convert yaw to compass degrees (0 = North, clockwise).
+    // In the engine yaw 0 means looking along -Z (north), increasing CW.
+    let deg = ((yawRad * 180) / Math.PI) % 360;
+    if (deg < 0) deg += 360;
+
+    this.compassHeading.textContent = `${Math.round(deg)}`;
+
+    // Build strip: show +/- 40 degrees around current heading
+    const halfSpan = 40;
+    let html = '';
+    for (let offset = -halfSpan; offset <= halfSpan; offset += 5) {
+      let d = Math.round(deg) + offset;
+      if (d < 0) d += 360;
+      if (d >= 360) d -= 360;
+
+      const label = HUD.COMPASS_LABELS[d];
+      const isMajor = d % 10 === 0;
+
+      if (label) {
+        html += `<span class="hud-compass-label">${label}</span>`;
+      } else if (isMajor) {
+        html += `<span class="hud-compass-major">${d}</span>`;
+      } else {
+        html += `<span class="hud-compass-tick">|</span>`;
+      }
+    }
+    this.compassStrip.innerHTML = html;
+  }
+
+  /**
+   * Render ammo as vertical bar indicators (like BattleBit).
+   * Each bar represents one round — filled bars are remaining ammo.
+   */
+  private updateAmmoBars(ammo: number, maxAmmo: number): void {
+    // Rebuild bar elements if mag size changed
+    if (maxAmmo !== this.lastMaxAmmo) {
+      this.lastMaxAmmo = maxAmmo;
+      this.ammoBarContainer.innerHTML = '';
+      this.ammoBars = [];
+      for (let i = 0; i < maxAmmo; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'hud-ammo-bar';
+        this.ammoBarContainer.appendChild(bar);
+        this.ammoBars.push(bar);
+      }
+    }
+
+    // Update filled/empty state
+    for (let i = 0; i < this.ammoBars.length; i++) {
+      const bar = this.ammoBars[i]!;
+      if (i < ammo) {
+        bar.classList.remove('empty');
+      } else {
+        bar.classList.add('empty');
+      }
+    }
+  }
 
   /** Create a typed DOM element with a CSS class. */
   private el<K extends keyof HTMLElementTagNameMap>(
