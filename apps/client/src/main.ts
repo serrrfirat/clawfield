@@ -33,6 +33,7 @@ export const gameState = {
   ticketsBravo: 75,
   kills: [] as KillEntry[],
   alive: true,
+  downed: false,
   health: 100,
   ammo: 30,
   maxAmmo: 30,
@@ -141,6 +142,7 @@ function handleServerMessage(msg: ServerMessage): void {
           // Update gameState from server authoritative state
           gameState.health = playerState.health;
           gameState.alive = playerState.alive;
+          gameState.downed = playerState.downed;
           gameState.ammo = playerState.ammo;
           gameState.maxAmmo = playerState.maxAmmo;
           gameState.reloading = playerState.reloading;
@@ -196,6 +198,7 @@ function handleServerMessage(msg: ServerMessage): void {
 
     case 'death': {
       gameState.alive = false;
+      gameState.downed = false;
       // Find killer name from remote players
       const killerRemote = remotePlayers.get(msg.killerId);
       const killerName = killerRemote?.name ?? 'Unknown';
@@ -205,8 +208,35 @@ function handleServerMessage(msg: ServerMessage): void {
       break;
     }
 
+    case 'downed': {
+      gameState.downed = true;
+      // Find killer name from remote players
+      const downerRemote = remotePlayers.get(msg.killerId);
+      const downerName = downerRemote?.name ?? 'Unknown';
+      hud.showDowned(msg.bleedoutTime, downerName);
+      break;
+    }
+
+    case 'revive_progress': {
+      if (gameState.downed) {
+        const reviverRemote = remotePlayers.get(msg.reviverId);
+        const reviverName = reviverRemote?.name ?? 'Teammate';
+        hud.updateReviveProgress(msg.progress, reviverName);
+      }
+      break;
+    }
+
+    case 'revived': {
+      gameState.downed = false;
+      gameState.alive = true;
+      gameState.health = msg.health;
+      hud.hideDeath();
+      break;
+    }
+
     case 'respawn': {
       gameState.alive = true;
+      gameState.downed = false;
       deployScreen.hide();
       hud.hideDeath();
       if (!localPlayer) {

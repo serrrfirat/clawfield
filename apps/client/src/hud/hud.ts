@@ -87,9 +87,15 @@ export class HUD {
 
   // Death overlay
   private deathOverlay: HTMLDivElement;
+  private deathTitle: HTMLDivElement;
   private deathKillerName: HTMLDivElement;
   private deathCountdown: HTMLDivElement;
   private deathInterval: number | null = null;
+
+  // Downed / revive overlay
+  private downedReviveBar: HTMLDivElement;
+  private downedReviveFill: HTMLDivElement;
+  private downedReviveText: HTMLDivElement;
 
   // Game over
   private gameoverOverlay: HTMLDivElement;
@@ -147,15 +153,22 @@ export class HUD {
     this.hitmarker = this.el('div', 'hud-hitmarker');
     this.root.appendChild(this.hitmarker);
 
-    // Death overlay
+    // Death overlay (also used for downed state)
     this.deathOverlay = this.el('div', 'hud-death');
-    const deathTitle = this.el('div', 'hud-death-title');
-    deathTitle.textContent = 'YOU DIED';
+    this.deathTitle = this.el('div', 'hud-death-title');
+    this.deathTitle.textContent = 'YOU DIED';
     this.deathKillerName = this.el('div', 'hud-death-killer');
     this.deathCountdown = this.el('div', 'hud-death-countdown');
-    this.deathOverlay.appendChild(deathTitle);
+    // Revive progress bar (shown when downed and being revived)
+    this.downedReviveBar = this.el('div', 'hud-revive-bar');
+    this.downedReviveFill = this.el('div', 'hud-revive-fill');
+    this.downedReviveText = this.el('div', 'hud-revive-text');
+    this.downedReviveBar.appendChild(this.downedReviveFill);
+    this.deathOverlay.appendChild(this.deathTitle);
     this.deathOverlay.appendChild(this.deathKillerName);
     this.deathOverlay.appendChild(this.deathCountdown);
+    this.deathOverlay.appendChild(this.downedReviveBar);
+    this.deathOverlay.appendChild(this.downedReviveText);
     this.root.appendChild(this.deathOverlay);
 
     // Gadget indicator
@@ -347,11 +360,68 @@ export class HUD {
   }
 
   /**
-   * Hide the death overlay (called on respawn).
+   * Show the downed overlay with a bleedout countdown.
+   * @param bleedoutTime — seconds until bleedout death
+   * @param killerName — optional name of the player who downed us
+   */
+  showDowned(bleedoutTime: number, killerName?: string): void {
+    this.clearDeathInterval();
+
+    this.deathTitle.textContent = 'DOWNED';
+    this.deathTitle.style.color = '#f39c12';
+    this.deathOverlay.style.background = 'rgba(60, 20, 0, 0.55)';
+
+    if (killerName) {
+      this.deathKillerName.textContent = `Downed by ${killerName}`;
+      this.deathKillerName.style.display = 'block';
+    } else {
+      this.deathKillerName.style.display = 'none';
+    }
+
+    let remaining = Math.ceil(bleedoutTime);
+    this.deathCountdown.textContent = `Bleeding out in ${remaining}s...`;
+    this.downedReviveBar.style.display = 'none';
+    this.downedReviveText.textContent = 'Waiting for revive...';
+    this.downedReviveText.style.display = 'block';
+    this.deathOverlay.classList.add('visible');
+
+    this.deathInterval = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        this.deathCountdown.textContent = 'Bled out';
+        this.clearDeathInterval();
+      } else {
+        this.deathCountdown.textContent = `Bleeding out in ${remaining}s...`;
+      }
+    }, 1_000);
+  }
+
+  /**
+   * Update revive progress bar on the downed overlay.
+   * @param progress — 0 to 1
+   * @param reviverName — name of the player reviving us
+   */
+  updateReviveProgress(progress: number, reviverName?: string): void {
+    this.downedReviveBar.style.display = 'block';
+    this.downedReviveFill.style.width = `${Math.min(100, progress * 100)}%`;
+    if (reviverName) {
+      this.downedReviveText.textContent = `${reviverName} is reviving you...`;
+    }
+    this.downedReviveText.style.display = 'block';
+  }
+
+  /**
+   * Hide the death/downed overlay (called on respawn or revive).
    */
   hideDeath(): void {
     this.clearDeathInterval();
     this.deathOverlay.classList.remove('visible');
+    // Reset styling for normal death overlay
+    this.deathTitle.textContent = 'YOU DIED';
+    this.deathTitle.style.color = '';
+    this.deathOverlay.style.background = '';
+    this.downedReviveBar.style.display = 'none';
+    this.downedReviveText.style.display = 'none';
   }
 
   /**

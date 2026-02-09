@@ -268,6 +268,33 @@ const CSS = /* css */ `
   letter-spacing: 2px;
 }
 
+/* ───────────────── Revive progress bar (downed state) ───────────────── */
+
+.hud-revive-bar {
+  width: 300px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-top: 20px;
+  overflow: hidden;
+  display: none;
+}
+
+.hud-revive-fill {
+  height: 100%;
+  width: 0%;
+  background: #2ecc71;
+  transition: width 0.1s linear;
+}
+
+.hud-revive-text {
+  font-size: 16px;
+  color: #f39c12;
+  margin-top: 8px;
+  letter-spacing: 1px;
+  display: none;
+}
+
 /* ───────────────── Game over overlay ───────────────── */
 
 .hud-gameover {
