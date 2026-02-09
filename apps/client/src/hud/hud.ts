@@ -18,6 +18,10 @@ export interface HUDState {
   gameMode: GameMode;
   conquestScoreAlpha: number;
   conquestScoreBravo: number;
+  gadgetName: string;
+  /** 0 = ready, 1 = full cooldown */
+  gadgetCooldownPct: number;
+  gadgetReady: boolean;
 }
 
 // ── Internal helpers ───────────────────────────────────────────────
@@ -91,6 +95,12 @@ export class HUD {
   private gameoverOverlay: HTMLDivElement;
   private gameoverText: HTMLDivElement;
 
+  // Gadget indicator
+  private gadgetWrap: HTMLDivElement;
+  private gadgetName: HTMLDivElement;
+  private gadgetCdFill: HTMLDivElement;
+  private gadgetKey: HTMLDivElement;
+
   // ── Constructor ──────────────────────────────────────────────
 
   constructor() {
@@ -148,6 +158,19 @@ export class HUD {
     this.deathOverlay.appendChild(this.deathCountdown);
     this.root.appendChild(this.deathOverlay);
 
+    // Gadget indicator
+    this.gadgetWrap = this.el('div', 'hud-gadget');
+    this.gadgetName = this.el('div', 'hud-gadget-name');
+    this.gadgetKey = this.el('div', 'hud-gadget-key');
+    this.gadgetKey.textContent = '[F]';
+    const gadgetCdBg = this.el('div', 'hud-gadget-cooldown');
+    this.gadgetCdFill = this.el('div', 'hud-gadget-cooldown-fill');
+    gadgetCdBg.appendChild(this.gadgetCdFill);
+    this.gadgetWrap.appendChild(this.gadgetName);
+    this.gadgetWrap.appendChild(gadgetCdBg);
+    this.gadgetWrap.appendChild(this.gadgetKey);
+    this.root.appendChild(this.gadgetWrap);
+
     // Game over
     this.gameoverOverlay = this.el('div', 'hud-gameover');
     this.gameoverText = this.el('div', 'hud-gameover-text');
@@ -197,6 +220,13 @@ export class HUD {
       'hud-tickets-highlight',
       state.myTeam === TEAM_BRAVO,
     );
+
+    // Gadget indicator
+    this.gadgetName.textContent = state.gadgetName;
+    const cdPct = Math.max(0, Math.min(1, 1 - state.gadgetCooldownPct));
+    this.gadgetCdFill.style.width = `${cdPct * 100}%`;
+    this.gadgetCdFill.style.backgroundColor = state.gadgetReady ? '#2ecc71' : '#e74c3c';
+    this.gadgetKey.style.opacity = state.gadgetReady ? '1' : '0.4';
   }
 
   /**

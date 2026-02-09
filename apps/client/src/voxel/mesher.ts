@@ -1,5 +1,20 @@
-import { CHUNK_SIZE, MATERIAL_COLORS, isWater } from '@clawfield/shared';
-import { FALLBACK_TILE } from './texture-atlas';
+import { CHUNK_SIZE, MATERIAL_COLORS, isWater, MAT_GRASS, MAT_DIRT, MAT_STONE, MAT_WALL, MAT_ROOF, MAT_WATER } from '@clawfield/shared';
+import { FALLBACK_TILE, getTileForFace, MATERIAL_TILES } from './texture-atlas';
+
+/**
+ * Original hardcoded colors for the 6 known materials. When a map loads a custom
+ * palette that overrides these indices, the atlas tile textures would be wrong
+ * (e.g. sand showing grass texture). We only use atlas tiles when the current
+ * palette color matches the expected color.
+ */
+const EXPECTED_COLORS: Record<number, number> = {
+  [MAT_GRASS]: 0x4a8c3f,
+  [MAT_DIRT]: 0x7a5c3a,
+  [MAT_STONE]: 0x888888,
+  [MAT_WALL]: 0xa0a0a0,
+  [MAT_ROOF]: 0x555555,
+  [MAT_WATER]: 0x2389da,
+};
 
 /** A quad produced by the greedy mesher */
 export interface MeshQuad {
@@ -207,26 +222,37 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
       shade = 0.88; // Z-facing sides
     }
 
-    // All materials: vertex color = palette RGB * shade.
-    // The atlas samples a white fallback tile so the shader multiply is neutral:
-    // white(1,1,1) * paletteRGB * shade = paletteRGB * shade.
-    // This avoids the UV interpolation bug (floor(interpolated_uv) gives wrong
-    // tiles for greedy-merged quads) and the palette mismatch where map palettes
-    // use different colors at indices 1-6 than the hardcoded atlas tile mapping.
-    const hex = MATERIAL_COLORS[quad.material] ?? 0xff00ff;
-    const sr = ((hex >> 16) & 0xff) / 255 * shade;
-    const sg = ((hex >> 8) & 0xff) / 255 * shade;
-    const sb = (hex & 0xff) / 255 * shade;
+    // Determine tile and vertex color based on whether the material has matching atlas tiles.
+    // Only use atlas tiles when the palette color matches the expected hardcoded color —
+    // custom maps (e.g. Shoreline) override palette indices 1-6 with different colors,
+    // so the grass/dirt/stone textures would be wrong.
+    const hasAtlasTile = MATERIAL_TILES[quad.material] !== undefined
+      && MATERIAL_COLORS[quad.material] === EXPECTED_COLORS[quad.material];
+    const tile = hasAtlasTile ? getTileForFace(quad.material, quad.face) : FALLBACK_TILE;
 
-    // Point all vertices to the center of the white fallback tile.
-    // All 4 vertices share the same UV, so interpolation is exact and
-    // floor(vUv) always yields the fallback tile index.
-    const fbU = FALLBACK_TILE[0] + 0.5;
-    const fbV = FALLBACK_TILE[1] + 0.5;
-    const uv0: [number, number] = [fbU, fbV];
-    const uv1: [number, number] = [fbU, fbV];
-    const uv2: [number, number] = [fbU, fbV];
-    const uv3: [number, number] = [fbU, fbV];
+    let sr: number, sg: number, sb: number;
+    if (hasAtlasTile) {
+      // Atlas texture provides color; vertex color is shade-only
+      sr = shade;
+      sg = shade;
+      sb = shade;
+    } else {
+      // Fallback: palette RGB * shade (atlas samples white tile = neutral)
+      const hex = MATERIAL_COLORS[quad.material] ?? 0xff00ff;
+      sr = ((hex >> 16) & 0xff) / 255 * shade;
+      sg = ((hex >> 8) & 0xff) / 255 * shade;
+      sb = (hex & 0xff) / 255 * shade;
+    }
+
+    // UV: tile base index. The shader uses fract(vWorldPosition) for local UV,
+    // so all 4 vertices share the same tile base (floor(vUv) = tileBase).
+    // Add 0.5 so floor() is stable across the quad.
+    const tileU = tile[0] + 0.5;
+    const tileV = tile[1] + 0.5;
+    const uv0: [number, number] = [tileU, tileV];
+    const uv1: [number, number] = [tileU, tileV];
+    const uv2: [number, number] = [tileU, tileV];
+    const uv3: [number, number] = [tileU, tileV];
 
     // Emit 4 unique vertices: v0, v1, v2, v3
     const verts = [v0, v1, v2, v3];

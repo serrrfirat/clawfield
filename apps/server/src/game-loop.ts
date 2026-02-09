@@ -21,6 +21,7 @@ import {
   GRENADE_COOLDOWN,
   SCOREBOARD_BROADCAST_INTERVAL,
   GADGET_COOLDOWN,
+  GADGET_COOLDOWNS,
   STREAM_RADIUS,
   STREAM_CHECK_INTERVAL,
   CONQUEST_VICTORY_POINTS,
@@ -822,13 +823,17 @@ export class GameLoop {
       });
     }
 
-    // Send spotted enemies to all clients (client filters by team)
-    if (gadgetResult.spottedPositions) {
-      this.network.broadcast({
-        type: 'enemy_spotted',
-        positions: gadgetResult.spottedPositions,
-        duration: 10,
-      });
+    // Send spotted enemies only to the spotter's team
+    if (gadgetResult.spottedPositions && gadgetResult.spotterTeam >= 0) {
+      this.network.broadcastToTeam(
+        gadgetResult.spotterTeam,
+        {
+          type: 'enemy_spotted',
+          positions: gadgetResult.spottedPositions,
+          duration: 10,
+        },
+        (clientId) => this.players.get(clientId)?.team
+      );
     }
 
     // Update capture points
@@ -960,6 +965,23 @@ export class GameLoop {
       }
 
       if (newChunks.length > 0) {
+        // Sort by priority: closer chunks and chunks in the look direction load first
+        const lookDir = aimDirection(sim.yaw, sim.pitch);
+        newChunks.sort((a, b) => {
+          const [ax, ay, az] = a.key.split(',').map(Number);
+          const [bx, by, bz] = b.key.split(',').map(Number);
+          const adx = ax - cx, ady = ay - cy, adz = az - cz;
+          const bdx = bx - cx, bdy = by - cy, bdz = bz - cz;
+          const aDist = Math.sqrt(adx * adx + ady * ady + adz * adz);
+          const bDist = Math.sqrt(bdx * bdx + bdy * bdy + bdz * bdz);
+          // Dot product with look direction (normalized chunk direction)
+          const aDot = aDist > 0 ? (adx * lookDir.x + ady * lookDir.y + adz * lookDir.z) / aDist : 0;
+          const bDot = bDist > 0 ? (bdx * lookDir.x + bdy * lookDir.y + bdz * lookDir.z) / bDist : 0;
+          const aPri = aDist - aDot * 32;
+          const bPri = bDist - bDot * 32;
+          return aPri - bPri;
+        });
+
         this.network.send(client, {
           type: 'chunks',
           chunks: newChunks,
@@ -1099,11 +1121,20 @@ export class GameLoop {
       const input = player.latestInput;
       if (!input || !input.useGadget) continue;
 
-      // Check cooldown
-      if (now - player.lastGadgetTime < GADGET_COOLDOWN * 1000) continue;
+      const gadgetIndex = input.gadgetIndex ?? 0;
+
+      // Resolve gadget ID for this class + index
+      const classDef = CLASSES[player.classId as ClassId];
+      if (!classDef) continue;
+      const gadgetId = classDef.gadgets[gadgetIndex];
+      if (!gadgetId) continue;
+
+      // Use per-gadget cooldown
+      const cooldown = GADGET_COOLDOWNS[gadgetId] ?? GADGET_COOLDOWN;
+      if (now - player.lastGadgetTime < cooldown * 1000) continue;
 
       player.lastGadgetTime = now;
-      this.gadgetManager.spawn(player);
+      this.gadgetManager.spawn(player, gadgetIndex);
     }
   }
 

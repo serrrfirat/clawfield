@@ -302,6 +302,46 @@ const CSS = /* css */ `
 .hud-gameover-defeat {
   color: #e74c3c;
 }
+
+/* ───────────────── Gadget indicator (bottom-left, above health) ───────────────── */
+
+.hud-gadget {
+  position: fixed;
+  bottom: 56px;
+  left: 24px;
+  width: 200px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-gadget-name {
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  text-transform: uppercase;
+}
+
+.hud-gadget-cooldown {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.hud-gadget-cooldown-fill {
+  height: 100%;
+  transition: width 0.15s ease, background-color 0.3s ease;
+}
+
+.hud-gadget-key {
+  font-size: 10px;
+  opacity: 0.6;
+  letter-spacing: 1px;
+}
 `;
 
 let injected = false;

@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@clawfield/shared": "workspace:*",
+    "lz4js": "^0.2.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/lz4js": "^0.2.2",
     "@types/ws": "^8.5.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"

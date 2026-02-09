@@ -19,7 +19,8 @@ export class Renderer {
   constructor() {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x7ec8e3); // slightly desaturated sky
-    this.scene.fog = new THREE.Fog(0xa9c2d0, 120, 320); // soft coastal haze for Shoreline
+    // Fog is handled by custom height+distance shader in world-renderer.ts
+    // (no scene.fog — our shader replaces #include <fog_fragment>)
 
     this.camera = new THREE.PerspectiveCamera(
       75,

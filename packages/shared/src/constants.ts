@@ -209,10 +209,10 @@ export const GADGET_SPOT_CONE = 0.15;
 export const GADGET_COVER_HP = 300;
 
 /** Deploy cover width in voxels */
-export const GADGET_COVER_WIDTH = 3;
+export const GADGET_COVER_WIDTH = 2;
 
 /** Deploy cover height in voxels */
-export const GADGET_COVER_HEIGHT = 3;
+export const GADGET_COVER_HEIGHT = 2;
 
 /** Deploy cover duration in seconds (auto-remove after this) */
 export const GADGET_COVER_DURATION = 45;
@@ -223,8 +223,30 @@ export const GADGET_COVER_DISTANCE = 2;
 /** Deploy cover material ID (uses wall material) */
 export const GADGET_COVER_MATERIAL = 4; // MAT_WALL
 
-/** Gadget cooldown in seconds */
+/** Gadget cooldown in seconds (legacy default) */
 export const GADGET_COOLDOWN = 15;
+
+/** Per-gadget cooldowns in seconds */
+export const GADGET_COOLDOWNS: Record<string, number> = {
+  medkit: 15,
+  bandage: 8,
+  ammo_box: 15,
+  repair_tool: 30,
+  spotting_scope: 15,
+  claymore: 20,
+};
+
+/** Bandage heal amount (instant self-heal) */
+export const GADGET_BANDAGE_HEAL = 30;
+
+/** Claymore proximity trigger radius in meters */
+export const GADGET_CLAYMORE_RADIUS = 3;
+
+/** Claymore explosion damage */
+export const GADGET_CLAYMORE_DAMAGE = 80;
+
+/** Claymore lifetime in seconds */
+export const GADGET_CLAYMORE_DURATION = 60;
 
 /** Scoreboard broadcast interval in ticks (5 seconds at 20Hz) */
 export const SCOREBOARD_BROADCAST_INTERVAL = 100;

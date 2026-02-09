@@ -18,6 +18,11 @@ export enum SoundId {
   GrenadeBounce = 'grenade_bounce',
   AmbientWind = 'ambient_wind',
   CaptureTick = 'capture_tick',
+  GadgetMedkit = 'gadget_medkit',
+  GadgetAmmo = 'gadget_ammo',
+  GadgetSpot = 'gadget_spot',
+  GadgetCover = 'gadget_cover',
+  GadgetDeploy = 'gadget_deploy',
 }
 
 export interface SoundConfig {
@@ -68,4 +73,11 @@ export const SOUND_CONFIGS: Record<SoundId, SoundConfig> = {
 
   // Ambient: volume 0.15, loop, non-spatial
   [SoundId.AmbientWind]: { volume: 0.15, loop: true, spatial: false },
+
+  // Gadget sounds: spatial
+  [SoundId.GadgetMedkit]: { volume: 0.5, loop: false, spatial: true },
+  [SoundId.GadgetAmmo]: { volume: 0.5, loop: false, spatial: true },
+  [SoundId.GadgetSpot]: { volume: 0.4, loop: false, spatial: false },
+  [SoundId.GadgetCover]: { volume: 0.6, loop: false, spatial: true },
+  [SoundId.GadgetDeploy]: { volume: 0.4, loop: false, spatial: false },
 };

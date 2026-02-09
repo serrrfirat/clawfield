@@ -16,6 +16,10 @@ import {
   GADGET_COVER_DURATION,
   GADGET_COVER_DISTANCE,
   GADGET_COVER_MATERIAL,
+  GADGET_BANDAGE_HEAL,
+  GADGET_CLAYMORE_RADIUS,
+  GADGET_CLAYMORE_DAMAGE,
+  GADGET_CLAYMORE_DURATION,
   MAX_HEALTH,
   aimDirection,
   PLAYER_HEIGHT,
@@ -38,6 +42,8 @@ interface ActiveGadget {
   ammoTimer?: number;
   // Deploy cover specific — track placed voxel positions for removal
   coverVoxels?: { x: number; y: number; z: number }[];
+  // Claymore specific — aim yaw for directional check
+  aimYaw?: number;
 }
 
 /** Voxel change for network sync */
@@ -103,13 +109,12 @@ export class GadgetManager {
     return this.spottedEnemies.map(s => ({ ...s.position }));
   }
 
-  /** Spawn a gadget based on player class */
-  spawn(player: PlayerSim): void {
+  /** Spawn a gadget based on player class and selected gadget index */
+  spawn(player: PlayerSim, gadgetIndex: number = 0): void {
     const classDef = CLASSES[player.classId as ClassId];
     if (!classDef) return;
 
-    // Use the first gadget for the class (simplified — no gadget selection UI yet)
-    const gadgetId = classDef.gadgets[0];
+    const gadgetId = classDef.gadgets[gadgetIndex] ?? classDef.gadgets[0];
 
     // Skip grenade gadgets — already handled by grenade system
     if (gadgetId === GadgetId.FragGrenade || gadgetId === GadgetId.SmokeGrenade) return;
@@ -133,9 +138,30 @@ export class GadgetManager {
         break;
       }
 
+      case GadgetId.Bandage: {
+        // Instant self-heal, no persistent object
+        player.health = Math.min(MAX_HEALTH, player.health + GADGET_BANDAGE_HEAL);
+        break;
+      }
+
       case GadgetId.SpottingScope: {
         // Instant effect: raycast in aim direction and mark enemies
         this.spotEnemies(player);
+        break;
+      }
+
+      case GadgetId.Claymore: {
+        // Place proximity mine at player's feet
+        const gadget: ActiveGadget = {
+          id: this.nextId++,
+          type: GadgetId.Claymore,
+          ownerId: player.id,
+          ownerTeam: player.team,
+          position: { x: player.position.x, y: player.position.y, z: player.position.z },
+          lifetime: GADGET_CLAYMORE_DURATION,
+          aimYaw: player.yaw,
+        };
+        this.gadgets.set(gadget.id, gadget);
         break;
       }
 
@@ -217,8 +243,9 @@ export class GadgetManager {
   } | null = null;
 
   /** Main update tick — processes gadget effects */
-  update(dt: number, players: Map<string, PlayerSim>): { spottedPositions: Vec3[] | null } {
+  update(dt: number, players: Map<string, PlayerSim>): { spottedPositions: Vec3[] | null; spotterTeam: number } {
     let newSpottedPositions: Vec3[] | null = null;
+    let spotterTeam = -1;
 
     // Process pending spot request
     if (this._pendingSpot) {
@@ -257,6 +284,7 @@ export class GadgetManager {
 
       if (spotted.length > 0) {
         newSpottedPositions = spotted;
+        spotterTeam = spot.team;
       }
     }
 
@@ -294,6 +322,14 @@ export class GadgetManager {
         case GadgetId.AmmoBox:
           this.tickAmmoBox(gadget, dt, players);
           break;
+        case GadgetId.Claymore: {
+          const exploded = this.tickClaymore(gadget, players);
+          if (exploded) {
+            this.gadgets.delete(id);
+            continue;
+          }
+          break;
+        }
       }
 
       // Remove medkit if it's healed enough
@@ -302,7 +338,44 @@ export class GadgetManager {
       }
     }
 
-    return { spottedPositions: newSpottedPositions };
+    return { spottedPositions: newSpottedPositions, spotterTeam };
+  }
+
+  /** Tick claymore — check for nearby enemies and explode */
+  private tickClaymore(gadget: ActiveGadget, players: Map<string, PlayerSim>): boolean {
+    for (const player of players.values()) {
+      if (!player.alive) continue;
+      if (player.team === gadget.ownerTeam) continue;
+
+      const dx = player.position.x - gadget.position.x;
+      const dy = player.position.y - gadget.position.y;
+      const dz = player.position.z - gadget.position.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      if (dist <= GADGET_CLAYMORE_RADIUS) {
+        // Explode! Damage all enemies in radius
+        for (const target of players.values()) {
+          if (!target.alive) continue;
+          if (target.team === gadget.ownerTeam) continue;
+
+          const tdx = target.position.x - gadget.position.x;
+          const tdy = target.position.y - gadget.position.y;
+          const tdz = target.position.z - gadget.position.z;
+          const tdist = Math.sqrt(tdx * tdx + tdy * tdy + tdz * tdz);
+
+          if (tdist <= GADGET_CLAYMORE_RADIUS) {
+            const falloff = 1 - tdist / GADGET_CLAYMORE_RADIUS;
+            const damage = Math.floor(GADGET_CLAYMORE_DAMAGE * falloff);
+            if (damage > 0) {
+              target.recordDamageFrom(gadget.ownerId);
+              target.takeDamage(damage);
+            }
+          }
+        }
+        return true; // exploded
+      }
+    }
+    return false;
   }
 
   private tickMedkit(gadget: ActiveGadget, dt: number, players: Map<string, PlayerSim>): void {
