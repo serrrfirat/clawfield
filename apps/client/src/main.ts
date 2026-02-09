@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId, REVIVE_RADIUS } from '@clawfield/shared';
+import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId, REVIVE_RADIUS, SMOKE_GRENADE_FUSE_TIME } from '@clawfield/shared';
 import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef, WeaponLoadout } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer, setFogUniforms } from './voxel/world-renderer';
@@ -13,6 +13,7 @@ import { CapturePointRenderer } from './combat/capture-point-renderer';
 import { GrenadeRenderer } from './combat/grenade-renderer';
 import { GadgetRenderer } from './combat/gadget-renderer';
 import { ParticleSystem } from './combat/particle-system';
+import { SmokeSystem } from './combat/smoke-system';
 import { Minimap } from './hud/minimap';
 import { DamageIndicatorSystem } from './hud/damage-indicator';
 import { Scoreboard } from './hud/scoreboard';
@@ -69,6 +70,7 @@ const capturePointRenderer = new CapturePointRenderer(renderer.scene);
 const grenadeRenderer = new GrenadeRenderer(renderer.scene);
 grenadeRenderer.setParticleSystem(particleSystem);
 const gadgetRenderer = new GadgetRenderer(renderer.scene);
+const smokeSystem = new SmokeSystem(renderer.scene, renderer.camera);
 const minimap = new Minimap();
 const radialMenu = new RadialMenu();
 const coverPreview = new CoverPreview(renderer.scene);
@@ -283,6 +285,24 @@ function handleServerMessage(msg: ServerMessage): void {
 
     case 'explosion': {
       grenadeRenderer.addExplosion(msg.event.position, msg.event.radius);
+      // Spawn volumetric smoke after the explosion flash
+      smokeSystem.spawnExplosionSmoke(msg.event.position);
+      break;
+    }
+
+    case 'smoke_grenades': {
+      // In-flight smoke grenades rendered same as frag grenades (small cubes)
+      // Reuse grenade renderer for the in-flight visuals
+      grenadeRenderer.updateSmokeGrenadesFromServer(msg.grenades);
+      break;
+    }
+
+    case 'smoke_deploy': {
+      smokeSystem.spawnSmokeGrenade(
+        msg.event.position,
+        msg.event.radius,
+        msg.event.duration,
+      );
       break;
     }
 
@@ -476,7 +496,17 @@ function gameLoop(): void {
           y: cam.position.y + gDir.y * 0.5,
           z: cam.position.z + gDir.z * 0.5,
         };
-        grenadeRenderer.spawnLocal(grenadePos, { x: gDir.x, y: gDir.y, z: gDir.z });
+
+        // Determine if this is a smoke or frag grenade from selected gadget
+        const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
+        const gadgetIdx = inputPacket.input.gadgetIndex ?? 0;
+        const gadgetId = classDef?.gadgets[gadgetIdx];
+
+        if (gadgetId === GadgetId.SmokeGrenade) {
+          grenadeRenderer.spawnLocalSmoke(grenadePos, { x: gDir.x, y: gDir.y, z: gDir.z });
+        } else {
+          grenadeRenderer.spawnLocal(grenadePos, { x: gDir.x, y: gDir.y, z: gDir.z });
+        }
       }
 
       network.send({
@@ -496,6 +526,9 @@ function gameLoop(): void {
 
   // Update particles (bullet impacts, explosion debris, muzzle flash)
   particleSystem.update(dt);
+
+  // Update volumetric smoke clouds
+  smokeSystem.update(dt);
 
   // Update gadgets
   gadgetRenderer.update(dt);
@@ -562,8 +595,8 @@ function gameLoop(): void {
     const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
     const isAssault = gameState.selectedClass === ClassId.Assault;
 
-    // Radial menu: show/hide based on input state (skip Assault — grenades use G)
-    if (!isAssault && classDef && localPlayer.input.radialMenuOpen) {
+    // Radial menu: show/hide based on input state (all classes including Assault for frag/smoke selection)
+    if (classDef && localPlayer.input.radialMenuOpen) {
       gameState.selectedGadgetIndex = localPlayer.input.selectedGadgetIndex;
       radialMenu.show(classDef, gameState.selectedGadgetIndex, gameState.lastGadgetUseTime, now);
     } else {
@@ -598,8 +631,7 @@ function gameLoop(): void {
   {
     const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
     if (classDef) {
-      const isAssault = gameState.selectedClass === ClassId.Assault;
-      const idx = isAssault ? 0 : gameState.selectedGadgetIndex;
+      const idx = gameState.selectedGadgetIndex;
       const gadgetId = classDef.gadgets[idx];
       const nameMap: Record<string, string> = {
         frag_grenade: 'Frag Grenade', smoke_grenade: 'Smoke',
