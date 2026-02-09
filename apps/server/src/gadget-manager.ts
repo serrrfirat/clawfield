@@ -368,6 +368,7 @@ export class GadgetManager {
             const damage = Math.floor(GADGET_CLAYMORE_DAMAGE * falloff);
             if (damage > 0) {
               target.recordDamageFrom(gadget.ownerId);
+              // takeDamage returns the result but claymore kills are handled in game-loop
               target.takeDamage(damage);
             }
           }

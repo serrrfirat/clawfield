@@ -364,6 +364,57 @@ const CSS = /* css */ `
   letter-spacing: 2px;
 }
 
+/* ───────────────── Revive progress bar (downed state) ───────────────── */
+
+.hud-revive-bar {
+  width: 300px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-top: 20px;
+  overflow: hidden;
+  display: none;
+}
+
+.hud-revive-fill {
+  height: 100%;
+  width: 0%;
+  background: #2ecc71;
+  transition: width 0.1s linear;
+}
+
+.hud-revive-text {
+  font-size: 16px;
+  color: #f39c12;
+  margin-top: 8px;
+  letter-spacing: 1px;
+  display: none;
+}
+
+/* ───────────────── Revive prompt (for alive players near downed teammate) ───────────────── */
+
+.hud-revive-prompt {
+  position: fixed;
+  bottom: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 8px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #2ecc71;
+  letter-spacing: 1px;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  z-index: 120;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.hud-revive-prompt.visible {
+  opacity: 1;
+}
+
 /* ───────────────── Game over overlay ───────────────── */
 
 .hud-gameover {
