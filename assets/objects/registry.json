@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "objects": [
+    { "id": "barrel", "path": "props/barrel.vobj.json", "category": "prop" },
+    { "id": "crate_small", "path": "props/crate_small.vobj.json", "category": "prop" }
+  ]
+}

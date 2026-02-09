@@ -23,6 +23,7 @@ import { loadSoldierModel } from './player/model-loader';
 import { RadialMenu } from './hud/radial-menu';
 import { CoverPreview } from './combat/cover-preview';
 import { SoundId } from './audio/sound-manager';
+import { VoxelObjectRenderer } from './voxel/voxel-object-renderer';
 import type { CapturePointState, MapObjective, SpawnPointOption } from '@clawfield/shared';
 
 // --- Game State (exported for HUD) ---
@@ -72,6 +73,7 @@ const gadgetRenderer = new GadgetRenderer(renderer.scene);
 const minimap = new Minimap();
 const radialMenu = new RadialMenu();
 const coverPreview = new CoverPreview(renderer.scene);
+const voxelObjectRenderer = new VoxelObjectRenderer(renderer.scene);
 const knownGadgetIds = new Set<number>();
 
 // Voxel getter for physics
@@ -110,6 +112,13 @@ function handleServerMessage(msg: ServerMessage): void {
         console.log(
           `Map: ${msg.mapName} (${gameState.mapObjectives.length} objectives from metadata)`
         );
+      }
+
+      // Load and place multi-resolution voxel objects (non-blocking)
+      if (msg.objectPlacements && msg.objectPlacements.length > 0) {
+        voxelObjectRenderer.loadAndPlace(msg.objectPlacements).catch(err => {
+          console.warn('Failed to load voxel objects:', err);
+        });
       }
 
       // Tell projectile renderer which player is local (skip our own server projectiles)

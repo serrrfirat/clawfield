@@ -170,6 +170,7 @@ export type ServerMessage =
       waterIndices?: number[];
       mapName?: string;
       objectives?: MapObjective[];
+      objectPlacements?: import('./voxel-object.js').MapObjectPlacement[];
       gameMode: GameMode;
     }
   | { type: 'player_joined'; id: string; name: string; team: number }

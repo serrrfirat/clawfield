@@ -173,7 +173,7 @@ export function setFogUniforms(params: {
   }
 }
 
-const chunkMaterial = new THREE.MeshStandardMaterial({
+export const chunkMaterial = new THREE.MeshStandardMaterial({
   vertexColors: true,
   roughness: 0.85,
   metalness: 0.0,

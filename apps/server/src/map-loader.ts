@@ -18,6 +18,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { VoxelObjectDef, MapObjectPlacement } from '@clawfield/shared';
 
 const CHUNK_VOXEL_COUNT = 16 * 16 * 16; // 4096
 const HEADER_FIXED_SIZE = 4 + 1 + 4 + 2; // magic + version + chunkCount + paletteSize = 11
@@ -58,6 +59,8 @@ export interface MapMetadata {
   objectives: MapObjectiveMetadata[];
   /** Palette indices that should be treated as water (for physics and rendering) */
   waterIndices?: number[];
+  /** Placed voxel objects (multi-resolution props, buildings, vegetation) */
+  objects?: MapObjectPlacement[];
 }
 
 function isVec3(value: unknown): value is Vec3 {
@@ -155,6 +158,26 @@ export function parseMapMetadata(value: unknown): MapMetadata | null {
     waterIndices = rawWater as number[];
   }
 
+  // Optional objects: placed voxel objects
+  let objects: MapObjectPlacement[] | undefined;
+  const rawObjects = raw.objects;
+  if (Array.isArray(rawObjects)) {
+    objects = [];
+    for (const obj of rawObjects) {
+      if (!obj || typeof obj !== 'object') continue;
+      const entry = obj as Record<string, unknown>;
+      if (typeof entry.objectId !== 'string') continue;
+      if (!isVec3(entry.position)) continue;
+      const rotation = typeof entry.rotation === 'number' ? entry.rotation : 0;
+      objects.push({
+        objectId: entry.objectId,
+        position: { ...entry.position },
+        rotation,
+      });
+    }
+    if (objects.length === 0) objects = undefined;
+  }
+
   return {
     name: raw.name,
     spawnPoints: {
@@ -164,6 +187,7 @@ export function parseMapMetadata(value: unknown): MapMetadata | null {
     capturePoints,
     objectives,
     waterIndices,
+    objects,
   };
 }
 
@@ -313,4 +337,162 @@ export function getChunksInRadius(
     }
   }
   return keys;
+}
+
+// ---------------------------------------------------------------------------
+// Voxel object loading & collision stamping
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve the path to the objects directory for a map.
+ * Resolves relative to project root: assets/objects/
+ */
+export function getObjectsBasePath(): string {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  return path.resolve(__dirname, '..', '..', '..', 'assets', 'objects');
+}
+
+/**
+ * Load object definitions referenced by placements.
+ * Returns a map of objectId → VoxelObjectDef.
+ */
+export function loadObjectDefs(
+  placements: MapObjectPlacement[],
+  objectsBasePath?: string
+): Map<string, VoxelObjectDef> {
+  const basePath = objectsBasePath ?? getObjectsBasePath();
+  const defs = new Map<string, VoxelObjectDef>();
+
+  // Load registry
+  const registryPath = path.join(basePath, 'registry.json');
+  if (!fs.existsSync(registryPath)) {
+    console.warn(`[VoxelObjects] No registry found at ${registryPath}`);
+    return defs;
+  }
+
+  let registry: { version: number; objects: { id: string; path: string }[] };
+  try {
+    registry = JSON.parse(fs.readFileSync(registryPath, 'utf-8'));
+  } catch (err) {
+    console.warn(`[VoxelObjects] Failed to parse registry: ${String(err)}`);
+    return defs;
+  }
+
+  // Build lookup: id → relative path
+  const pathMap = new Map<string, string>();
+  for (const entry of registry.objects) {
+    pathMap.set(entry.id, entry.path);
+  }
+
+  // Identify unique object IDs needed
+  const neededIds = new Set<string>();
+  for (const p of placements) {
+    neededIds.add(p.objectId);
+  }
+
+  // Load each needed definition
+  for (const objectId of neededIds) {
+    const relPath = pathMap.get(objectId);
+    if (!relPath) {
+      console.warn(`[VoxelObjects] Object "${objectId}" not found in registry`);
+      continue;
+    }
+
+    const defPath = path.join(basePath, relPath);
+    if (!fs.existsSync(defPath)) {
+      console.warn(`[VoxelObjects] Object file missing: ${defPath}`);
+      continue;
+    }
+
+    try {
+      const def = JSON.parse(fs.readFileSync(defPath, 'utf-8')) as VoxelObjectDef;
+      defs.set(objectId, def);
+    } catch (err) {
+      console.warn(`[VoxelObjects] Failed to load "${objectId}": ${String(err)}`);
+    }
+  }
+
+  return defs;
+}
+
+/**
+ * Stamp voxel objects into the chunk map for collision detection.
+ *
+ * For each object's non-air voxel, computes the world coordinate (accounting
+ * for placement position, origin offset, and Y-axis rotation) and writes a
+ * solid material (MAT_STONE = 3) into the chunk map.
+ *
+ * This means existing physics code (getVoxel, movePlayer, raycasting) works
+ * unchanged — objects simply appear as solid voxels in the chunk grid.
+ */
+export function stampObjectsIntoChunks(
+  chunks: Map<string, Uint8Array>,
+  defs: Map<string, VoxelObjectDef>,
+  placements: MapObjectPlacement[]
+): number {
+  const MAT_SOLID = 3; // MAT_STONE — any non-zero, non-water value works
+  const CHUNK_SIZE = 16;
+  let stampedCount = 0;
+
+  for (const placement of placements) {
+    const def = defs.get(placement.objectId);
+    if (!def) continue;
+
+    const { sizeX, sizeY, sizeZ, voxelSize, origin, voxels } = def;
+    const rot = ((placement.rotation % 360) + 360) % 360;
+
+    for (let z = 0; z < sizeZ; z++) {
+      for (let y = 0; y < sizeY; y++) {
+        for (let x = 0; x < sizeX; x++) {
+          const vi = x + y * sizeX + z * sizeX * sizeY;
+          const mat = voxels[vi];
+          if (mat === 0) continue;
+
+          // Compute world position from object-local voxel coordinate
+          let dx = (x - origin.x) * voxelSize;
+          const dy = (y - origin.y) * voxelSize;
+          let dz = (z - origin.z) * voxelSize;
+
+          // Apply Y-axis rotation
+          if (rot === 90) {
+            [dx, dz] = [-dz, dx];
+          } else if (rot === 180) {
+            dx = -dx;
+            dz = -dz;
+          } else if (rot === 270) {
+            [dx, dz] = [dz, -dx];
+          }
+
+          const wx = Math.floor(placement.position.x + dx);
+          const wy = Math.floor(placement.position.y + dy);
+          const wz = Math.floor(placement.position.z + dz);
+
+          // Write to chunk
+          const cx = Math.floor(wx / CHUNK_SIZE);
+          const cy = Math.floor(wy / CHUNK_SIZE);
+          const cz = Math.floor(wz / CHUNK_SIZE);
+          const chunkKey = `${cx},${cy},${cz}`;
+
+          const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+          const ly = ((wy % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+          const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+
+          let chunk = chunks.get(chunkKey);
+          if (!chunk) {
+            chunk = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
+            chunks.set(chunkKey, chunk);
+          }
+
+          const idx = lx + ly * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_SIZE;
+          if (chunk[idx] === 0) {
+            chunk[idx] = MAT_SOLID;
+            stampedCount++;
+          }
+        }
+      }
+    }
+  }
+
+  return stampedCount;
 }

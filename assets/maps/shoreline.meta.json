@@ -107,5 +107,15 @@
         "z": 60
       }
     }
+  ],
+  "objects": [
+    { "objectId": "barrel", "position": { "x": -48, "y": 4, "z": 4 }, "rotation": 0 },
+    { "objectId": "barrel", "position": { "x": -48, "y": 4, "z": -4 }, "rotation": 90 },
+    { "objectId": "crate_small", "position": { "x": -46, "y": 4, "z": 2 }, "rotation": 0 },
+    { "objectId": "crate_small", "position": { "x": -46, "y": 4, "z": -2 }, "rotation": 45 },
+    { "objectId": "barrel", "position": { "x": 6, "y": 11, "z": 5 }, "rotation": 0 },
+    { "objectId": "crate_small", "position": { "x": 8, "y": 11, "z": 5 }, "rotation": 0 },
+    { "objectId": "barrel", "position": { "x": -80, "y": 4, "z": 3 }, "rotation": 180 },
+    { "objectId": "crate_small", "position": { "x": -78, "y": 4, "z": -3 }, "rotation": 270 }
   ]
 }
