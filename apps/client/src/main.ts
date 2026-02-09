@@ -23,6 +23,8 @@ import { loadSoldierModel } from './player/model-loader';
 import { RadialMenu } from './hud/radial-menu';
 import { CoverPreview } from './combat/cover-preview';
 import { SoundId } from './audio/sound-manager';
+import { WeatherManager } from './weather/weather-manager';
+import type { WeatherState } from './weather/weather-manager';
 import type { CapturePointState, MapObjective, SpawnPointOption } from '@clawfield/shared';
 
 // --- Game State (exported for HUD) ---
@@ -72,15 +74,23 @@ const gadgetRenderer = new GadgetRenderer(renderer.scene);
 const minimap = new Minimap();
 const radialMenu = new RadialMenu();
 const coverPreview = new CoverPreview(renderer.scene);
+const weatherManager = new WeatherManager(renderer.scene, renderer.sunLight);
 const knownGadgetIds = new Set<number>();
 
 // Voxel getter for physics
 const voxelGetter = (wx: number, wy: number, wz: number) => getVoxel(chunks, wx, wy, wz);
 
-// Colors for underwater effect
-const skyColor = new THREE.Color(0x7ec8e3);
-const fogColor = new THREE.Color(0xa9c2d0);
+// Color for underwater effect
 const underwaterColor = new THREE.Color(0x1a5276);
+
+// Expose weather manager on window for dev console testing:
+//   setWeather('rain')  /  setWeather('snow', 10)  /  setWeather('clear')
+(window as unknown as Record<string, unknown>).setWeather = (
+  state: WeatherState,
+  duration = 5,
+) => {
+  weatherManager.setWeather(state, duration);
+};
 
 // --- Network ---
 function handleServerMessage(msg: ServerMessage): void {
@@ -503,6 +513,12 @@ function gameLoop(): void {
   // Update water mesh animation
   worldRenderer.update(dt);
 
+  // Update weather (clouds, rain/snow particles, fog transitions)
+  {
+    const cam = renderer.camera;
+    weatherManager.update(dt, { x: cam.position.x, y: cam.position.y, z: cam.position.z });
+  }
+
   // Update capture point animations
   capturePointRenderer.update(dt);
 
@@ -677,12 +693,11 @@ function gameLoop(): void {
   }
 
   // Underwater visual effect: tint fog and background when submerged
+  // (weather manager handles normal fog; only override when underwater)
+  weatherManager.setUnderwater(gameState.inWater);
   if (gameState.inWater) {
     renderer.scene.background = underwaterColor;
     setFogUniforms({ color: underwaterColor, near: 5, far: 60, heightDensity: 0.0, heightOrigin: 0 });
-  } else {
-    renderer.scene.background = skyColor;
-    setFogUniforms({ color: fogColor, near: 120, far: 320, heightDensity: 0.015, heightOrigin: 8 });
   }
 
   // Sort water faces back-to-front for correct transparency
