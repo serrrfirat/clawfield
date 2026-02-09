@@ -3,29 +3,80 @@ import { CHUNK_SIZE, chunkKeyToPosition } from '@clawfield/shared';
 import { buildChunkGeometry, buildWaterGeometry } from './chunk-mesh';
 import { getLodLevel } from './lod';
 import { createTextureAtlas, ATLAS_COLS, ATLAS_ROWS } from './texture-atlas';
+import { WaterFaceSorter } from './water-sort';
 
 // Generate the texture atlas once at startup
 const atlasTexture = createTextureAtlas();
 
+// Store shader references for runtime uniform updates (fog, underwater toggle)
+interface ShaderRef {
+  uniforms: Record<string, THREE.IUniform>;
+}
+const shaderRefs: ShaderRef[] = [];
+
+/** Fog configuration (can be updated at runtime via setFogUniforms) */
+const fogConfig = {
+  color: new THREE.Color(0xa9c2d0),
+  near: 120,
+  far: 320,
+  heightDensity: 0.015,
+  heightOrigin: 8,
+};
+
 /**
- * Patch a MeshStandardMaterial to sample a texture atlas in the fragment shader.
+ * Patch a MeshStandardMaterial with atlas sampling, world-position UVs, and height fog.
  *
- * UV encoding from the mesher: uv = (tileCol + voxelU, tileRow + voxelV)
- * The shader extracts the tile base via floor() and uses fract() to tile within
- * each atlas cell, then samples the atlas texture and multiplies by vertex color
- * (which carries the per-face directional shading).
+ * Vertex shader additions:
+ * - vWorldPosition: world-space position for fog + UV projection
+ * - vFlatNormal: world-space normal for face-plane UV projection
+ *
+ * Fragment shader additions:
+ * - Atlas sampling using world-position-based UVs (fract(worldPos) projected onto face)
+ * - Height + distance fog replacing Three.js built-in fog
  */
 function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
   // Force Three.js to include the UV varying (vUv) in the compiled shader.
-  // Without this, vUv is stripped out because no built-in texture property (map, etc.) is set.
   mat.defines = { ...mat.defines, USE_UV: '' };
+  // Prevent Three.js built-in fog from conflicting with our custom fog
+  mat.fog = false;
 
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uAtlas = { value: atlasTexture };
     shader.uniforms.uAtlasCols = { value: ATLAS_COLS };
     shader.uniforms.uAtlasRows = { value: ATLAS_ROWS };
 
-    // Add uniforms to the fragment shader
+    // Fog uniforms
+    shader.uniforms.uFogColor = { value: fogConfig.color.clone() };
+    shader.uniforms.uFogNear = { value: fogConfig.near };
+    shader.uniforms.uFogFar = { value: fogConfig.far };
+    shader.uniforms.uFogHeightDensity = { value: fogConfig.heightDensity };
+    shader.uniforms.uFogHeightOrigin = { value: fogConfig.heightOrigin };
+
+    // Store ref so we can update uniforms at runtime
+    shaderRefs.push(shader);
+
+    // --- Vertex shader: add vWorldPosition and vFlatNormal varyings ---
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      /* glsl */ `
+      #include <common>
+      varying vec3 vWorldPosition;
+      varying vec3 vFlatNormal;
+      `,
+    );
+
+    // After worldpos_vertex, compute world position and flat normal
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <worldpos_vertex>',
+      /* glsl */ `
+      #include <worldpos_vertex>
+      vec4 worldPos4 = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPos4.xyz;
+      vFlatNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+      `,
+    );
+
+    // --- Fragment shader: add uniforms and varyings ---
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
       /* glsl */ `
@@ -33,12 +84,17 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
       uniform sampler2D uAtlas;
       uniform float uAtlasCols;
       uniform float uAtlasRows;
+      uniform vec3 uFogColor;
+      uniform float uFogNear;
+      uniform float uFogFar;
+      uniform float uFogHeightDensity;
+      uniform float uFogHeightOrigin;
+      varying vec3 vWorldPosition;
+      varying vec3 vFlatNormal;
       `,
     );
 
-    // Replace the color/map fragment to sample the atlas
-    // The default map_fragment reads from the 'map' texture; we override it
-    // to read from our atlas using the packed UVs.
+    // Replace the color fragment to sample atlas with world-position UVs
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <color_fragment>',
       /* glsl */ `
@@ -46,7 +102,21 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
       {
         // Decode packed UVs: floor = tile index, fract = position within tile
         vec2 tileBase = floor(vUv);
-        vec2 localUV = fract(vUv);
+
+        // Project world position onto face plane to derive local UV
+        vec3 absNorm = abs(vFlatNormal);
+        vec2 localUV;
+        if (absNorm.y > absNorm.x && absNorm.y > absNorm.z) {
+          // Top/bottom face: use XZ
+          localUV = fract(vWorldPosition.xz);
+        } else if (absNorm.x > absNorm.z) {
+          // X-facing side: use YZ
+          localUV = fract(vWorldPosition.yz);
+        } else {
+          // Z-facing side: use XY
+          localUV = fract(vWorldPosition.xy);
+        }
+
         // Convert tile + local position to atlas UV
         vec2 atlasUV = (tileBase + localUV) / vec2(uAtlasCols, uAtlasRows);
         vec4 atlasColor = texture2D(uAtlas, atlasUV);
@@ -55,7 +125,52 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
       }
       `,
     );
+
+    // Replace built-in fog with custom height + distance fog
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <fog_fragment>',
+      /* glsl */ `
+      {
+        float fogDist = length(vWorldPosition - cameraPosition);
+        // Distance fog: linear ramp
+        float distFog = smoothstep(uFogNear, uFogFar, fogDist);
+        // Height fog: exponential density below heightOrigin
+        float heightDelta = uFogHeightOrigin - vWorldPosition.y;
+        float heightFog = 1.0 - exp(-max(heightDelta, 0.0) * uFogHeightDensity);
+        // Combine: max of distance and height fog
+        float fogFactor = max(distFog, heightFog);
+        fogFactor = clamp(fogFactor, 0.0, 1.0);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, uFogColor, fogFactor);
+      }
+      `,
+    );
   };
+}
+
+/**
+ * Update fog uniforms on all patched materials at runtime.
+ * Called from the game loop for underwater/normal transitions.
+ */
+export function setFogUniforms(params: {
+  color?: THREE.Color;
+  near?: number;
+  far?: number;
+  heightDensity?: number;
+  heightOrigin?: number;
+}): void {
+  if (params.color) fogConfig.color.copy(params.color);
+  if (params.near !== undefined) fogConfig.near = params.near;
+  if (params.far !== undefined) fogConfig.far = params.far;
+  if (params.heightDensity !== undefined) fogConfig.heightDensity = params.heightDensity;
+  if (params.heightOrigin !== undefined) fogConfig.heightOrigin = params.heightOrigin;
+
+  for (const shader of shaderRefs) {
+    if (params.color) (shader.uniforms.uFogColor.value as THREE.Color).copy(params.color);
+    if (params.near !== undefined) shader.uniforms.uFogNear.value = params.near;
+    if (params.far !== undefined) shader.uniforms.uFogFar.value = params.far;
+    if (params.heightDensity !== undefined) shader.uniforms.uFogHeightDensity.value = params.heightDensity;
+    if (params.heightOrigin !== undefined) shader.uniforms.uFogHeightOrigin.value = params.heightOrigin;
+  }
 }
 
 const chunkMaterial = new THREE.MeshStandardMaterial({
@@ -79,6 +194,7 @@ patchMaterialWithAtlas(waterMaterial);
 interface ChunkEntry {
   mesh: THREE.Mesh | null;
   waterMesh: THREE.Mesh | null;
+  waterSorter: WaterFaceSorter | null;
   lodLevel: number;
   voxels: Uint8Array;
 }
@@ -86,7 +202,7 @@ interface ChunkEntry {
 /**
  * Manages chunk meshes in the Three.js scene.
  * Adds/removes/updates chunk meshes as chunk data changes.
- * Supports distance-based LOD and transparent water meshes.
+ * Supports distance-based LOD, transparent water meshes, and water face sorting.
  */
 export class WorldRenderer {
   private entries = new Map<string, ChunkEntry>();
@@ -123,6 +239,7 @@ export class WorldRenderer {
     const origin = chunkKeyToPosition(key);
     let mesh: THREE.Mesh | null = null;
     let waterMesh: THREE.Mesh | null = null;
+    let waterSorter: WaterFaceSorter | null = null;
 
     // Solid terrain mesh
     const geometry = buildChunkGeometry(voxels, lodLevel);
@@ -145,9 +262,12 @@ export class WorldRenderer {
       waterMesh.receiveShadow = true;
       waterMesh.renderOrder = 1; // render after opaque
       this.scene.add(waterMesh);
+
+      // Create face sorter for transparent water
+      waterSorter = WaterFaceSorter.fromGeometry(waterGeom);
     }
 
-    this.entries.set(key, { mesh, waterMesh, lodLevel, voxels });
+    this.entries.set(key, { mesh, waterMesh, waterSorter, lodLevel, voxels });
   }
 
   /** Remove a chunk mesh from the scene */
@@ -198,6 +318,22 @@ export class WorldRenderer {
       if (desiredLod !== entry.lodLevel) {
         this.setChunkWithLod(key, entry.voxels, desiredLod);
         rebuilds++;
+      }
+    }
+  }
+
+  /** Sort water faces back-to-front for correct transparency. Call each frame. */
+  sortWater(cameraPos: { x: number; y: number; z: number }): void {
+    for (const [_key, entry] of this.entries) {
+      if (entry.waterMesh && entry.waterSorter) {
+        const origin = entry.waterMesh.position;
+        // Transform camera to chunk-local space
+        const localCam = {
+          x: cameraPos.x - origin.x,
+          y: cameraPos.y - origin.y,
+          z: cameraPos.z - origin.z,
+        };
+        entry.waterSorter.sort(localCam, entry.waterMesh.geometry);
       }
     }
   }

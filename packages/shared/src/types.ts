@@ -39,6 +39,7 @@ export interface InputState {
   crouch: boolean;
   throwGrenade: boolean;
   useGadget: boolean;
+  gadgetIndex: number;
   scope: boolean;
   yaw: number;
   pitch: number;

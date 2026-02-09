@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES } from '@clawfield/shared';
-import type { ServerMessage, PlayerState, KillEntry, GameMode } from '@clawfield/shared';
+import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId } from '@clawfield/shared';
+import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef } from '@clawfield/shared';
 import { Renderer } from './renderer';
-import { WorldRenderer } from './voxel/world-renderer';
+import { WorldRenderer, setFogUniforms } from './voxel/world-renderer';
 import { deserializeChunks } from './voxel/test-map';
 import { LocalPlayer } from './player/local-player';
 import { RemotePlayer } from './player/remote-player';
@@ -20,6 +20,9 @@ import { soundManager } from './audio/sound-manager';
 import { DeployScreen } from './hud/deploy-screen';
 import { MainMenu } from './hud/main-menu';
 import { loadSoldierModel } from './player/model-loader';
+import { RadialMenu } from './hud/radial-menu';
+import { CoverPreview } from './combat/cover-preview';
+import { SoundId } from './audio/sound-manager';
 import type { CapturePointState, MapObjective, SpawnPointOption } from '@clawfield/shared';
 
 // --- Game State (exported for HUD) ---
@@ -45,6 +48,8 @@ export const gameState = {
   selectedClass: 'assault',
   selectedClassName: 'Assault',
   gameMode: 'tdm' as GameMode,
+  lastGadgetUseTime: 0,
+  selectedGadgetIndex: 0,
 };
 
 // --- State ---
@@ -63,6 +68,9 @@ const grenadeRenderer = new GrenadeRenderer(renderer.scene);
 grenadeRenderer.setParticleSystem(particleSystem);
 const gadgetRenderer = new GadgetRenderer(renderer.scene);
 const minimap = new Minimap();
+const radialMenu = new RadialMenu();
+const coverPreview = new CoverPreview(renderer.scene);
+const knownGadgetIds = new Set<number>();
 
 // Voxel getter for physics
 const voxelGetter = (wx: number, wy: number, wz: number) => getVoxel(chunks, wx, wy, wz);
@@ -263,6 +271,54 @@ function handleServerMessage(msg: ServerMessage): void {
     }
 
     case 'gadgets': {
+      // Detect newly spawned gadgets for sound/particle feedback
+      for (const g of msg.gadgets) {
+        if (!knownGadgetIds.has(g.id)) {
+          knownGadgetIds.add(g.id);
+          // Play 3D sound at gadget position
+          const soundMap: Record<string, SoundId> = {
+            medkit: SoundId.GadgetMedkit,
+            ammo_box: SoundId.GadgetAmmo,
+            spotting_scope: SoundId.GadgetSpot,
+            repair_tool: SoundId.GadgetCover,
+            claymore: SoundId.GadgetDeploy,
+            bandage: SoundId.GadgetDeploy,
+          };
+          const sid = soundMap[g.type];
+          if (sid) soundManager.play3D(sid, g.position);
+          // Spawn colored particles at gadget position
+          const colorMap: Record<string, number> = {
+            medkit: 0x2ecc71,
+            ammo_box: 0x8b6914,
+            claymore: 0xcc3333,
+            bandage: 0xf5f5f5,
+          };
+          const pColor = colorMap[g.type];
+          if (pColor !== undefined) {
+            const r = ((pColor >> 16) & 0xff) / 255;
+            const gv = ((pColor >> 8) & 0xff) / 255;
+            const b = (pColor & 0xff) / 255;
+            particleSystem.emit({
+              position: g.position,
+              count: 8,
+              direction: { x: 0, y: 1, z: 0 },
+              speedMin: 1,
+              speedMax: 3,
+              spread: 1.5,
+              lifetimeMin: 0.3,
+              lifetimeMax: 0.8,
+              sizeMin: 0.05,
+              sizeMax: 0.12,
+              colors: [[r, gv, b]],
+            });
+          }
+        }
+      }
+      // Clean up known IDs for removed gadgets
+      const currentIds = new Set(msg.gadgets.map(g => g.id));
+      for (const id of knownGadgetIds) {
+        if (!currentIds.has(id)) knownGadgetIds.delete(id);
+      }
       gadgetRenderer.updateFromServer(msg.gadgets);
       break;
     }
@@ -356,6 +412,28 @@ function gameLoop(): void {
         }
       }
 
+      // If the player used a gadget this frame, record time + play sound + spawn predicted visual
+      if (inputPacket.input.useGadget) {
+        gameState.lastGadgetUseTime = performance.now();
+        soundManager.play(SoundId.GadgetDeploy);
+
+        // Spawn a client-predicted gadget model at player feet for instant visual feedback
+        const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
+        if (classDef) {
+          const gadgetType = classDef.gadgets[inputPacket.input.gadgetIndex ?? 0];
+          if (gadgetType) {
+            const cam = renderer.camera;
+            const gDir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+            const spawnPos = {
+              x: cam.position.x + gDir.x * 1.5,
+              y: cam.position.y - (PLAYER_HEIGHT - 0.1) + 0.15,
+              z: cam.position.z + gDir.z * 1.5,
+            };
+            gadgetRenderer.spawnLocal(spawnPos, gadgetType);
+          }
+        }
+      }
+
       // If the player threw a grenade this frame, spawn a client-predicted grenade
       if (inputPacket.input.throwGrenade) {
         const cam = renderer.camera;
@@ -424,6 +502,63 @@ function gameLoop(): void {
     );
   }
 
+  // Radial menu + cover preview
+  if (localPlayer) {
+    const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
+    const isAssault = gameState.selectedClass === ClassId.Assault;
+
+    // Radial menu: show/hide based on input state (skip Assault — grenades use G)
+    if (!isAssault && classDef && localPlayer.input.radialMenuOpen) {
+      gameState.selectedGadgetIndex = localPlayer.input.selectedGadgetIndex;
+      radialMenu.show(classDef, gameState.selectedGadgetIndex, gameState.lastGadgetUseTime, now);
+    } else {
+      radialMenu.hide();
+    }
+
+    // Cover preview: show for Engineer with RepairTool selected
+    const isEngineer = gameState.selectedClass === ClassId.Engineer;
+    const gadgetIdx = gameState.selectedGadgetIndex;
+    const hasRepairTool = isEngineer && classDef && classDef.gadgets[gadgetIdx] === GadgetId.RepairTool;
+    if (hasRepairTool && gameState.alive) {
+      const cam = renderer.camera;
+      const camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+      const playerYaw = Math.atan2(camDir.x, -camDir.z);
+      const gadgetCd = (GADGET_COOLDOWNS[GadgetId.RepairTool] ?? GADGET_COOLDOWN) * 1000;
+      const gadgetReady = (now - gameState.lastGadgetUseTime) >= gadgetCd;
+      coverPreview.update(
+        { x: cam.position.x, y: cam.position.y - (PLAYER_HEIGHT - 0.1), z: cam.position.z },
+        playerYaw,
+        chunks,
+        gadgetReady,
+      );
+    } else {
+      coverPreview.hide();
+    }
+  }
+
+  // Compute gadget cooldown info for HUD
+  let gadgetName = '';
+  let gadgetCooldownPct = 0;
+  let gadgetReady = true;
+  {
+    const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
+    if (classDef) {
+      const isAssault = gameState.selectedClass === ClassId.Assault;
+      const idx = isAssault ? 0 : gameState.selectedGadgetIndex;
+      const gadgetId = classDef.gadgets[idx];
+      const nameMap: Record<string, string> = {
+        frag_grenade: 'Frag Grenade', smoke_grenade: 'Smoke',
+        medkit: 'Medkit', bandage: 'Bandage', ammo_box: 'Ammo Box',
+        repair_tool: 'Deploy Cover', spotting_scope: 'Spotting Scope', claymore: 'Claymore',
+      };
+      gadgetName = nameMap[gadgetId] ?? gadgetId;
+      const cooldown = (GADGET_COOLDOWNS[gadgetId] ?? GADGET_COOLDOWN) * 1000;
+      const elapsed = now - gameState.lastGadgetUseTime;
+      gadgetCooldownPct = Math.max(0, Math.min(1, (cooldown - elapsed) / cooldown));
+      gadgetReady = elapsed >= cooldown;
+    }
+  }
+
   // Update HUD
   hud.update({
     health: gameState.health,
@@ -438,6 +573,9 @@ function gameLoop(): void {
     gameMode: gameState.gameMode,
     conquestScoreAlpha: gameState.conquestScoreAlpha,
     conquestScoreBravo: gameState.conquestScoreBravo,
+    gadgetName,
+    gadgetCooldownPct,
+    gadgetReady,
   });
 
   // Update damage indicators
@@ -475,18 +613,16 @@ function gameLoop(): void {
   // Underwater visual effect: tint fog and background when submerged
   if (gameState.inWater) {
     renderer.scene.background = underwaterColor;
-    if (renderer.scene.fog) {
-      (renderer.scene.fog as THREE.Fog).color.copy(underwaterColor);
-      (renderer.scene.fog as THREE.Fog).near = 5;
-      (renderer.scene.fog as THREE.Fog).far = 60;
-    }
+    setFogUniforms({ color: underwaterColor, near: 5, far: 60, heightDensity: 0.0, heightOrigin: 0 });
   } else {
     renderer.scene.background = skyColor;
-    if (renderer.scene.fog) {
-      (renderer.scene.fog as THREE.Fog).color.copy(fogColor);
-      (renderer.scene.fog as THREE.Fog).near = 120;
-      (renderer.scene.fog as THREE.Fog).far = 320;
-    }
+    setFogUniforms({ color: fogColor, near: 120, far: 320, heightDensity: 0.015, heightOrigin: 8 });
+  }
+
+  // Sort water faces back-to-front for correct transparency
+  if (localPlayer) {
+    const cam = renderer.camera;
+    worldRenderer.sortWater({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
   }
 
   // Render

@@ -279,6 +279,16 @@ class SoundManager {
         return this.makeAmbientWind();
       case SoundId.CaptureTick:
         return this.makeSineTone(800, 0.08);
+      case SoundId.GadgetMedkit:
+        return this.makeSineTone(600, 0.15);
+      case SoundId.GadgetAmmo:
+        return this.makeNoiseBurst(0.06, 1800, 'bandpass', 0.7);
+      case SoundId.GadgetSpot:
+        return this.makeSineTone(1000, 0.12);
+      case SoundId.GadgetCover:
+        return this.makeNoiseBurst(0.1, 300, 'lowpass', 0.8);
+      case SoundId.GadgetDeploy:
+        return this.makeSineTone(900, 0.1);
       default:
         return null;
     }

@@ -34,11 +34,15 @@
 - [ ] Sound effects (gunfire, explosions, footsteps, ambient)
 - [ ] Scoreboard overlay (Tab key - player list with KDA stats)
 - [x] Shoreline map integration (MagicaVoxel MCP generation + .vox -> chunked .map pipeline)
-- [ ] Texture atlas for voxel materials (better visual variety)
+- [x] Texture atlas for voxel materials (world-position UVs, per-material tile mapping)
 - [ ] Chunk LOD (Level of Detail) for distant terrain
 - [ ] Class gadgets (medkit, ammo box, spotting scope, deploy cover)
 - [ ] Damage indicators (directional damage arrows)
 - [ ] Death cam / killcam
+- [x] Height + distance fog (custom shader, valley haze, underwater toggle)
+- [x] LZ4 message compression (binary protocol with flag byte, 4KB threshold)
+- [x] Priority chunk streaming (distance + look-direction sorting)
+- [x] Transparent water face sorting (back-to-front per-chunk)
 
 ### Phase 3: AI Game Master
 - [ ] State aggregator (collects match state every 60s)
