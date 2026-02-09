@@ -411,12 +411,15 @@ export class GameLoop {
       { id: 'bot3', name: 'Bot_3' },
     ];
 
-    for (const def of botDefs) {
-      const spawnPos = this.getSpawnPoint(Team.Bravo);
-      const bot = new DummyBot(def.id, def.name, Team.Bravo, spawnPos);
+    for (let i = 0; i < botDefs.length; i++) {
+      const def = botDefs[i];
+      // Alternate bots across both teams so each side has enemies
+      const team = i % 2 === 0 ? Team.Alpha : Team.Bravo;
+      const spawnPos = this.getSpawnPoint(team);
+      const bot = new DummyBot(def.id, def.name, team, spawnPos);
       this.bots.push(bot);
       this.players.set(bot.sim.id, bot.sim);
-      console.log(`Bot spawned: ${def.name} (${def.id}) - Team Bravo - ${bot.sim.classId}`);
+      console.log(`Bot spawned: ${def.name} (${def.id}) - Team ${team === Team.Alpha ? 'Alpha' : 'Bravo'} - ${bot.sim.classId}`);
     }
   }
 
