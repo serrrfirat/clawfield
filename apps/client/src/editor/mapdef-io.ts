@@ -1,6 +1,32 @@
-import type { Placement } from './placement-system';
-import type { SpawnPoint, CapturePoint } from './metadata-editor';
-import type { MapdefBounds, TerrainPaletteEntry } from './terrain-generator';
+// Inline types from planned editor modules (not yet implemented)
+interface Placement {
+  componentId: string;
+  position: { x: number; y: number; z: number };
+  rotation: number;
+  terrainCarve: boolean;
+}
+
+interface SpawnPoint {
+  team: 'alpha' | 'bravo';
+  position: { x: number; y: number; z: number };
+}
+
+interface CapturePoint {
+  id: string;
+  position: { x: number; y: number; z: number };
+  initialOwner: number;
+}
+
+export interface MapdefBounds {
+  xMin: number; xMax: number;
+  yMin: number; yMax: number;
+  zMin: number; zMax: number;
+}
+
+export interface TerrainPaletteEntry {
+  index: number;
+  r: number; g: number; b: number;
+}
 
 // ---------------------------------------------------------------------------
 // Types

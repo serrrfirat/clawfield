@@ -54,7 +54,7 @@
 - [x] Building detector (flood fill exterior, BSP room subdivision, stairs/doorways)
 - [x] Meta generator (spawn points on roads, capture points at intersections)
 - [x] Map writer (CLWF binary, verified against map-loader.ts format)
-- [ ] End-to-end test with real Google 3D Tiles API key
+- [x] End-to-end test with real Google 3D Tiles API key (Times Square, 50m radius → 2.13MB .map)
 - [ ] Draco-compressed GLB support (draco3dgltf WASM decoder)
 - [ ] Progress bars and caching polish
 

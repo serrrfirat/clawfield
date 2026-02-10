@@ -49,7 +49,8 @@ function meshObjectDef(def: VoxelObjectDef): THREE.BufferGeometry | null {
   }
 
   // Run greedy mesher with object's voxel size as scale
-  const quads = greedyMesh(padded, false, gridSize, voxelSize);
+  // skipWaterFilter=true: object palette indices are unrelated to terrain water IDs
+  const quads = greedyMesh(padded, false, gridSize, voxelSize, true);
   if (quads.length === 0) return null;
 
   // Convert to geometry with the object's own palette for vertex colors

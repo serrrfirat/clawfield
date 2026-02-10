@@ -1,0 +1,589 @@
+[
+  {"_comment": "=== PRIMARY WEAPONS (8) === After generating, apply Hunyuan Smart Topology: High reduction, Triangle mesh, export GLB"},
+
+  {
+    "name": "assault_rifle",
+    "prompt": "Low poly flat-shaded assault rifle, minimal polygons, simple geometric blocky shapes, solid flat colors, military green and black, game asset, side view, no background",
+    "category": "weapons/primary",
+    "rig": "none",
+    "face_limit": 3000
+  },
+  {
+    "name": "smg_assault",
+    "prompt": "Low poly flat-shaded compact submachine gun, minimal polygons, simple geometric blocky shapes, solid flat colors, short barrel, dark grey and black, game asset, side view, no background",
+    "category": "weapons/primary",
+    "rig": "none",
+    "face_limit": 2500
+  },
+  {
+    "name": "smg_medic",
+    "prompt": "Low poly flat-shaded submachine gun with longer barrel, minimal polygons, simple geometric blocky shapes, solid flat colors, olive drab and black, support weapon, game asset, side view, no background",
+    "category": "weapons/primary",
+    "rig": "none",
+    "face_limit": 2500
+  },
+  {
+    "name": "shotgun",
+    "prompt": "Low poly flat-shaded pump-action shotgun, minimal polygons, simple geometric blocky shapes, solid flat colors, dark wood stock and black barrel, game asset, side view, no background",
+    "category": "weapons/primary",
+    "rig": "none",
+    "face_limit": 2500
+  },
+  {
+    "name": "carbine",
+    "prompt": "Low poly flat-shaded carbine rifle, minimal polygons, simple geometric blocky shapes, solid flat colors, medium barrel with rail, tan and black, game asset, side view, no background",
+    "category": "weapons/primary",
+    "rig": "none",
+    "face_limit": 3000
+  },
+  {
+    "name": "pdw",
+    "prompt": "Low poly flat-shaded personal defense weapon, minimal polygons, simple geometric blocky bullpup design, solid flat colors, very compact, dark grey, game asset, side view, no background",
+    "category": "weapons/primary",
+    "rig": "none",
+    "face_limit": 2000
+  },
+  {
+    "name": "sniper_rifle",
+    "prompt": "Low poly flat-shaded bolt-action sniper rifle, minimal polygons, simple geometric blocky shapes, solid flat colors, long barrel with scope, dark green and black, game asset, side view, no background",
+    "category": "weapons/primary",
+    "rig": "none",
+    "face_limit": 3000
+  },
+  {
+    "name": "dmr",
+    "prompt": "Low poly flat-shaded semi-automatic marksman rifle, minimal polygons, simple geometric blocky shapes, solid flat colors, medium scope, black and tan, game asset, side view, no background",
+    "category": "weapons/primary",
+    "rig": "none",
+    "face_limit": 3000
+  },
+
+  {"_comment": "=== SECONDARY WEAPONS (3) ==="},
+
+  {
+    "name": "pistol",
+    "prompt": "Low poly flat-shaded semi-automatic pistol, minimal polygons, simple geometric blocky shapes, solid flat colors, standard military sidearm, black, game asset, side view, no background",
+    "category": "weapons/secondary",
+    "rig": "none",
+    "face_limit": 1500
+  },
+  {
+    "name": "heavy_pistol",
+    "prompt": "Low poly flat-shaded heavy pistol, minimal polygons, simple geometric blocky shapes, solid flat colors, large frame, silver and black, game asset, side view, no background",
+    "category": "weapons/secondary",
+    "rig": "none",
+    "face_limit": 1500
+  },
+  {
+    "name": "machine_pistol",
+    "prompt": "Low poly flat-shaded machine pistol, minimal polygons, simple geometric blocky shapes, solid flat colors, compact automatic handgun with extended magazine, black, game asset, side view, no background",
+    "category": "weapons/secondary",
+    "rig": "none",
+    "face_limit": 1500
+  },
+
+  {"_comment": "=== GRENADES & THROWABLES (2) ==="},
+
+  {
+    "name": "frag_grenade",
+    "prompt": "Low poly flat-shaded fragmentation grenade, minimal polygons, simple geometric shapes, solid flat colors, round body with pin and lever, olive drab green, game asset, no background",
+    "category": "weapons/grenades",
+    "rig": "none",
+    "face_limit": 800
+  },
+  {
+    "name": "smoke_grenade",
+    "prompt": "Low poly flat-shaded smoke grenade canister, minimal polygons, simple geometric cylindrical shape, solid flat colors, grey with colored band, game asset, no background",
+    "category": "weapons/grenades",
+    "rig": "none",
+    "face_limit": 800
+  },
+
+  {"_comment": "=== ATTACHMENTS - SIGHTS (4) ==="},
+
+  {
+    "name": "red_dot_sight",
+    "prompt": "Low poly flat-shaded red dot sight optic, minimal polygons, simple geometric blocky tube shape, solid flat colors, small compact, black metal, game asset, no background",
+    "category": "attachments/sights",
+    "rig": "none",
+    "face_limit": 600
+  },
+  {
+    "name": "holographic_sight",
+    "prompt": "Low poly flat-shaded holographic weapon sight, minimal polygons, simple geometric rectangular frame with open window, solid flat colors, black, game asset, no background",
+    "category": "attachments/sights",
+    "rig": "none",
+    "face_limit": 600
+  },
+  {
+    "name": "acog_4x",
+    "prompt": "Low poly flat-shaded 4x ACOG scope, minimal polygons, simple geometric blocky telescopic optic, solid flat colors, black, game asset, no background",
+    "category": "attachments/sights",
+    "rig": "none",
+    "face_limit": 800
+  },
+  {
+    "name": "scope_8x",
+    "prompt": "Low poly flat-shaded 8x sniper scope, minimal polygons, simple geometric long tube optic, solid flat colors, black, game asset, no background",
+    "category": "attachments/sights",
+    "rig": "none",
+    "face_limit": 800
+  },
+
+  {"_comment": "=== ATTACHMENTS - BARRELS (4) ==="},
+
+  {
+    "name": "suppressor",
+    "prompt": "Low poly flat-shaded gun suppressor, minimal polygons, simple geometric cylindrical tube, solid flat colors, dark grey metal, game asset, no background",
+    "category": "attachments/barrels",
+    "rig": "none",
+    "face_limit": 400
+  },
+  {
+    "name": "compensator",
+    "prompt": "Low poly flat-shaded muzzle compensator, minimal polygons, simple geometric short barrel attachment with ports, solid flat colors, black metal, game asset, no background",
+    "category": "attachments/barrels",
+    "rig": "none",
+    "face_limit": 400
+  },
+  {
+    "name": "flash_hider",
+    "prompt": "Low poly flat-shaded flash hider muzzle device, minimal polygons, simple geometric pronged barrel tip, solid flat colors, black metal, game asset, no background",
+    "category": "attachments/barrels",
+    "rig": "none",
+    "face_limit": 400
+  },
+  {
+    "name": "heavy_barrel",
+    "prompt": "Low poly flat-shaded heavy barrel extension, minimal polygons, simple geometric thick reinforced barrel, solid flat colors, dark metal, game asset, no background",
+    "category": "attachments/barrels",
+    "rig": "none",
+    "face_limit": 400
+  },
+
+  {"_comment": "=== ATTACHMENTS - GRIPS (3) ==="},
+
+  {
+    "name": "vertical_grip",
+    "prompt": "Low poly flat-shaded vertical foregrip, minimal polygons, simple geometric straight vertical handle, solid flat colors, black, game asset, no background",
+    "category": "attachments/grips",
+    "rig": "none",
+    "face_limit": 300
+  },
+  {
+    "name": "angled_grip",
+    "prompt": "Low poly flat-shaded angled foregrip, minimal polygons, simple geometric 45 degree angled handle, solid flat colors, tan, game asset, no background",
+    "category": "attachments/grips",
+    "rig": "none",
+    "face_limit": 300
+  },
+  {
+    "name": "stubby_grip",
+    "prompt": "Low poly flat-shaded stubby foregrip, minimal polygons, simple geometric short wide grip, solid flat colors, black, game asset, no background",
+    "category": "attachments/grips",
+    "rig": "none",
+    "face_limit": 300
+  },
+
+  {"_comment": "=== ATTACHMENTS - MAGAZINES (2) ==="},
+
+  {
+    "name": "extended_magazine",
+    "prompt": "Low poly flat-shaded extended rifle magazine, minimal polygons, simple geometric longer curved magazine, solid flat colors, dark metal, game asset, no background",
+    "category": "attachments/magazines",
+    "rig": "none",
+    "face_limit": 400
+  },
+  {
+    "name": "quickdraw_magazine",
+    "prompt": "Low poly flat-shaded quick-draw magazine with pull tab, minimal polygons, simple geometric standard size rifle magazine, solid flat colors, black, game asset, no background",
+    "category": "attachments/magazines",
+    "rig": "none",
+    "face_limit": 400
+  },
+
+  {"_comment": "=== GADGETS (5) ==="},
+
+  {
+    "name": "medkit",
+    "prompt": "Low poly flat-shaded military medkit box, minimal polygons, simple geometric hinged case, solid flat colors, white with red cross, game asset, no background",
+    "category": "gadgets",
+    "rig": "none",
+    "face_limit": 1000
+  },
+  {
+    "name": "ammo_box",
+    "prompt": "Low poly flat-shaded military ammo crate, minimal polygons, simple geometric metal box with latch, solid flat colors, olive green, game asset, no background",
+    "category": "gadgets",
+    "rig": "none",
+    "face_limit": 1000
+  },
+  {
+    "name": "deployable_cover",
+    "prompt": "Low poly flat-shaded deployable barricade shield, minimal polygons, simple geometric folding metal panel barrier, solid flat colors, dark grey, game asset, no background",
+    "category": "gadgets",
+    "rig": "none",
+    "face_limit": 1200
+  },
+  {
+    "name": "claymore_mine",
+    "prompt": "Low poly flat-shaded claymore directional mine, minimal polygons, simple geometric curved rectangle on small legs, solid flat colors, olive green, game asset, no background",
+    "category": "gadgets",
+    "rig": "none",
+    "face_limit": 600
+  },
+  {
+    "name": "spotting_scope",
+    "prompt": "Low poly flat-shaded spotting scope on small tripod, minimal polygons, simple geometric compact telescope, solid flat colors, black and green, game asset, no background",
+    "category": "gadgets",
+    "rig": "none",
+    "face_limit": 800
+  },
+
+  {"_comment": "=== MILITARY PROPS (12) ==="},
+
+  {
+    "name": "sandbag_wall",
+    "prompt": "Low poly flat-shaded sandbag wall barrier, minimal polygons, simple geometric stacked sandbags in L-shape, solid flat colors, tan and brown, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 1500
+  },
+  {
+    "name": "sandbag_circle",
+    "prompt": "Low poly flat-shaded circular sandbag emplacement, minimal polygons, simple geometric round fortified position, solid flat colors, tan and brown, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 1500
+  },
+  {
+    "name": "concrete_barrier",
+    "prompt": "Low poly flat-shaded concrete jersey barrier, minimal polygons, simple geometric highway divider block, solid flat colors, grey concrete, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 800
+  },
+  {
+    "name": "t_wall",
+    "prompt": "Low poly flat-shaded T-wall blast barrier, minimal polygons, simple geometric tall concrete wall, solid flat colors, grey, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 800
+  },
+  {
+    "name": "watchtower",
+    "prompt": "Low poly flat-shaded military watchtower, minimal polygons, simple geometric elevated guard platform with ladder, solid flat colors, wood and metal, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 3000
+  },
+  {
+    "name": "bunker_small",
+    "prompt": "Low poly flat-shaded small military bunker, minimal polygons, simple geometric reinforced concrete pillbox with gun slit, solid flat colors, grey and green, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 2500
+  },
+  {
+    "name": "military_tent",
+    "prompt": "Low poly flat-shaded military command tent, minimal polygons, simple geometric large canvas field tent, solid flat colors, olive green, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 2000
+  },
+  {
+    "name": "fuel_barrel",
+    "prompt": "Low poly flat-shaded 55 gallon fuel drum, minimal polygons, simple geometric cylinder, solid flat colors, rusty red with yellow stripe, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 600
+  },
+  {
+    "name": "supply_crate",
+    "prompt": "Low poly flat-shaded military wooden supply crate, minimal polygons, simple geometric nailed shut cargo box, solid flat colors, light wood, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 800
+  },
+  {
+    "name": "radio_antenna",
+    "prompt": "Low poly flat-shaded military radio antenna on tripod, minimal polygons, simple geometric field communications equipment, solid flat colors, dark green, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 1000
+  },
+  {
+    "name": "supply_pallet",
+    "prompt": "Low poly flat-shaded wooden pallet with stacked supply boxes, minimal polygons, simple geometric shapes, solid flat colors, wood and green, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 1200
+  },
+  {
+    "name": "guard_post",
+    "prompt": "Low poly flat-shaded military guard booth checkpoint, minimal polygons, simple geometric shelter box with striped gate arm, solid flat colors, green and white, game asset, no background",
+    "category": "props/military",
+    "rig": "none",
+    "face_limit": 1500
+  },
+
+  {"_comment": "=== URBAN PROPS (10) ==="},
+
+  {
+    "name": "street_light",
+    "prompt": "Low poly flat-shaded street light pole, minimal polygons, simple geometric single lamp on tall pole, solid flat colors, dark grey, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 600
+  },
+  {
+    "name": "bench",
+    "prompt": "Low poly flat-shaded park bench, minimal polygons, simple geometric wooden slat seat with metal frame, solid flat colors, brown and grey, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 600
+  },
+  {
+    "name": "trash_bin",
+    "prompt": "Low poly flat-shaded public trash bin, minimal polygons, simple geometric cylindrical waste basket, solid flat colors, dark green, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 400
+  },
+  {
+    "name": "fire_hydrant",
+    "prompt": "Low poly flat-shaded fire hydrant, minimal polygons, simple geometric classic fire plug shape, solid flat colors, bright red, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 400
+  },
+  {
+    "name": "chain_link_fence",
+    "prompt": "Low poly flat-shaded chain link fence section, minimal polygons, simple geometric flat panel with metal posts, solid flat colors, silver grey, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 800
+  },
+  {
+    "name": "wooden_fence",
+    "prompt": "Low poly flat-shaded wooden picket fence section, minimal polygons, simple geometric flat panel, solid flat colors, light brown wood, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 600
+  },
+  {
+    "name": "power_pole",
+    "prompt": "Low poly flat-shaded wooden power utility pole with crossarm, minimal polygons, simple geometric shapes, solid flat colors, brown wood, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 800
+  },
+  {
+    "name": "traffic_light",
+    "prompt": "Low poly flat-shaded traffic light on pole, minimal polygons, simple geometric three-light signal head, solid flat colors, dark grey and black, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 600
+  },
+  {
+    "name": "bus_stop",
+    "prompt": "Low poly flat-shaded bus stop shelter, minimal polygons, simple geometric roof on poles with bench, solid flat colors, grey metal, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 1200
+  },
+  {
+    "name": "dumpster",
+    "prompt": "Low poly flat-shaded industrial dumpster, minimal polygons, simple geometric large rectangular container with lid, solid flat colors, dark green, game asset, no background",
+    "category": "props/urban",
+    "rig": "none",
+    "face_limit": 800
+  },
+
+  {"_comment": "=== NATURAL PROPS (8) ==="},
+
+  {
+    "name": "tree_pine",
+    "prompt": "Low poly flat-shaded pine tree, minimal polygons, simple geometric conical evergreen with blocky trunk, solid flat colors, dark green and brown, game asset, no background",
+    "category": "props/natural",
+    "rig": "none",
+    "face_limit": 1500
+  },
+  {
+    "name": "tree_deciduous",
+    "prompt": "Low poly flat-shaded deciduous tree, minimal polygons, simple geometric round leafy canopy with blocky trunk, solid flat colors, bright green and brown, game asset, no background",
+    "category": "props/natural",
+    "rig": "none",
+    "face_limit": 1500
+  },
+  {
+    "name": "tree_palm",
+    "prompt": "Low poly flat-shaded palm tree, minimal polygons, simple geometric curved trunk with fan leaves, solid flat colors, brown and green, game asset, no background",
+    "category": "props/natural",
+    "rig": "none",
+    "face_limit": 1200
+  },
+  {
+    "name": "rock_small",
+    "prompt": "Low poly flat-shaded small rock, minimal polygons, simple geometric angular stone, solid flat colors, grey, game asset, no background",
+    "category": "props/natural",
+    "rig": "none",
+    "face_limit": 400
+  },
+  {
+    "name": "rock_large",
+    "prompt": "Low poly flat-shaded large boulder, minimal polygons, simple geometric angular rock formation, solid flat colors, grey and brown, game asset, no background",
+    "category": "props/natural",
+    "rig": "none",
+    "face_limit": 1000
+  },
+  {
+    "name": "rock_cluster",
+    "prompt": "Low poly flat-shaded rock cluster, minimal polygons, simple geometric group of 3-4 angular stones, solid flat colors, various grey tones, game asset, no background",
+    "category": "props/natural",
+    "rig": "none",
+    "face_limit": 1200
+  },
+  {
+    "name": "bush",
+    "prompt": "Low poly flat-shaded bush shrub, minimal polygons, simple geometric round vegetation shape, solid flat colors, dark green, game asset, no background",
+    "category": "props/natural",
+    "rig": "none",
+    "face_limit": 600
+  },
+  {
+    "name": "grass_tuft",
+    "prompt": "Low poly flat-shaded grass tuft clump, minimal polygons, simple geometric cluster of tall blade shapes, solid flat colors, green, game asset, no background",
+    "category": "props/natural",
+    "rig": "none",
+    "face_limit": 300
+  },
+
+  {"_comment": "=== OBJECTIVE PROPS (5) ==="},
+
+  {
+    "name": "flag_pole",
+    "prompt": "Low poly flat-shaded military flag pole with flag, minimal polygons, simple geometric tall metal pole on base, solid flat colors, grey pole with white flag, game asset, no background",
+    "category": "props/objective",
+    "rig": "none",
+    "face_limit": 800
+  },
+  {
+    "name": "mcom_station",
+    "prompt": "Low poly flat-shaded military computer terminal on desk, minimal polygons, simple geometric radar screen with keyboard, solid flat colors, dark green equipment, game asset, no background",
+    "category": "props/objective",
+    "rig": "none",
+    "face_limit": 1500
+  },
+  {
+    "name": "supply_cache",
+    "prompt": "Low poly flat-shaded large weapons cache crate, minimal polygons, simple geometric open military crate with gear, solid flat colors, olive green, game asset, no background",
+    "category": "props/objective",
+    "rig": "none",
+    "face_limit": 1200
+  },
+  {
+    "name": "comms_tower",
+    "prompt": "Low poly flat-shaded communications radio tower, minimal polygons, simple geometric lattice metal tower with dishes, solid flat colors, grey metal, game asset, no background",
+    "category": "props/objective",
+    "rig": "none",
+    "face_limit": 2000
+  },
+  {
+    "name": "supply_drop_crate",
+    "prompt": "Low poly flat-shaded airdrop supply crate with parachute, minimal polygons, simple geometric military cargo drop, solid flat colors, olive with orange markings, game asset, no background",
+    "category": "props/objective",
+    "rig": "none",
+    "face_limit": 1500
+  },
+
+  {"_comment": "=== VEHICLES - TRANSPORT (4) ==="},
+
+  {
+    "name": "jeep",
+    "prompt": "Low poly flat-shaded military jeep, minimal polygons, simple geometric open-top 4-seat utility vehicle, solid flat colors, olive drab green, game asset, no background",
+    "category": "vehicles/transport",
+    "rig": "none",
+    "face_limit": 4000
+  },
+  {
+    "name": "atv",
+    "prompt": "Low poly flat-shaded military ATV quad bike, minimal polygons, simple geometric small 2-seat all-terrain vehicle, solid flat colors, tan desert, game asset, no background",
+    "category": "vehicles/transport",
+    "rig": "none",
+    "face_limit": 2500
+  },
+  {
+    "name": "transport_truck",
+    "prompt": "Low poly flat-shaded military transport truck, minimal polygons, simple geometric 6-wheel cargo truck with canvas cover, solid flat colors, olive drab green, game asset, no background",
+    "category": "vehicles/transport",
+    "rig": "none",
+    "face_limit": 5000
+  },
+  {
+    "name": "inflatable_boat",
+    "prompt": "Low poly flat-shaded military inflatable boat, minimal polygons, simple geometric rigid hull zodiac with outboard motor, solid flat colors, dark grey, game asset, no background",
+    "category": "vehicles/transport",
+    "rig": "none",
+    "face_limit": 2500
+  },
+
+  {"_comment": "=== VEHICLES - COMBAT (3) ==="},
+
+  {
+    "name": "ifv",
+    "prompt": "Low poly flat-shaded infantry fighting vehicle, minimal polygons, simple geometric armored carrier with turret gun, solid flat colors, olive green, game asset, no background",
+    "category": "vehicles/combat",
+    "rig": "none",
+    "face_limit": 5000
+  },
+  {
+    "name": "light_tank",
+    "prompt": "Low poly flat-shaded light battle tank, minimal polygons, simple geometric main gun turret on tracked chassis, solid flat colors, desert tan, game asset, no background",
+    "category": "vehicles/combat",
+    "rig": "none",
+    "face_limit": 5000
+  },
+  {
+    "name": "attack_helicopter",
+    "prompt": "Low poly flat-shaded attack helicopter gunship, minimal polygons, simple geometric twin-seat with rocket pods, solid flat colors, dark olive military, game asset, no background",
+    "category": "vehicles/combat",
+    "rig": "none",
+    "face_limit": 5000
+  },
+
+  {"_comment": "=== CHARACTERS (4 class silhouettes) ==="},
+
+  {
+    "name": "soldier_assault",
+    "prompt": "Low poly flat-shaded soldier character, minimal polygons, simple geometric blocky human with helmet and body armor holding rifle, solid flat colors, military green uniform, game asset, no background",
+    "category": "characters",
+    "rig": "biped",
+    "animations": ["idle", "walk", "run", "shoot"],
+    "face_limit": 5000
+  },
+  {
+    "name": "soldier_medic",
+    "prompt": "Low poly flat-shaded soldier character, minimal polygons, simple geometric blocky human with helmet and medical backpack with red cross, solid flat colors, military uniform with white armband, game asset, no background",
+    "category": "characters",
+    "rig": "biped",
+    "animations": ["idle", "walk", "run", "shoot"],
+    "face_limit": 5000
+  },
+  {
+    "name": "soldier_engineer",
+    "prompt": "Low poly flat-shaded soldier character, minimal polygons, simple geometric blocky human with hard hat and utility vest, solid flat colors, military tan uniform, game asset, no background",
+    "category": "characters",
+    "rig": "biped",
+    "animations": ["idle", "walk", "run", "shoot"],
+    "face_limit": 5000
+  },
+  {
+    "name": "soldier_recon",
+    "prompt": "Low poly flat-shaded soldier character, minimal polygons, simple geometric blocky human with ghillie hood and face wrap, solid flat colors, dark camo uniform, game asset, no background",
+    "category": "characters",
+    "rig": "biped",
+    "animations": ["idle", "walk", "run", "shoot"],
+    "face_limit": 5000
+  }
+]

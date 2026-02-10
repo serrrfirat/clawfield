@@ -50,8 +50,10 @@ function getLocal(voxels: Uint8Array, x: number, y: number, z: number, gridSize:
  * @param waterPass - If true, mesh only water; if false, mesh only solid
  * @param gridSize - Dimension of the grid (default CHUNK_SIZE=16, or 8/4 for LOD)
  * @param scale - Multiplier for output quad positions/sizes (default 1, or 2/4 for LOD)
+ * @param skipWaterFilter - If true, treat all non-zero voxels as solid (for voxel objects
+ *   whose palette indices have no relation to terrain water material IDs)
  */
-export function greedyMesh(voxels: Uint8Array, waterPass: boolean = false, gridSize: number = CHUNK_SIZE, scale: number = 1): MeshQuad[] {
+export function greedyMesh(voxels: Uint8Array, waterPass: boolean = false, gridSize: number = CHUNK_SIZE, scale: number = 1, skipWaterFilter: boolean = false): MeshQuad[] {
   const quads: MeshQuad[] = [];
 
   for (let faceIdx = 0; faceIdx < 6; faceIdx++) {
@@ -72,7 +74,9 @@ export function greedyMesh(voxels: Uint8Array, waterPass: boolean = false, gridS
           const voxel = getLocal(voxels, pos[0], pos[1], pos[2], gridSize);
 
           // Skip voxels not in the current pass
-          if (waterPass) {
+          if (skipWaterFilter) {
+            if (voxel === 0) continue;
+          } else if (waterPass) {
             if (!isWater(voxel)) continue;
           } else {
             if (voxel === 0 || isWater(voxel)) continue;
@@ -83,7 +87,12 @@ export function greedyMesh(voxels: Uint8Array, waterPass: boolean = false, gridS
           nPos[normalAxis] += normalDir > 0 ? 1 : -1;
           const neighbor = getLocal(voxels, nPos[0], nPos[1], nPos[2], gridSize);
 
-          if (waterPass) {
+          if (skipWaterFilter) {
+            // No water distinction: show face when neighbor is air
+            if (neighbor === 0) {
+              mask[u + v * gridSize] = voxel;
+            }
+          } else if (waterPass) {
             // Water faces: show when neighbor is air (0) or out-of-chunk (0)
             if (neighbor === 0) {
               mask[u + v * gridSize] = voxel;

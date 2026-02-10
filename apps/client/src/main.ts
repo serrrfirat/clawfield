@@ -11,12 +11,13 @@ import { HUD } from './hud/hud';
 import { ProjectileRenderer } from './combat/projectile-renderer';
 import { CapturePointRenderer } from './combat/capture-point-renderer';
 import { GrenadeRenderer } from './combat/grenade-renderer';
+import { RocketRenderer } from './combat/rocket-renderer';
 import { GadgetRenderer } from './combat/gadget-renderer';
 import { ParticleSystem } from './combat/particle-system';
 import { DebrisSystem } from './combat/debris-system';
 import { PhysicsDebrisSystem } from './combat/physics-debris';
 import { SmokeSystem } from './combat/smoke-system';
-import { Minimap } from './hud/minimap';
+
 import { DamageIndicatorSystem } from './hud/damage-indicator';
 import { Scoreboard } from './hud/scoreboard';
 import { soundManager } from './audio/sound-manager';
@@ -26,6 +27,7 @@ import { LobbyScreen } from './hud/lobby-screen';
 import { loadSoldierModel } from './player/model-loader';
 import { preloadWeaponModels } from './player/weapon-model-loader';
 import { RadialMenu } from './hud/radial-menu';
+import { GrenadeRadialMenu } from './hud/grenade-radial-menu';
 import { CoverPreview } from './combat/cover-preview';
 import { SoundId } from './audio/sound-manager';
 import { VoxelObjectRenderer } from './voxel/voxel-object-renderer';
@@ -60,6 +62,7 @@ export const gameState = {
   gameMode: 'tdm' as GameMode,
   lastGadgetUseTime: 0,
   selectedGadgetIndex: 0,
+  selectedGrenadeIndex: 0,
   selectedLoadout: {} as WeaponLoadout,
 };
 
@@ -67,6 +70,30 @@ export const gameState = {
 let chunks = new Map<string, Uint8Array>();
 let localPlayer: LocalPlayer | null = null;
 const remotePlayers = new Map<string, RemotePlayer>();
+
+/** Map weapon display name → SoundId for remote gunshot audio */
+const REMOTE_WEAPON_SOUND: Record<string, SoundId> = {
+  'Assault Rifle': SoundId.ShootRifle,
+  'SMG': SoundId.ShootSmg,
+  'Medic SMG': SoundId.ShootSmg,
+  'Shotgun': SoundId.ShootShotgun,
+  'Carbine': SoundId.ShootRifle,
+  'PDW': SoundId.ShootSmg,
+  'Sniper Rifle': SoundId.ShootSniper,
+  'DMR': SoundId.ShootSniper,
+  'Pistol': SoundId.ShootSmg,
+  'Rocket Launcher': SoundId.ShootRifle,
+};
+
+// --- Remote gunshot audio system ---
+// Per-player cooldown to avoid overlapping shots from same bot
+const remoteFireCooldowns = new Map<string, number>();
+/** Max simultaneous remote gunshot sounds per tick */
+const MAX_REMOTE_SHOTS_PER_TICK = 6;
+/** Distance tiers (meters) */
+const GUNSHOT_CLOSE = 25;
+const GUNSHOT_MID = 60;
+const GUNSHOT_FAR = 120;
 
 // --- Setup ---
 const renderer = new Renderer();
@@ -79,13 +106,17 @@ projectileRenderer.setParticleSystem(particleSystem);
 const capturePointRenderer = new CapturePointRenderer(renderer.scene);
 const grenadeRenderer = new GrenadeRenderer(renderer.scene);
 grenadeRenderer.setParticleSystem(particleSystem);
+const rocketRenderer = new RocketRenderer(renderer.scene);
+rocketRenderer.setParticleSystem(particleSystem);
 const gadgetRenderer = new GadgetRenderer(renderer.scene);
 const smokeSystem = new SmokeSystem(renderer.scene, renderer.camera);
-const minimap = new Minimap();
+
 const radialMenu = new RadialMenu();
+const grenadeRadialMenu = new GrenadeRadialMenu();
 const coverPreview = new CoverPreview(renderer.scene);
 const voxelObjectRenderer = new VoxelObjectRenderer(renderer.scene);
 const weatherManager = new WeatherManager(renderer.scene, renderer.sunLight);
+weatherManager.setSmokeSystem(smokeSystem);
 const knownGadgetIds = new Set<number>();
 
 // --- Screen shake state ---
@@ -108,6 +139,21 @@ const underwaterColor = new THREE.Color(0x1a5276);
 ) => {
   weatherManager.setWeather(state, duration);
 };
+
+// Weather hotkeys: 5=clear 6=cloudy 7=overcast 8=fog 9=rain 0=snow -=storm
+const weatherKeys: Record<string, WeatherState> = {
+  Digit5: 'clear',
+  Digit6: 'cloudy',
+  Digit7: 'overcast',
+  Digit8: 'fog',
+  Digit9: 'rain',
+  Digit0: 'snow',
+  Minus: 'storm',
+};
+document.addEventListener('keydown', (e) => {
+  const state = weatherKeys[e.code];
+  if (state) weatherManager.setWeather(state);
+});
 
 // --- Network ---
 function handleServerMessage(msg: ServerMessage): void {
@@ -200,6 +246,69 @@ function handleServerMessage(msg: ServerMessage): void {
             remotePlayers.set(playerState.id, remote);
           }
           remote.pushState(playerState);
+        }
+      }
+
+      // --- Remote gunshot spatial audio (distance-culled, throttled, varied) ---
+      {
+        const cam = renderer.camera;
+        const camPos = cam.position;
+        const now = performance.now();
+
+        // Collect all remote shooters with their distance to listener
+        const shooters: { state: PlayerState; dist: number }[] = [];
+        for (const ps of msg.players) {
+          if (ps.id === gameState.myId) continue;
+          if (!ps.shooting || !ps.alive) continue;
+
+          // Per-player cooldown: skip if we played this player's shot too recently (150ms)
+          const lastFire = remoteFireCooldowns.get(ps.id) ?? 0;
+          if (now - lastFire < 150) continue;
+
+          const dx = ps.position.x - camPos.x;
+          const dy = ps.position.y - camPos.y;
+          const dz = ps.position.z - camPos.z;
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+          // Skip if beyond audible range
+          if (dist > GUNSHOT_FAR) continue;
+
+          shooters.push({ state: ps, dist });
+        }
+
+        // Sort by distance and only play closest N
+        shooters.sort((a, b) => a.dist - b.dist);
+        const toPlay = shooters.slice(0, MAX_REMOTE_SHOTS_PER_TICK);
+
+        for (const { state: ps, dist } of toPlay) {
+          remoteFireCooldowns.set(ps.id, now);
+
+          // Pitch randomization: ±8% so identical weapons sound varied
+          const pitch = 0.92 + Math.random() * 0.16;
+
+          if (dist < GUNSHOT_CLOSE) {
+            // Close: full weapon sound + bass thump (loud, detailed)
+            const soundId = REMOTE_WEAPON_SOUND[ps.weaponName] ?? SoundId.ShootRifle;
+            soundManager.play3D(soundId, ps.position, { pitch, volume: 0.55 });
+            soundManager.play3D(SoundId.ShootBass, ps.position, { pitch, volume: 0.2 });
+          } else if (dist < GUNSHOT_MID) {
+            // Medium: just the main weapon crack, quieter
+            const soundId = REMOTE_WEAPON_SOUND[ps.weaponName] ?? SoundId.ShootRifle;
+            const falloff = 1 - (dist - GUNSHOT_CLOSE) / (GUNSHOT_MID - GUNSHOT_CLOSE);
+            soundManager.play3D(soundId, ps.position, {
+              pitch,
+              volume: 0.25 + 0.2 * falloff,
+              refDistance: 8,
+            });
+          } else {
+            // Far: distant thump only — low rumble
+            const falloff = 1 - (dist - GUNSHOT_MID) / (GUNSHOT_FAR - GUNSHOT_MID);
+            soundManager.play3D(SoundId.ShootBass, ps.position, {
+              pitch: pitch * 0.85, // lower pitch for distance
+              volume: 0.12 * falloff,
+              refDistance: 15,
+            });
+          }
         }
       }
       break;
@@ -413,8 +522,13 @@ function handleServerMessage(msg: ServerMessage): void {
       break;
     }
 
+    case 'rockets': {
+      rocketRenderer.updateFromServer(msg.rockets);
+      break;
+    }
+
     case 'enemy_spotted': {
-      minimap.setSpottedEnemies(msg.positions, msg.duration);
+      // Minimap removed — spotted enemies are a no-op for now
       break;
     }
 
@@ -733,11 +847,33 @@ function gameLoop(): void {
   if (localPlayer && !deployScreen.isVisible()) {
     const inputPacket = localPlayer.update(dt);
     if (inputPacket) {
-      // If the player fired this frame, spawn a client-predicted projectile
-      if (inputPacket.input.shoot) {
+      // Handle weapon slot switching
+      const desiredSlot = inputPacket.input.weaponSlot ?? 0;
+      if (desiredSlot !== localPlayer.weaponCtrl.currentSlot) {
+        localPlayer.weaponCtrl.switchWeapon(desiredSlot);
+      }
+
+      // If the player fired a rocket launcher, spawn a client-predicted rocket
+      if (inputPacket.input.shoot && localPlayer.weaponCtrl.isRocketLauncher) {
         const cam = renderer.camera;
         const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-        const weapon = localPlayer.weaponCtrl.weapon;
+        const muzzlePos = {
+          x: cam.position.x + dir.x * 1.0,
+          y: cam.position.y + dir.y * 1.0 - 0.1,
+          z: cam.position.z + dir.z * 1.0,
+        };
+        rocketRenderer.spawnLocal(
+          muzzlePos,
+          { x: dir.x, y: dir.y, z: dir.z },
+          localPlayer.weaponCtrl.activeWeapon.projectileSpeed,
+        );
+      }
+
+      // If the player fired this frame, spawn a client-predicted projectile
+      if (inputPacket.input.shoot && !localPlayer.weaponCtrl.isRocketLauncher) {
+        const cam = renderer.camera;
+        const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+        const weapon = localPlayer.weaponCtrl.activeWeapon;
 
         // Spawn from slightly in front of camera to avoid clipping
         const muzzlePos = {
@@ -798,12 +934,8 @@ function gameLoop(): void {
           z: cam.position.z + gDir.z * 0.5,
         };
 
-        // Determine if this is a smoke or frag grenade from selected gadget
-        const classDef = Object.values(CLASSES).find(c => c.id === gameState.selectedClass) as ClassDef | undefined;
-        const gadgetIdx = inputPacket.input.gadgetIndex ?? 0;
-        const gadgetId = classDef?.gadgets[gadgetIdx];
-
-        if (gadgetId === GadgetId.SmokeGrenade) {
+        // Determine if this is a smoke or frag grenade from grenade index
+        if ((inputPacket.input.grenadeIndex ?? 0) === 1) {
           grenadeRenderer.spawnLocalSmoke(grenadePos, { x: gDir.x, y: gDir.y, z: gDir.z });
         } else {
           grenadeRenderer.spawnLocal(grenadePos, { x: gDir.x, y: gDir.y, z: gDir.z });
@@ -824,6 +956,9 @@ function gameLoop(): void {
 
   // Update grenades
   grenadeRenderer.update(dt);
+
+  // Update rockets
+  rocketRenderer.update(dt);
 
   // Update particles (dust, sparks) and debris cubes
   particleSystem.update(dt);
@@ -875,29 +1010,7 @@ function gameLoop(): void {
     hud.showRevivePrompt(null);
   }
 
-  // Update minimap
-  if (localPlayer) {
-    const cam = renderer.camera;
-    const allPlayers: Array<{ position: { x: number; y: number; z: number }; team: number; alive: boolean }> = [];
-    for (const remote of remotePlayers.values()) {
-      allPlayers.push({
-        position: remote.getPosition(),
-        team: remote.team,
-        alive: remote.alive,
-      });
-    }
-    // Extract yaw from camera quaternion (rotation around Y axis)
-    const camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-    const playerYaw = Math.atan2(camDir.x, -camDir.z);
-    minimap.update(
-      { x: cam.position.x, y: cam.position.y, z: cam.position.z },
-      playerYaw,
-      gameState.myTeam,
-      allPlayers,
-      gameState.capturePoints,
-      gameState.mapObjectives
-    );
-  }
+  // Minimap removed
 
   // Radial menu + cover preview
   if (localPlayer) {
@@ -910,6 +1023,14 @@ function gameLoop(): void {
       radialMenu.show(classDef, gameState.selectedGadgetIndex, gameState.lastGadgetUseTime, now);
     } else {
       radialMenu.hide();
+    }
+
+    // Grenade radial menu: show/hide on G hold
+    if (localPlayer.input.grenadeRadialMenuOpen) {
+      gameState.selectedGrenadeIndex = localPlayer.input.selectedGrenadeIndex;
+      grenadeRadialMenu.show(gameState.selectedGrenadeIndex);
+    } else {
+      grenadeRadialMenu.hide();
     }
 
     // Cover preview: show for Engineer with RepairTool selected
@@ -945,7 +1066,8 @@ function gameLoop(): void {
       const nameMap: Record<string, string> = {
         frag_grenade: 'Frag Grenade', smoke_grenade: 'Smoke',
         medkit: 'Medkit', bandage: 'Bandage', ammo_box: 'Ammo Box',
-        repair_tool: 'Deploy Cover', spotting_scope: 'Spotting Scope', claymore: 'Claymore',
+        repair_tool: 'Deploy Cover',
+        spotting_scope: 'Spotting Scope', claymore: 'Claymore',
       };
       gadgetName = nameMap[gadgetId] ?? gadgetId;
       const cooldown = (GADGET_COOLDOWNS[gadgetId] ?? GADGET_COOLDOWN) * 1000;
@@ -956,7 +1078,7 @@ function gameLoop(): void {
   }
 
   // Compute weapon name and player yaw for HUD
-  const weaponName = localPlayer?.weaponCtrl.weapon.name ?? '';
+  const weaponName = localPlayer?.weaponCtrl.activeWeapon.name ?? '';
   let playerYaw = 0;
   if (localPlayer) {
     const cam = renderer.camera;
@@ -1021,8 +1143,12 @@ function gameLoop(): void {
   // (weather manager handles normal fog; only override when underwater)
   weatherManager.setUnderwater(gameState.inWater);
   if (gameState.inWater) {
+    weatherManager.sky.visible = false;
     renderer.scene.background = underwaterColor;
     setFogUniforms({ color: underwaterColor, near: 5, far: 60, heightDensity: 0.0, heightOrigin: 0 });
+  } else {
+    weatherManager.sky.visible = true;
+    renderer.scene.background = null;
   }
 
   // Sort water faces back-to-front for correct transparency
@@ -1064,10 +1190,22 @@ const mainMenu = new MainMenu();
 const lobbyScreen = new LobbyScreen();
 
 function showDeployScreen(spawns: SpawnPointOption[]): void {
+  // Build player dot array for the deploy map
+  const playerDots: Array<{ position: { x: number; y: number; z: number }; team: number; alive: boolean }> = [];
+  for (const remote of remotePlayers.values()) {
+    playerDots.push({
+      position: remote.getPosition(),
+      team: remote.team,
+      alive: remote.alive,
+    });
+  }
+
   deployScreen.show(
     spawns,
     gameState.myTeam,
     gameState.capturePoints,
+    chunks,
+    playerDots,
     (choice) => {
       gameState.selectedClass = choice.classId;
       gameState.selectedWeapon = choice.weaponId;
@@ -1104,6 +1242,7 @@ function resetClientGameState(): void {
   // Clear renderer visuals by sending empty server state
   projectileRenderer.updateFromServer([]);
   grenadeRenderer.updateFromServer([]);
+  rocketRenderer.updateFromServer([]);
   gadgetRenderer.updateFromServer([]);
   capturePointRenderer.updateFromServer([]);
   knownGadgetIds.clear();

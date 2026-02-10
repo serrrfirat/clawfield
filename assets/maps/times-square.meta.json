@@ -1,0 +1,74 @@
+{
+  "name": "Times Square",
+  "description": "Generated from Google 3D Tiles at Times Square",
+  "spawnPoints": {
+    "alpha": [
+      {
+        "x": 2425061,
+        "y": -6071157,
+        "z": -365
+      },
+      {
+        "x": 2425061,
+        "y": -6071157,
+        "z": -335
+      },
+      {
+        "x": 2425061,
+        "y": -6071157,
+        "z": -305
+      }
+    ],
+    "bravo": [
+      {
+        "x": 365,
+        "y": -6071157,
+        "z": -365
+      },
+      {
+        "x": 365,
+        "y": -6071157,
+        "z": -335
+      },
+      {
+        "x": 365,
+        "y": -6071157,
+        "z": -305
+      }
+    ]
+  },
+  "capturePoints": [
+    {
+      "id": "A",
+      "position": {
+        "x": 1212713,
+        "y": -6071157,
+        "z": -1475794
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "B",
+      "position": {
+        "x": 1212713,
+        "y": -6071157,
+        "z": -2951213
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "C",
+      "position": {
+        "x": 1212713,
+        "y": -6071157,
+        "z": -4426632
+      },
+      "initialOwner": -1
+    }
+  ],
+  "objectives": [],
+  "waterIndices": [
+    6,
+    17
+  ]
+}
