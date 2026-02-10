@@ -60,12 +60,19 @@ import {
   loadObjectDefs,
   stampObjectsIntoChunks,
 } from './map-loader.js';
+import { randomUUID } from 'node:crypto';
 
 /** Eye offset from player feet position */
 const EYE_OFFSET = PLAYER_HEIGHT - 0.1; // 1.7
 
 /** How often to broadcast ticket counts (in ticks) */
 const TICKET_BROADCAST_INTERVAL = 20; // every 1 second at 20Hz
+
+/** How long to keep a disconnected player's session before cleanup (ms) */
+const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+/** How often to check for stale sessions (in ticks) */
+const SESSION_CLEANUP_INTERVAL = 20 * 30; // every 30 seconds
 
 /**
  * Server game loop: fixed-timestep at 20Hz.
@@ -89,6 +96,9 @@ export class GameLoop {
 
   // --- Per-client chunk streaming ---
   private sentChunks = new Map<string, Set<string>>();
+
+  // --- Persistent sessions: sessionToken → PlayerSim ---
+  private sessions = new Map<string, PlayerSim>();
 
   // --- Map spawn points (loaded from metadata or discovered) ---
   private mapSpawnsAlpha: Vec3[] = [];
@@ -575,7 +585,7 @@ export class GameLoop {
 
         // First human player to join sets the game mode
         const humanCount = Array.from(this.players.values()).filter(
-          p => !this.bots.some(b => b.sim.id === p.id)
+          p => !this.bots.some(b => b.sim.id === p.id) && !p.disconnected
         ).length;
         if (humanCount === 0 && msg.gameMode) {
           this.gameMode = msg.gameMode;
@@ -597,86 +607,48 @@ export class GameLoop {
         sim.selectClass(classId);
         sim.alive = false;
         sim.waitingToDeploy = true;
+
+        // Generate session token for reconnection
+        const sessionToken = randomUUID();
+        sim.sessionToken = sessionToken;
+        this.sessions.set(sessionToken, sim);
+
         this.players.set(client.id, sim);
 
-        // Determine initial chunks to send (within STREAM_RADIUS of temp position)
-        const spawnCx = Math.floor(tempPos.x / CHUNK_SIZE);
-        const spawnCy = Math.floor(tempPos.y / CHUNK_SIZE);
-        const spawnCz = Math.floor(tempPos.z / CHUNK_SIZE);
-        const nearbyKeys = getChunksInRadius(spawnCx, spawnCy, spawnCz, STREAM_RADIUS);
-
-        const mapData: ChunkData[] = [];
-        const clientSent = new Set<string>();
-
-        for (const key of nearbyKeys) {
-          const voxels = this.chunks.get(key);
-          if (voxels) {
-            mapData.push({ key, voxels: Array.from(voxels) });
-            clientSent.add(key);
-          }
-        }
-
-        this.sentChunks.set(client.id, clientSent);
-
-        this.network.send(client, {
-          type: 'welcome',
-          id: client.id,
-          team,
-          mapData,
-          palette: this.palette.length > 0 ? this.palette : undefined,
-          waterIndices: this.waterIndices,
-          mapName: this.mapDisplayName,
-          objectives: this.mapObjectives,
-          objectPlacements: this.objectPlacements.length > 0 ? this.objectPlacements : undefined,
-          gameMode: this.gameMode,
-        });
-
-        // Send available spawns for the deploy screen
-        this.network.send(client, {
-          type: 'available_spawns',
-          spawns: this.getAvailableSpawns(team),
-        });
-
-        // Notify other players
-        this.network.broadcastExcept(client.id, {
-          type: 'player_joined',
-          id: client.id,
-          name: msg.name,
-          team,
-        });
-
-        // Notify new player about existing players
-        for (const [id, player] of this.players) {
-          if (id !== client.id) {
-            this.network.send(client, {
-              type: 'player_joined',
-              id,
-              name: player.name,
-              team: player.team,
-            });
-          }
-        }
-
-        // Send current ticket state
-        this.network.send(client, {
-          type: 'tickets',
-          alpha: this.ticketsAlpha,
-          bravo: this.ticketsBravo,
-        });
-
-        // Send capture point state
-        this.network.send(client, {
-          type: 'capture_points',
-          points: this.capturePointManager.getStates(),
-        });
-        const scores = this.capturePointManager.getScores();
-        this.network.send(client, {
-          type: 'conquest_score',
-          alpha: scores.alpha,
-          bravo: scores.bravo,
-        });
+        this.sendWelcomeState(client, sim);
 
         console.log(`Player joined: ${msg.name} (${client.id}) - Team ${team === Team.Alpha ? 'Alpha' : 'Bravo'} - ${classId}`);
+        break;
+      }
+
+      case 'rejoin': {
+        const sim = this.sessions.get(msg.sessionToken);
+        if (!sim || !sim.disconnected) {
+          // Invalid or expired session — tell client to do a fresh join
+          // (client will handle this by showing the menu again)
+          console.log(`Rejoin failed for token ${msg.sessionToken.slice(0, 8)}... — session not found or not disconnected`);
+          break;
+        }
+
+        // Remove old player entry (keyed by old client ID)
+        this.players.delete(sim.id);
+
+        // Reassign the network client to use the old player's ID
+        this.network.reassignClientId(client, sim.id);
+
+        // Restore session
+        sim.disconnected = false;
+        sim.disconnectTime = 0;
+        sim.alive = false;
+        sim.waitingToDeploy = true;
+        client.name = sim.name;
+
+        // Re-register in players map under the original ID
+        this.players.set(sim.id, sim);
+
+        this.sendWelcomeState(client, sim);
+
+        console.log(`Player rejoined: ${sim.name} (${sim.id}) - Team ${sim.team === Team.Alpha ? 'Alpha' : 'Bravo'} - K:${sim.kills}/D:${sim.deaths}/A:${sim.assists}`);
         break;
       }
 
@@ -725,10 +697,25 @@ export class GameLoop {
   }
 
   private handleDisconnect(client: Client): void {
-    // Only remove real players, not bots
     const isBot = this.bots.some((b) => b.sim.id === client.id);
+
     if (!isBot) {
-      this.players.delete(client.id);
+      const sim = this.players.get(client.id);
+      if (sim) {
+        // Mark as disconnected instead of removing — session persists
+        sim.disconnected = true;
+        sim.disconnectTime = Date.now();
+
+        // Kill the player cleanly so they don't remain as a ghost in the world
+        if (sim.alive || sim.downed) {
+          sim.alive = false;
+          sim.downed = false;
+          sim.deathTime = Date.now();
+        }
+        sim.waitingToDeploy = false;
+
+        console.log(`Player disconnected (session kept): ${sim.name} (${client.id}) - K:${sim.kills}/D:${sim.deaths}/A:${sim.assists}`);
+      }
     }
 
     // Clean up chunk streaming state
@@ -738,8 +725,91 @@ export class GameLoop {
       type: 'player_left',
       id: client.id,
     });
+  }
 
-    console.log(`Player left: ${client.id}`);
+  /**
+   * Send welcome message and current game state to a client.
+   * Used for both initial join and rejoin.
+   */
+  private sendWelcomeState(client: Client, sim: PlayerSim): void {
+    // Determine initial chunks to send (within STREAM_RADIUS of player position)
+    const pos = sim.position;
+    const spawnCx = Math.floor(pos.x / CHUNK_SIZE);
+    const spawnCy = Math.floor(pos.y / CHUNK_SIZE);
+    const spawnCz = Math.floor(pos.z / CHUNK_SIZE);
+    const nearbyKeys = getChunksInRadius(spawnCx, spawnCy, spawnCz, STREAM_RADIUS);
+
+    const mapData: ChunkData[] = [];
+    const clientSent = new Set<string>();
+
+    for (const key of nearbyKeys) {
+      const voxels = this.chunks.get(key);
+      if (voxels) {
+        mapData.push({ key, voxels: Array.from(voxels) });
+        clientSent.add(key);
+      }
+    }
+
+    this.sentChunks.set(client.id, clientSent);
+
+    this.network.send(client, {
+      type: 'welcome',
+      id: sim.id,
+      team: sim.team,
+      sessionToken: sim.sessionToken,
+      mapData,
+      palette: this.palette.length > 0 ? this.palette : undefined,
+      waterIndices: this.waterIndices,
+      mapName: this.mapDisplayName,
+      objectives: this.mapObjectives,
+      objectPlacements: this.objectPlacements.length > 0 ? this.objectPlacements : undefined,
+      gameMode: this.gameMode,
+    });
+
+    // Send available spawns for the deploy screen
+    this.network.send(client, {
+      type: 'available_spawns',
+      spawns: this.getAvailableSpawns(sim.team),
+    });
+
+    // Notify other players
+    this.network.broadcastExcept(client.id, {
+      type: 'player_joined',
+      id: sim.id,
+      name: sim.name,
+      team: sim.team,
+    });
+
+    // Notify this player about existing connected players
+    for (const [id, player] of this.players) {
+      if (id !== sim.id && !player.disconnected) {
+        this.network.send(client, {
+          type: 'player_joined',
+          id,
+          name: player.name,
+          team: player.team,
+        });
+      }
+    }
+
+    // Send current ticket state
+    this.network.send(client, {
+      type: 'tickets',
+      alpha: this.ticketsAlpha,
+      bravo: this.ticketsBravo,
+    });
+
+    // Send capture point state
+    this.network.send(client, {
+      type: 'capture_points',
+      points: this.capturePointManager.getStates(),
+    });
+    const scores = this.capturePointManager.getScores();
+    this.network.send(client, {
+      type: 'conquest_score',
+      alpha: scores.alpha,
+      bravo: scores.bravo,
+    });
   }
 
   // --- Main update loop ---
@@ -977,8 +1047,15 @@ export class GameLoop {
     // Check game over
     this.checkGameOver();
 
-    // Build state snapshot
-    const players = Array.from(this.players.values()).map((s) => s.getState());
+    // Clean up stale disconnected sessions periodically
+    if (this.tickCount % SESSION_CLEANUP_INTERVAL === 0) {
+      this.cleanupStaleSessions(now);
+    }
+
+    // Build state snapshot (exclude disconnected players)
+    const players = Array.from(this.players.values())
+      .filter((s) => !s.disconnected)
+      .map((s) => s.getState());
 
     // Get projectile states for broadcasting
     const projectileStates = this.projectileManager.getStates();
@@ -1486,6 +1563,7 @@ export class GameLoop {
     for (const sim of this.players.values()) {
       if (sim.alive || sim.downed) continue; // downed players are not yet dead
       if (sim.waitingToDeploy) continue; // Already sent to deploy screen
+      if (sim.disconnected) continue; // Don't process respawns for disconnected players
       if (now - sim.deathTime < RESPAWN_DELAY * 1000) continue;
 
       // Check if this is a bot — bots auto-respawn without deploy screen
@@ -1505,6 +1583,20 @@ export class GameLoop {
           type: 'available_spawns',
           spawns: this.getAvailableSpawns(sim.team),
         });
+      }
+    }
+  }
+
+  // --- Session cleanup ---
+
+  /** Remove disconnected player sessions that have been inactive for too long */
+  private cleanupStaleSessions(now: number): void {
+    for (const [token, sim] of this.sessions) {
+      if (!sim.disconnected) continue;
+      if (now - sim.disconnectTime > SESSION_TIMEOUT) {
+        this.sessions.delete(token);
+        this.players.delete(sim.id);
+        console.log(`Session expired: ${sim.name} (${sim.id}) — removed after ${SESSION_TIMEOUT / 1000}s`);
       }
     }
   }

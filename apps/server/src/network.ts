@@ -147,6 +147,17 @@ export class NetworkServer {
     }
   }
 
+  /**
+   * Reassign a client's ID (used for session reconnection).
+   * Removes the client from the map under its current ID and re-registers it
+   * under the new ID so that PlayerSim references remain valid.
+   */
+  reassignClientId(client: Client, newId: string): void {
+    this.clients.delete(client.id);
+    client.id = newId;
+    this.clients.set(newId, client);
+  }
+
   /** Get all connected clients */
   getClients(): Map<string, Client> {
     return this.clients;
