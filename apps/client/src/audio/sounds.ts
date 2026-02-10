@@ -27,6 +27,8 @@ export enum SoundId {
   GadgetSpot = 'gadget_spot',
   GadgetCover = 'gadget_cover',
   GadgetDeploy = 'gadget_deploy',
+  /** Rocket launcher fire sound */
+  RocketFire = 'rocket_fire',
   /** Bullet whizz/crack when a projectile passes near the player */
   BulletCrack = 'bullet_crack',
 }
@@ -89,6 +91,9 @@ export const SOUND_CONFIGS: Record<SoundId, SoundConfig> = {
   [SoundId.GadgetSpot]: { volume: 0.4, loop: false, spatial: false },
   [SoundId.GadgetCover]: { volume: 0.6, loop: false, spatial: true },
   [SoundId.GadgetDeploy]: { volume: 0.4, loop: false, spatial: false },
+
+  // Rocket launcher fire
+  [SoundId.RocketFire]: { volume: 0.8, loop: false, spatial: true },
 
   // Bullet crack: supersonic whizz when projectiles pass near player
   [SoundId.BulletCrack]: { volume: 0.45, loop: false, spatial: true },

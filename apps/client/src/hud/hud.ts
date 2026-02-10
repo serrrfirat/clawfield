@@ -77,9 +77,13 @@ export class HUD {
   private ammoReload: HTMLDivElement;
   private weaponNameEl: HTMLDivElement;
 
-  // Tickets
-  private ticketsAlphaEl: HTMLSpanElement;
-  private ticketsBravoEl: HTMLSpanElement;
+  // Tickets (BattleBit style)
+  private ticketsAlphaScore: HTMLSpanElement;
+  private ticketsBravoScore: HTMLSpanElement;
+  private ticketsAlphaProgressFill: HTMLDivElement;
+  private ticketsBravoProgressFill: HTMLDivElement;
+  private ticketsTimer: HTMLDivElement;
+  private ticketsStatus: HTMLDivElement;
 
   // Kill feed
   private killfeedContainer: HTMLDivElement;
@@ -125,6 +129,12 @@ export class HUD {
   private ammoBars: HTMLDivElement[] = [];
   private lastMaxAmmo = 0;
 
+  /** Match start time for timer display */
+  private matchStartTime = 0;
+
+  /** Initial ticket count for progress bars (captured on first update) */
+  private initialTickets = 0;
+
   // ── Constructor ──────────────────────────────────────────────
 
   constructor() {
@@ -156,15 +166,50 @@ export class HUD {
     ammoWrap.appendChild(this.ammoReload);
     this.root.appendChild(ammoWrap);
 
-    // ── Tickets (top-center) ──
+    // ── Tickets (top-center, BattleBit style) ──
     const ticketsWrap = this.el('div', 'hud-tickets');
-    this.ticketsAlphaEl = this.el('span', 'hud-tickets-alpha') as HTMLSpanElement;
-    this.ticketsBravoEl = this.el('span', 'hud-tickets-bravo') as HTMLSpanElement;
-    const sep = this.el('span', 'hud-tickets-sep');
-    sep.textContent = '|';
-    ticketsWrap.appendChild(this.ticketsAlphaEl);
-    ticketsWrap.appendChild(sep);
-    ticketsWrap.appendChild(this.ticketsBravoEl);
+
+    // Left team (Alpha): [progress bar] [score] [flag]
+    const leftTeam = this.el('div', 'hud-tickets-team');
+    leftTeam.classList.add('left');
+    const alphaProgress = this.el('div', 'hud-tickets-progress');
+    this.ticketsAlphaProgressFill = this.el('div', 'hud-tickets-progress-fill');
+    this.ticketsAlphaProgressFill.classList.add('alpha');
+    alphaProgress.appendChild(this.ticketsAlphaProgressFill);
+    this.ticketsAlphaScore = this.el('span', 'hud-tickets-score') as HTMLSpanElement;
+    this.ticketsAlphaScore.classList.add('alpha');
+    const alphaFlag = this.el('div', 'hud-tickets-flag');
+    alphaFlag.classList.add('alpha');
+    leftTeam.appendChild(alphaProgress);
+    leftTeam.appendChild(this.ticketsAlphaScore);
+    leftTeam.appendChild(alphaFlag);
+
+    // Center: timer + status
+    const center = this.el('div', 'hud-tickets-center');
+    this.ticketsTimer = this.el('div', 'hud-tickets-timer');
+    this.ticketsTimer.textContent = '00:00';
+    this.ticketsStatus = this.el('div', 'hud-tickets-status');
+    center.appendChild(this.ticketsTimer);
+    center.appendChild(this.ticketsStatus);
+
+    // Right team (Bravo): [flag] [score] [progress bar]
+    const rightTeam = this.el('div', 'hud-tickets-team');
+    rightTeam.classList.add('right');
+    const bravoFlag = this.el('div', 'hud-tickets-flag');
+    bravoFlag.classList.add('bravo');
+    this.ticketsBravoScore = this.el('span', 'hud-tickets-score') as HTMLSpanElement;
+    this.ticketsBravoScore.classList.add('bravo');
+    const bravoProgress = this.el('div', 'hud-tickets-progress');
+    this.ticketsBravoProgressFill = this.el('div', 'hud-tickets-progress-fill');
+    this.ticketsBravoProgressFill.classList.add('bravo');
+    bravoProgress.appendChild(this.ticketsBravoProgressFill);
+    rightTeam.appendChild(bravoProgress);
+    rightTeam.appendChild(this.ticketsBravoScore);
+    rightTeam.appendChild(bravoFlag);
+
+    ticketsWrap.appendChild(leftTeam);
+    ticketsWrap.appendChild(center);
+    ticketsWrap.appendChild(rightTeam);
     this.root.appendChild(ticketsWrap);
 
     // ── Kill feed (top-right) ──
@@ -258,24 +303,49 @@ export class HUD {
       this.ammoReload.classList.remove('visible');
     }
 
-    // Score display — mode-aware
-    if (state.gameMode === 'conquest') {
-      this.ticketsAlphaEl.textContent = `ALPHA: ${state.conquestScoreAlpha}`;
-      this.ticketsBravoEl.textContent = `BRAVO: ${state.conquestScoreBravo}`;
-    } else {
-      this.ticketsAlphaEl.textContent = `ALPHA: ${state.ticketsAlpha}`;
-      this.ticketsBravoEl.textContent = `BRAVO: ${state.ticketsBravo}`;
+    // Score display — BattleBit style (mode-aware)
+    const isConquest = state.gameMode === 'conquest';
+    const alphaScore = isConquest ? state.conquestScoreAlpha : state.ticketsAlpha;
+    const bravoScore = isConquest ? state.conquestScoreBravo : state.ticketsBravo;
+
+    this.ticketsAlphaScore.textContent = `${alphaScore}`;
+    this.ticketsBravoScore.textContent = `${bravoScore}`;
+
+    // Capture initial tickets for progress bars
+    if (this.initialTickets === 0 && (alphaScore > 0 || bravoScore > 0)) {
+      this.initialTickets = Math.max(alphaScore, bravoScore);
+      this.matchStartTime = performance.now();
     }
 
-    // Highlight player's own team
-    this.ticketsAlphaEl.classList.toggle(
-      'hud-tickets-highlight',
-      state.myTeam === TEAM_ALPHA,
-    );
-    this.ticketsBravoEl.classList.toggle(
-      'hud-tickets-highlight',
-      state.myTeam === TEAM_BRAVO,
-    );
+    // Progress bars (percentage of initial tickets)
+    const maxTickets = this.initialTickets || 75;
+    const alphaPct = Math.min(100, (alphaScore / maxTickets) * 100);
+    const bravoPct = Math.min(100, (bravoScore / maxTickets) * 100);
+    this.ticketsAlphaProgressFill.style.width = `${alphaPct}%`;
+    this.ticketsBravoProgressFill.style.width = `${bravoPct}%`;
+
+    // Timer
+    if (this.matchStartTime > 0) {
+      const elapsed = Math.floor((performance.now() - this.matchStartTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      this.ticketsTimer.textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    // Winning/Losing status
+    const myScore = state.myTeam === TEAM_ALPHA ? alphaScore : bravoScore;
+    const enemyScore = state.myTeam === TEAM_ALPHA ? bravoScore : alphaScore;
+    if (myScore > enemyScore) {
+      this.ticketsStatus.textContent = 'WINNING';
+      this.ticketsStatus.className = 'hud-tickets-status winning';
+    } else if (myScore < enemyScore) {
+      this.ticketsStatus.textContent = 'LOSING';
+      this.ticketsStatus.className = 'hud-tickets-status losing';
+    } else {
+      this.ticketsStatus.textContent = 'TIED';
+      this.ticketsStatus.className = 'hud-tickets-status tied';
+    }
 
     // Gadget indicator
     this.gadgetName.textContent = state.gadgetName;

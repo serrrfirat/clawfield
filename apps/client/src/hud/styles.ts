@@ -197,36 +197,130 @@ const CSS = /* css */ `
   pointer-events: none;
 }
 
-/* ───────────────── Team tickets (top-center) ───────────────── */
+/* ───────────────── Team tickets (top-center, BattleBit style) ───────────────── */
 
 .hud-tickets {
   position: fixed;
-  top: 12px;
+  top: 8px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 16px;
-  background: rgba(0, 0, 0, 0.55);
-  padding: 8px 24px;
+  gap: 0;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 6px 16px;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 1px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 100;
+  min-width: 340px;
 }
 
-.hud-tickets-alpha {
+.hud-tickets-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.hud-tickets-team.left {
+  justify-content: flex-end;
+  flex-direction: row;
+}
+
+.hud-tickets-team.right {
+  justify-content: flex-start;
+  flex-direction: row-reverse;
+}
+
+.hud-tickets-score {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.hud-tickets-score.alpha {
   color: #4aa3df;
 }
 
-.hud-tickets-bravo {
+.hud-tickets-score.bravo {
   color: #e74c3c;
 }
 
-.hud-tickets-sep {
-  opacity: 0.25;
-  font-weight: 300;
+.hud-tickets-flag {
+  width: 10px;
+  height: 14px;
+  border-radius: 1px;
+}
+
+.hud-tickets-flag.alpha {
+  background: #4aa3df;
+}
+
+.hud-tickets-flag.bravo {
+  background: #e74c3c;
+}
+
+.hud-tickets-progress {
+  width: 80px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  border-radius: 1px;
+}
+
+.hud-tickets-progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 1px;
+}
+
+.hud-tickets-progress-fill.alpha {
+  background: #4aa3df;
+}
+
+.hud-tickets-progress-fill.bravo {
+  background: #e74c3c;
+}
+
+.hud-tickets-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 14px;
+  min-width: 80px;
+}
+
+.hud-tickets-timer {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-tickets-status {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 1px;
+  opacity: 0.9;
+}
+
+.hud-tickets-status.losing {
+  color: #e74c3c;
+}
+
+.hud-tickets-status.winning {
+  color: #2ecc71;
+}
+
+.hud-tickets-status.tied {
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .hud-tickets-highlight {

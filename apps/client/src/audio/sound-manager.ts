@@ -17,7 +17,7 @@ import { loadSoundPack } from './sound-pack-loader';
 export { SoundId } from './sounds';
 
 /** Maximum concurrent instances of the same sound */
-const MAX_CONCURRENT = 5;
+const MAX_CONCURRENT = 8;
 
 interface Vec3 {
   x: number;
@@ -110,8 +110,17 @@ class SoundManager {
     }
   }
 
-  /** Play a 3D positional sound at a world position. */
-  play3D(soundId: SoundId, position: Vec3): void {
+  /**
+   * Play a 3D positional sound at a world position.
+   * @param options.volume  Override volume (0-1). Defaults to config value.
+   * @param options.pitch   Playback rate multiplier. 1.0 = normal. Randomize for variation.
+   * @param options.refDistance  Override reference distance for attenuation.
+   */
+  play3D(
+    soundId: SoundId,
+    position: Vec3,
+    options?: { volume?: number; pitch?: number; refDistance?: number },
+  ): void {
     if (!this.ctx || !this.masterGain) return;
     if (!this.acquireSlot(soundId)) return;
 
@@ -123,15 +132,20 @@ class SoundManager {
     }
 
     const { source, gainNode, duration } = nodes;
-    gainNode.gain.value = config.volume;
+    gainNode.gain.value = options?.volume ?? config.volume;
+
+    // Pitch variation via playback rate
+    if (options?.pitch) {
+      source.playbackRate.value = options.pitch;
+    }
 
     // Create panner for 3D positioning
     const panner = this.ctx.createPanner();
     panner.panningModel = 'HRTF';
     panner.distanceModel = 'inverse';
-    panner.refDistance = 1;
-    panner.maxDistance = 100;
-    panner.rolloffFactor = 1;
+    panner.refDistance = options?.refDistance ?? 5;
+    panner.maxDistance = 200;
+    panner.rolloffFactor = 0.8;
     panner.positionX.setValueAtTime(position.x, this.ctx.currentTime);
     panner.positionY.setValueAtTime(position.y, this.ctx.currentTime);
     panner.positionZ.setValueAtTime(position.z, this.ctx.currentTime);
@@ -263,6 +277,8 @@ class SoundManager {
         return this.makeNoiseBurst(0.3, 300, 'lowpass', 0.4);
       case SoundId.ShootBass:
         return this.makeBassThump(0.08);
+      case SoundId.RocketFire:
+        return this.makeRocketLaunch();
       case SoundId.BulletCrack:
         return this.makeBulletCrack();
       case SoundId.Reload:
@@ -375,6 +391,66 @@ class SoundManager {
     filter.type = 'lowpass';
     filter.frequency.value = 300;
     filter.Q.value = 1;
+
+    const gainNode = ctx.createGain();
+
+    source.connect(filter);
+    filter.connect(gainNode);
+
+    return { source, gainNode, duration };
+  }
+
+  /**
+   * Rocket launcher fire: deep ignition thump + propellant hiss/whoosh.
+   */
+  private makeRocketLaunch(): {
+    source: AudioBufferSourceNode;
+    gainNode: GainNode;
+    duration: number;
+  } {
+    const ctx = this.ctx!;
+    const duration = 0.55;
+    const sampleRate = ctx.sampleRate;
+    const length = Math.ceil(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const tNorm = i / length;
+
+      // Layer 1: Deep ignition thump (50Hz sine, sharp attack, fast decay)
+      const thumpEnv = t < 0.005 ? t / 0.005 : Math.exp(-t * 15);
+      const thump = Math.sin(2 * Math.PI * 50 * t) * thumpEnv * 0.7;
+
+      // Layer 2: Mid punch (150Hz, slightly slower decay)
+      const punchEnv = t < 0.003 ? t / 0.003 : Math.exp(-t * 10);
+      const punch = Math.sin(2 * Math.PI * 150 * t) * punchEnv * 0.4;
+
+      // Layer 3: Propellant hiss (filtered noise, ramps up then decays)
+      const hissAttack = Math.min(1, t / 0.03);
+      const hissDecay = Math.exp(-t * 4);
+      const hiss = (Math.random() * 2 - 1) * hissAttack * hissDecay * 0.35;
+
+      // Layer 4: Whoosh (noise with falling frequency character via amplitude mod)
+      const whooshEnv = t > 0.02 ? Math.exp(-(t - 0.02) * 6) : 0;
+      const whoosh = (Math.random() * 2 - 1) * whooshEnv * 0.25;
+
+      // Layer 5: Tail rumble (very low freq noise, slow decay)
+      const tailEnv = Math.exp(-tNorm * 2.5);
+      const tail = (Math.random() * 2 - 1) * tailEnv * 0.15;
+
+      data[i] = thump + punch + hiss + whoosh + tail;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    // Low-pass filter to keep it bassy and not too harsh
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 1800;
+    filter.Q.value = 0.7;
 
     const gainNode = ctx.createGain();
 
