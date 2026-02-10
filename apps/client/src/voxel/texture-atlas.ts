@@ -20,7 +20,7 @@ import {
  *   Row 2: brick, roof_tile, water_deep, road, window, metal
  */
 
-export const TILE_SIZE = 16; // pixels per tile
+export const TILE_SIZE = 32; // pixels per tile (upgraded from 16 for crisper textures)
 export const ATLAS_COLS = 8;
 export const ATLAS_ROWS = 4;
 export const ATLAS_WIDTH = TILE_SIZE * ATLAS_COLS;
@@ -162,51 +162,66 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-/** Generate the texture atlas on a canvas and return a THREE.CanvasTexture */
-export function createTextureAtlas(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = ATLAS_WIDTH;
-  canvas.height = ATLAS_HEIGHT;
-  const ctx = canvas.getContext('2d')!;
+/** Paths to the pre-built atlas PNGs (built by tools/build-atlas.ts) */
+const ATLAS_PNG_PATH = '/textures/atlas.png';
+const NORMAL_ATLAS_PNG_PATH = '/textures/atlas-normal.png';
 
-  // Fill with white (neutral fallback for unmapped materials)
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, ATLAS_WIDTH, ATLAS_HEIGHT);
-
-  // Draw each tile — Row 0: original materials
-  drawGrassTop(ctx, 0, 0);
-  drawGrassSide(ctx, 1, 0);
-  drawDirt(ctx, 2, 0);
-  drawStone(ctx, 3, 0);
-  drawWall(ctx, 4, 0);
-  drawRoof(ctx, 5, 0);
-  drawWater(ctx, 6, 0);
-  drawFallback(ctx, 7, 0);
-
-  // Row 1: sand_light, sand_dark, grass_dark, stone_dark, concrete, concrete_dark, wood, wood_dark
-  drawNoiseTile(ctx, 0, 1, 0xd4b896, 700, 0.3, 25);
-  drawNoiseTile(ctx, 1, 1, 0xc4a67a, 710, 0.3, 25);
-  drawGrassDark(ctx, 2, 1);
-  drawStoneDark(ctx, 3, 1);
-  drawNoiseTile(ctx, 4, 1, 0xa0a0a0, 740, 0.2, 15);
-  drawNoiseTile(ctx, 5, 1, 0x808080, 750, 0.2, 15);
-  drawWoodTile(ctx, 6, 1, 0x8b6914, 760);
-  drawWoodTile(ctx, 7, 1, 0x6b4f10, 770);
-
-  // Row 2: brick, roof_tile, water_deep, road, window, metal
-  drawBrickTile(ctx, 0, 2, 0xa05228, 780);
-  drawRoofTileTile(ctx, 1, 2);
-  drawWaterDeep(ctx, 2, 2);
-  drawRoadTile(ctx, 3, 2);
-  drawWindowTile(ctx, 4, 2);
-  drawNoiseTile(ctx, 5, 2, 0x708090, 830, 0.25, 20);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.magFilter = THREE.NearestFilter;
-  texture.minFilter = THREE.NearestFilter;
+/**
+ * Load the texture atlas from a PNG file.
+ * Returns a THREE.Texture immediately; the image loads asynchronously.
+ * Falls back to a procedural white canvas if the PNG fails to load.
+ */
+export function createTextureAtlas(): THREE.Texture {
+  const loader = new THREE.TextureLoader();
+  const texture = loader.load(
+    ATLAS_PNG_PATH,
+    (tex) => {
+      tex.needsUpdate = true;
+      console.log('Texture atlas loaded from PNG');
+    },
+    undefined,
+    (err) => {
+      console.warn('Failed to load atlas PNG, using fallback:', err);
+    },
+  );
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.colorSpace = THREE.SRGBColorSpace;
+  // flipY=false so t=0 maps to image top (Row 0), matching tile row indices.
+  // CanvasTexture with flipY=true happened to work because browsers handle
+  // UNPACK_FLIP_Y_WEBGL differently for canvas vs image sources.
+  texture.flipY = false;
+  return texture;
+}
+
+/**
+ * Load the normal map atlas from a PNG file.
+ * Same layout as the color atlas but encodes tangent-space normals.
+ */
+export function createNormalAtlas(): THREE.Texture {
+  const loader = new THREE.TextureLoader();
+  const texture = loader.load(
+    NORMAL_ATLAS_PNG_PATH,
+    (tex) => {
+      tex.needsUpdate = true;
+      console.log('Normal atlas loaded from PNG');
+    },
+    undefined,
+    (err) => {
+      console.warn('Failed to load normal atlas PNG:', err);
+    },
+  );
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  // Normal maps are linear data, not sRGB
+  texture.colorSpace = THREE.LinearSRGBColorSpace;
+  texture.flipY = false;
   return texture;
 }
 

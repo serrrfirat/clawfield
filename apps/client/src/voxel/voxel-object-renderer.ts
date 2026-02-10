@@ -133,13 +133,14 @@ function meshObjectDefLod(def: VoxelObjectDef, lodLevel: number): THREE.BufferGe
   const quads = greedyMesh(padded, false, gridSize, scaledVoxelSize, true);
   if (quads.length === 0) return null;
 
-  const { positions, normals, colors, uvs, indices } = quadsToGeometryData(quads, def.palette);
+  const { positions, normals, colors, uvs, ao, indices } = quadsToGeometryData(quads, def.palette);
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geometry.setAttribute('ao', new THREE.BufferAttribute(ao, 1));
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   geometry.computeBoundingSphere();
 

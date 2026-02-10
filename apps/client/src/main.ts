@@ -105,6 +105,7 @@ const physicsDebrisSystem = new PhysicsDebrisSystem(renderer.scene);
 const serverDebrisRenderer = new ServerDebrisRenderer(renderer.scene);
 const projectileRenderer = new ProjectileRenderer(renderer.scene);
 projectileRenderer.setParticleSystem(particleSystem);
+projectileRenderer.setVoxelGetter((wx, wy, wz) => getVoxel(chunks, wx, wy, wz));
 const capturePointRenderer = new CapturePointRenderer(renderer.scene);
 const grenadeRenderer = new GrenadeRenderer(renderer.scene);
 grenadeRenderer.setParticleSystem(particleSystem);
@@ -120,6 +121,9 @@ const voxelObjectRenderer = new VoxelObjectRenderer(renderer.scene);
 const weatherManager = new WeatherManager(renderer.scene, renderer.sunLight);
 weatherManager.setSmokeSystem(smokeSystem);
 const knownGadgetIds = new Set<number>();
+let lastReviveProgress = 0;
+let lastReviveTickAt = 0;
+let gadgetReadyPrev = true;
 
 // --- Screen shake state ---
 let screenShakeIntensity = 0;
@@ -187,6 +191,23 @@ function handleServerMessage(msg: ServerMessage): void {
         console.log(
           `Map: ${msg.mapName} (${gameState.mapObjectives.length} objectives from metadata)`
         );
+      }
+
+      // Map-specific edge haze: fake an infinite horizon while preserving hard limits.
+      const oldQuarter = (msg.mapName ?? '').toLowerCase().includes('old quarter');
+      if (oldQuarter && msg.mapBounds) {
+        setFogUniforms({
+          edgeMin: { x: msg.mapBounds.minX, z: msg.mapBounds.minZ },
+          edgeMax: { x: msg.mapBounds.maxX, z: msg.mapBounds.maxZ },
+          edgeFadeDistance: 42,
+          edgeStrength: 0.82,
+        });
+      } else {
+        // Disable edge haze on other maps unless explicitly configured.
+        setFogUniforms({
+          edgeFadeDistance: 0,
+          edgeStrength: 0,
+        });
       }
 
       // Load and place multi-resolution voxel objects (non-blocking)
@@ -292,7 +313,9 @@ function handleServerMessage(msg: ServerMessage): void {
             // Close: full weapon sound + bass thump (loud, detailed)
             const soundId = REMOTE_WEAPON_SOUND[ps.weaponName] ?? SoundId.ShootRifle;
             soundManager.play3D(soundId, ps.position, { pitch, volume: 0.55 });
+            soundManager.play3D(SoundId.ShootMechanical, ps.position, { pitch: pitch * 1.05, volume: 0.18 });
             soundManager.play3D(SoundId.ShootBass, ps.position, { pitch, volume: 0.2 });
+            soundManager.play3D(SoundId.ShootTailNear, ps.position, { pitch: pitch * 0.92, volume: 0.16, refDistance: 10 });
           } else if (dist < GUNSHOT_MID) {
             // Medium: just the main weapon crack, quieter
             const soundId = REMOTE_WEAPON_SOUND[ps.weaponName] ?? SoundId.ShootRifle;
@@ -302,6 +325,11 @@ function handleServerMessage(msg: ServerMessage): void {
               volume: 0.25 + 0.2 * falloff,
               refDistance: 8,
             });
+            soundManager.play3D(SoundId.ShootTail, ps.position, {
+              pitch: pitch * 0.9,
+              volume: 0.1 + 0.08 * falloff,
+              refDistance: 12,
+            });
           } else {
             // Far: distant thump only — low rumble
             const falloff = 1 - (dist - GUNSHOT_MID) / (GUNSHOT_FAR - GUNSHOT_MID);
@@ -309,6 +337,11 @@ function handleServerMessage(msg: ServerMessage): void {
               pitch: pitch * 0.85, // lower pitch for distance
               volume: 0.12 * falloff,
               refDistance: 15,
+            });
+            soundManager.play3D(SoundId.ShootTailFar, ps.position, {
+              pitch: pitch * 0.78,
+              volume: 0.1 * falloff,
+              refDistance: 18,
             });
           }
         }
@@ -347,6 +380,7 @@ function handleServerMessage(msg: ServerMessage): void {
     case 'death': {
       gameState.alive = false;
       gameState.downed = false;
+      soundManager.stopLoop(SoundId.UiDownedLoop);
       // Find killer name from remote players
       const killerRemote = remotePlayers.get(msg.killerId);
       const killerName = killerRemote?.name ?? 'Unknown';
@@ -358,6 +392,8 @@ function handleServerMessage(msg: ServerMessage): void {
 
     case 'downed': {
       gameState.downed = true;
+      lastReviveProgress = 0;
+      soundManager.startLoop(SoundId.UiDownedLoop, { volume: 0.16 });
       // Find killer name from remote players
       const downerRemote = remotePlayers.get(msg.killerId);
       const downerName = downerRemote?.name ?? 'Unknown';
@@ -370,6 +406,15 @@ function handleServerMessage(msg: ServerMessage): void {
         const reviverRemote = remotePlayers.get(msg.reviverId);
         const reviverName = reviverRemote?.name ?? 'Teammate';
         hud.updateReviveProgress(msg.progress, reviverName);
+        if (lastReviveProgress <= 0 && msg.progress > 0.01) {
+          soundManager.play(SoundId.UiReviveStart);
+        }
+        const now = performance.now();
+        if (msg.progress - lastReviveProgress >= 0.2 || now - lastReviveTickAt > 700) {
+          soundManager.play(SoundId.UiReviveTick);
+          lastReviveTickAt = now;
+        }
+        lastReviveProgress = msg.progress;
       }
       break;
     }
@@ -378,6 +423,8 @@ function handleServerMessage(msg: ServerMessage): void {
       gameState.downed = false;
       gameState.alive = true;
       gameState.health = msg.health;
+      soundManager.stopLoop(SoundId.UiDownedLoop);
+      soundManager.play(SoundId.UiReviveComplete);
       hud.hideDeath();
       break;
     }
@@ -385,6 +432,7 @@ function handleServerMessage(msg: ServerMessage): void {
     case 'respawn': {
       gameState.alive = true;
       gameState.downed = false;
+      soundManager.stopLoop(SoundId.UiDownedLoop);
       deployScreen.hide();
       hud.hideDeath();
       if (!localPlayer) {
@@ -900,12 +948,50 @@ function gameLoop(): void {
 
         // For shotguns, spawn one visual per pellet
         for (let p = 0; p < weapon.pellets; p++) {
-          const spread = weapon.spread;
-          let dx = dir.x, dy = dir.y, dz = dir.z;
+          const spread = localPlayer.weaponCtrl.getEffectiveSpread();
+          let dx = dir.x;
+          let dy = dir.y;
+          let dz = dir.z;
           if (spread > 0) {
-            dx += (Math.random() - 0.5) * spread * 2;
-            dy += (Math.random() - 0.5) * spread * 2;
-            dz += (Math.random() - 0.5) * spread * 2;
+            const angle = Math.random() * spread;
+            const rotation = Math.random() * Math.PI * 2;
+
+            let upX = 0;
+            let upY = 1;
+            let upZ = 0;
+            if (Math.abs(dir.y) > 0.99) {
+              upX = 1;
+              upY = 0;
+              upZ = 0;
+            }
+
+            const rightX = dir.y * upZ - dir.z * upY;
+            const rightY = dir.z * upX - dir.x * upZ;
+            const rightZ = dir.x * upY - dir.y * upX;
+            const rightLen = Math.sqrt(rightX * rightX + rightY * rightY + rightZ * rightZ);
+
+            if (rightLen > 1e-8) {
+              const rx = rightX / rightLen;
+              const ry = rightY / rightLen;
+              const rz = rightZ / rightLen;
+
+              const ax = ry * dir.z - rz * dir.y;
+              const ay = rz * dir.x - rx * dir.z;
+              const az = rx * dir.y - ry * dir.x;
+
+              const sinA = Math.sin(angle);
+              const cosR = Math.cos(rotation);
+              const sinR = Math.sin(rotation);
+              const offsetX = sinA * (cosR * rx + sinR * ax);
+              const offsetY = sinA * (cosR * ry + sinR * ay);
+              const offsetZ = sinA * (cosR * rz + sinR * az);
+              const cosA = Math.cos(angle);
+
+              dx = dir.x * cosA + offsetX;
+              dy = dir.y * cosA + offsetY;
+              dz = dir.z * cosA + offsetZ;
+            }
+
             const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
             dx /= len; dy /= len; dz /= len;
           }
@@ -968,7 +1054,11 @@ function gameLoop(): void {
   }
 
   // Interpolate projectile positions between server ticks
-  projectileRenderer.update(dt);
+  projectileRenderer.update(
+    dt,
+    { x: renderer.camera.position.x, y: renderer.camera.position.y, z: renderer.camera.position.z },
+    (intensity) => localPlayer?.weaponCtrl.onSuppression(intensity),
+  );
 
   // Update grenades
   grenadeRenderer.update(dt);
@@ -1094,6 +1184,17 @@ function gameLoop(): void {
     }
   }
 
+  if (gadgetReady && !gadgetReadyPrev && localPlayer && gameState.alive) {
+    soundManager.play(SoundId.UiGadgetReady);
+  }
+  gadgetReadyPrev = gadgetReady;
+
+  if (gameState.alive && !gameState.downed && gameState.health <= 35) {
+    soundManager.startLoop(SoundId.UiLowHealthLoop, { volume: 0.12 });
+  } else {
+    soundManager.stopLoop(SoundId.UiLowHealthLoop);
+  }
+
   // Compute weapon name and player yaw for HUD
   const weaponName = localPlayer?.weaponCtrl.activeWeapon.name ?? '';
   let playerYaw = 0;
@@ -1137,6 +1238,7 @@ function gameLoop(): void {
     const cam = renderer.camera;
     const camPos = { x: cam.position.x, y: cam.position.y, z: cam.position.z };
     worldRenderer.updateLod(camPos);
+    worldRenderer.updateDetailProps(camPos);
     voxelObjectRenderer.updateLod(camPos);
   }
 
@@ -1352,6 +1454,7 @@ mainMenu.show(onMainMenuChoice);
 // Any sounds not covered by the pack fall back to procedural generation.
 document.addEventListener('click', () => {
   soundManager.init();
+  soundManager.setMix({ master: 1.0, weapons: 1.0, sfx: 1.0, ui: 0.95, ambience: 0.0 });
   soundManager.loadPack('/sounds/default/').catch(() => {
     // No sound pack found — procedural fallback is used for all sounds
   });

@@ -1,8 +1,9 @@
 /**
  * viewer.ts
  *
- * Standalone voxel object viewer. Loads .vobj.json files via file picker or
- * drag-and-drop, meshes them with the greedy mesher, and renders with orbit controls.
+ * Standalone voxel object viewer. Loads .vobj.json and .map (CLWF) files via
+ * file picker or drag-and-drop, meshes them with the greedy mesher, and renders
+ * with orbit controls.
  */
 
 import * as THREE from 'three';
@@ -15,7 +16,7 @@ import { greedyMesh, quadsToGeometryData } from './voxel/mesher';
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1a1a2e);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
 camera.position.set(5, 5, 5);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -50,7 +51,10 @@ const material = new THREE.MeshStandardMaterial({ vertexColors: true });
 
 // --- State ---
 
-let currentMesh: THREE.Mesh | null = null;
+let currentObject: THREE.Object3D | null = null;
+let flyMode = false;
+const flySpeed = 50; // units per second
+const keysDown = new Set<string>();
 
 // --- DOM refs ---
 
@@ -104,28 +108,209 @@ document.addEventListener('drop', (e) => {
 });
 
 function loadFile(file: File) {
+  const isMap = file.name.endsWith('.map');
   const reader = new FileReader();
   reader.onload = () => {
     try {
-      const def = JSON.parse(reader.result as string) as VoxelObjectDef;
-      displayModel(def);
+      if (isMap) {
+        const { chunks, palette } = parseCLWFMap(reader.result as ArrayBuffer);
+        displayMap(chunks, palette, file.name);
+      } else {
+        const def = JSON.parse(reader.result as string) as VoxelObjectDef;
+        displayModel(def);
+      }
     } catch (err) {
-      console.error('Failed to parse .vobj.json:', err);
-      modelNameEl.textContent = 'Error: invalid JSON';
+      console.error('Failed to load file:', err);
+      modelNameEl.textContent = `Error: ${(err as Error).message}`;
     }
   };
-  reader.readAsText(file);
+  if (isMap) {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
 }
 
-// --- Meshing & display (reuses greedy mesher from voxel/mesher.ts) ---
+// --- CLWF binary map parser ---
+
+interface CLWFMapData {
+  chunks: Map<string, { cx: number; cy: number; cz: number; voxels: Uint8Array }>;
+  palette: number[];
+}
+
+function parseCLWFMap(buffer: ArrayBuffer): CLWFMapData {
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  let offset = 0;
+
+  // Magic: "CLWF" (4 bytes)
+  const magic = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]);
+  if (magic !== 'CLWF') {
+    throw new Error(`Invalid map file: expected magic "CLWF", got "${magic}"`);
+  }
+  offset += 4;
+
+  // Version: u8
+  const version = view.getUint8(offset);
+  offset += 1;
+  if (version !== 1) {
+    throw new Error(`Unsupported map version: ${version}`);
+  }
+
+  // Chunk count: u32 LE
+  const chunkCount = view.getUint32(offset, true);
+  offset += 4;
+
+  // Palette size: u16 LE
+  const paletteSize = view.getUint16(offset, true);
+  offset += 2;
+
+  // Palette: [r, g, b] x paletteSize
+  const palette: number[] = new Array(paletteSize);
+  for (let i = 0; i < paletteSize; i++) {
+    const r = view.getUint8(offset);
+    const g = view.getUint8(offset + 1);
+    const b = view.getUint8(offset + 2);
+    palette[i] = (r << 16) | (g << 8) | b;
+    offset += 3;
+  }
+
+  // Chunks
+  const CHUNK_VOXEL_COUNT = 16 * 16 * 16;
+  const chunks = new Map<string, { cx: number; cy: number; cz: number; voxels: Uint8Array }>();
+
+  for (let ci = 0; ci < chunkCount; ci++) {
+    const cx = view.getInt16(offset, true);
+    offset += 2;
+    const cy = view.getInt16(offset, true);
+    offset += 2;
+    const cz = view.getInt16(offset, true);
+    offset += 2;
+
+    const voxels = new Uint8Array(CHUNK_VOXEL_COUNT);
+    voxels.set(bytes.subarray(offset, offset + CHUNK_VOXEL_COUNT));
+    offset += CHUNK_VOXEL_COUNT;
+
+    const key = `${cx},${cy},${cz}`;
+    chunks.set(key, { cx, cy, cz, voxels });
+  }
+
+  return { chunks, palette };
+}
+
+// --- Remove previous object ---
+
+function clearCurrentObject() {
+  if (!currentObject) return;
+  scene.remove(currentObject);
+  currentObject.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose();
+    }
+  });
+  currentObject = null;
+}
+
+// --- Display .map file ---
+
+function displayMap(
+  chunks: Map<string, { cx: number; cy: number; cz: number; voxels: Uint8Array }>,
+  palette: number[],
+  filename: string,
+) {
+  clearCurrentObject();
+
+  if (chunks.size === 0) {
+    modelNameEl.textContent = 'Empty map';
+    return;
+  }
+
+  const group = new THREE.Group();
+  let totalVoxels = 0;
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+  for (const [, chunk] of chunks) {
+    const { cx, cy, cz, voxels } = chunk;
+
+    // Track world bounds
+    const wx = cx * 16;
+    const wy = cy * 16;
+    const wz = cz * 16;
+    minX = Math.min(minX, wx);
+    minY = Math.min(minY, wy);
+    minZ = Math.min(minZ, wz);
+    maxX = Math.max(maxX, wx + 16);
+    maxY = Math.max(maxY, wy + 16);
+    maxZ = Math.max(maxZ, wz + 16);
+
+    // Count non-empty voxels
+    let hasVoxels = false;
+    for (let i = 0; i < voxels.length; i++) {
+      if (voxels[i] !== 0) {
+        totalVoxels++;
+        hasVoxels = true;
+      }
+    }
+    if (!hasVoxels) continue;
+
+    // Greedy mesh this chunk — skipWaterFilter=true: viewer doesn't know which
+    // palette indices are water, so treat all non-zero voxels as solid
+    const quads = greedyMesh(voxels, false, 16, 1, true);
+    if (quads.length === 0) continue;
+
+    const { positions, normals, colors, uvs, ao, indices } = quadsToGeometryData(quads, palette);
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geometry.setAttribute('ao', new THREE.BufferAttribute(ao, 1));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(wx, wy, wz);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  }
+
+  if (group.children.length === 0) {
+    modelNameEl.textContent = 'No visible voxels in map';
+    return;
+  }
+
+  scene.add(group);
+  currentObject = group;
+
+  // Frame camera to fit the entire map
+  const box = new THREE.Box3().setFromObject(group);
+  frameCameraToBounds(box);
+
+  // Update info panel
+  modelNameEl.textContent = filename;
+  infoDims.textContent = `Chunks: ${chunks.size}`;
+  infoVoxels.textContent = `Voxels: ${totalVoxels.toLocaleString()}`;
+
+  const usedColors = new Set<number>();
+  for (const [, chunk] of chunks) {
+    for (let i = 0; i < chunk.voxels.length; i++) {
+      if (chunk.voxels[i] !== 0) usedColors.add(chunk.voxels[i]);
+    }
+  }
+  infoPalette.textContent = `Colors: ${usedColors.size}`;
+
+  const worldSizeX = maxX - minX;
+  const worldSizeY = maxY - minY;
+  const worldSizeZ = maxZ - minZ;
+  infoWorld.textContent = `World: ${worldSizeX} x ${worldSizeY} x ${worldSizeZ}`;
+}
+
+// --- Meshing & display for .vobj.json (reuses greedy mesher from voxel/mesher.ts) ---
 
 function displayModel(def: VoxelObjectDef) {
-  // Remove previous mesh
-  if (currentMesh) {
-    scene.remove(currentMesh);
-    currentMesh.geometry.dispose();
-    currentMesh = null;
-  }
+  clearCurrentObject();
 
   const { sizeX, sizeY, sizeZ, voxelSize } = def;
   const gridSize = Math.max(sizeX, sizeY, sizeZ);
@@ -155,13 +340,14 @@ function displayModel(def: VoxelObjectDef) {
   }
 
   // Convert quads to geometry using the object's palette
-  const { positions, normals, colors, uvs, indices } = quadsToGeometryData(quads, def.palette);
+  const { positions, normals, colors, uvs, ao, indices } = quadsToGeometryData(quads, def.palette);
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geometry.setAttribute('ao', new THREE.BufferAttribute(ao, 1));
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   geometry.computeBoundingSphere();
   geometry.computeBoundingBox();
@@ -170,10 +356,10 @@ function displayModel(def: VoxelObjectDef) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
-  currentMesh = mesh;
+  currentObject = mesh;
 
   // Frame camera to fit the model
-  frameCameraToModel(geometry);
+  frameCameraToBounds(geometry.boundingBox!);
 
   // Update info panel
   modelNameEl.textContent = def.name;
@@ -191,8 +377,7 @@ function displayModel(def: VoxelObjectDef) {
   infoWorld.textContent = `World: ${worldX} x ${worldY} x ${worldZ}m`;
 }
 
-function frameCameraToModel(geometry: THREE.BufferGeometry) {
-  const box = geometry.boundingBox!;
+function frameCameraToBounds(box: THREE.Box3) {
   const center = new THREE.Vector3();
   box.getCenter(center);
   const size = new THREE.Vector3();
@@ -203,8 +388,93 @@ function frameCameraToModel(geometry: THREE.BufferGeometry) {
   const dist = maxDim / (2 * Math.tan(fov / 2)) * 1.5;
 
   camera.position.set(center.x + dist * 0.6, center.y + dist * 0.5, center.z + dist * 0.6);
+  camera.far = Math.max(5000, dist * 4);
+  camera.updateProjectionMatrix();
   controls.target.copy(center);
   controls.update();
+}
+
+// --- Fly controls (WASD + QE + right-click look) ---
+
+document.addEventListener('keydown', (e) => {
+  keysDown.add(e.code);
+  if (e.code === 'KeyF') {
+    flyMode = !flyMode;
+    controls.enabled = !flyMode;
+  }
+});
+document.addEventListener('keyup', (e) => {
+  keysDown.delete(e.code);
+});
+
+// Right-click drag to look around in fly mode
+let isLooking = false;
+let prevMouseX = 0;
+let prevMouseY = 0;
+const lookSensitivity = 0.003;
+
+renderer.domElement.addEventListener('mousedown', (e) => {
+  if (flyMode && e.button === 2) {
+    isLooking = true;
+    prevMouseX = e.clientX;
+    prevMouseY = e.clientY;
+  }
+});
+document.addEventListener('mouseup', (e) => {
+  if (e.button === 2) isLooking = false;
+});
+document.addEventListener('mousemove', (e) => {
+  if (!isLooking || !flyMode) return;
+  const dx = e.clientX - prevMouseX;
+  const dy = e.clientY - prevMouseY;
+  prevMouseX = e.clientX;
+  prevMouseY = e.clientY;
+
+  // Yaw (rotate around world Y)
+  const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+  euler.setFromQuaternion(camera.quaternion, 'YXZ');
+  euler.y -= dx * lookSensitivity;
+  euler.x -= dy * lookSensitivity;
+  euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.x));
+  camera.quaternion.setFromEuler(euler);
+});
+renderer.domElement.addEventListener('contextmenu', (e) => {
+  if (flyMode) e.preventDefault();
+});
+
+let prevTime = performance.now();
+
+function updateFlyControls() {
+  if (!flyMode) return;
+
+  const now = performance.now();
+  const dt = (now - prevTime) / 1000;
+  prevTime = now;
+
+  const speed = keysDown.has('ShiftLeft') || keysDown.has('ShiftRight') ? flySpeed * 3 : flySpeed;
+  const move = new THREE.Vector3();
+
+  // Forward/back (W/S) along camera direction
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  if (keysDown.has('KeyW')) move.add(forward);
+  if (keysDown.has('KeyS')) move.sub(forward);
+
+  // Left/right (A/D) strafe
+  const right = new THREE.Vector3();
+  right.crossVectors(forward, camera.up).normalize();
+  if (keysDown.has('KeyD')) move.add(right);
+  if (keysDown.has('KeyA')) move.sub(right);
+
+  // Up/down (Q/E or Space/Ctrl)
+  if (keysDown.has('KeyE') || keysDown.has('Space')) move.y += 1;
+  if (keysDown.has('KeyQ') || keysDown.has('ControlLeft')) move.y -= 1;
+
+  if (move.lengthSq() > 0) {
+    move.normalize().multiplyScalar(speed * dt);
+    camera.position.add(move);
+    controls.target.copy(camera.position).add(forward);
+  }
 }
 
 // --- Resize ---
@@ -219,7 +489,9 @@ window.addEventListener('resize', () => {
 
 function animate() {
   requestAnimationFrame(animate);
-  controls.update();
+  updateFlyControls();
+  if (!flyMode) controls.update();
+  prevTime = performance.now();
   renderer.render(scene, camera);
 }
 animate();

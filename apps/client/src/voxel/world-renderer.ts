@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import { CHUNK_SIZE, chunkKeyToPosition } from '@clawfield/shared';
 import { buildChunkGeometry, buildWaterGeometry } from './chunk-mesh';
 import { getLodLevel } from './lod';
-import { createTextureAtlas, ATLAS_COLS, ATLAS_ROWS } from './texture-atlas';
+import { createTextureAtlas, createNormalAtlas, ATLAS_COLS, ATLAS_ROWS } from './texture-atlas';
 import { WaterFaceSorter } from './water-sort';
+import { DetailPropSystem } from './detail-props';
 
-// Generate the texture atlas once at startup
+// Generate the texture atlases once at startup
 const atlasTexture = createTextureAtlas();
+const normalAtlasTexture = createNormalAtlas();
 
 // Store shader references for runtime uniform updates (fog, underwater toggle)
 interface ShaderRef {
@@ -21,6 +23,10 @@ const fogConfig = {
   far: 420,
   heightDensity: 0.015,
   heightOrigin: 8,
+  edgeMin: new THREE.Vector2(-99999, -99999),
+  edgeMax: new THREE.Vector2(99999, 99999),
+  edgeFadeDistance: 0,
+  edgeStrength: 0,
 };
 
 /**
@@ -42,6 +48,7 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
 
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uAtlas = { value: atlasTexture };
+    shader.uniforms.uNormalAtlas = { value: normalAtlasTexture };
     shader.uniforms.uAtlasCols = { value: ATLAS_COLS };
     shader.uniforms.uAtlasRows = { value: ATLAS_ROWS };
 
@@ -51,21 +58,27 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
     shader.uniforms.uFogFar = { value: fogConfig.far };
     shader.uniforms.uFogHeightDensity = { value: fogConfig.heightDensity };
     shader.uniforms.uFogHeightOrigin = { value: fogConfig.heightOrigin };
+    shader.uniforms.uEdgeMin = { value: fogConfig.edgeMin.clone() };
+    shader.uniforms.uEdgeMax = { value: fogConfig.edgeMax.clone() };
+    shader.uniforms.uEdgeFadeDistance = { value: fogConfig.edgeFadeDistance };
+    shader.uniforms.uEdgeStrength = { value: fogConfig.edgeStrength };
 
     // Store ref so we can update uniforms at runtime
     shaderRefs.push(shader);
 
-    // --- Vertex shader: add vWorldPosition and vFlatNormal varyings ---
+    // --- Vertex shader: add vWorldPosition, vFlatNormal, and vAO varyings ---
     shader.vertexShader = shader.vertexShader.replace(
       '#include <common>',
       /* glsl */ `
       #include <common>
+      attribute float ao;
       varying vec3 vWorldPosition;
       varying vec3 vFlatNormal;
+      varying float vAO;
       `,
     );
 
-    // After worldpos_vertex, compute world position and flat normal
+    // After worldpos_vertex, compute world position, flat normal, and pass AO
     shader.vertexShader = shader.vertexShader.replace(
       '#include <worldpos_vertex>',
       /* glsl */ `
@@ -73,6 +86,7 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
       vec4 worldPos4 = modelMatrix * vec4(position, 1.0);
       vWorldPosition = worldPos4.xyz;
       vFlatNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+      vAO = ao;
       `,
     );
 
@@ -82,6 +96,7 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
       /* glsl */ `
       #include <common>
       uniform sampler2D uAtlas;
+      uniform sampler2D uNormalAtlas;
       uniform float uAtlasCols;
       uniform float uAtlasRows;
       uniform vec3 uFogColor;
@@ -89,8 +104,16 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
       uniform float uFogFar;
       uniform float uFogHeightDensity;
       uniform float uFogHeightOrigin;
+      uniform vec2 uEdgeMin;
+      uniform vec2 uEdgeMax;
+      uniform float uEdgeFadeDistance;
+      uniform float uEdgeStrength;
       varying vec3 vWorldPosition;
       varying vec3 vFlatNormal;
+      varying float vAO;
+      // Shared between color_fragment and normal_fragment_maps patches
+      vec2 computedAtlasUV;
+      vec3 computedAbsNorm;
       `,
     );
 
@@ -122,6 +145,44 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
         vec4 atlasColor = texture2D(uAtlas, atlasUV);
         // Multiply atlas texture color by vertex color (carries face shading)
         diffuseColor.rgb *= atlasColor.rgb;
+        // Store for normal map sampling in normal_fragment_maps
+        computedAtlasUV = atlasUV;
+        computedAbsNorm = absNorm;
+
+        // Per-vertex ambient occlusion: darken corners/edges
+        // vAO ranges from 0 (fully occluded) to 1 (fully lit)
+        // Mix between dark factor (0.4) and full brightness (1.0)
+        float aoFactor = mix(0.4, 1.0, vAO);
+        diffuseColor.rgb *= aoFactor;
+      }
+      `,
+    );
+
+    // Replace normal_fragment_maps to apply our atlas normal map
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      /* glsl */ `
+      {
+        // Sample normal from atlas normal map at the same UV computed in color_fragment
+        vec3 normalSample = texture2D(uNormalAtlas, computedAtlasUV).rgb * 2.0 - 1.0;
+        // Build TBN matrix from flat face normal
+        vec3 N = normalize(vFlatNormal);
+        vec3 T, B;
+        if (computedAbsNorm.y > computedAbsNorm.x && computedAbsNorm.y > computedAbsNorm.z) {
+          // Y face: tangent=X, bitangent=Z
+          T = vec3(1.0, 0.0, 0.0);
+          B = vec3(0.0, 0.0, sign(N.y));
+        } else if (computedAbsNorm.x > computedAbsNorm.z) {
+          // X face: tangent=Y, bitangent=Z
+          T = vec3(0.0, 1.0, 0.0);
+          B = vec3(0.0, 0.0, sign(N.x));
+        } else {
+          // Z face: tangent=X, bitangent=Y
+          T = vec3(1.0, 0.0, 0.0);
+          B = vec3(0.0, sign(N.z), 0.0);
+        }
+        mat3 TBN = mat3(T, B, N);
+        normal = normalize(TBN * normalSample);
       }
       `,
     );
@@ -139,6 +200,18 @@ function patchMaterialWithAtlas(mat: THREE.MeshStandardMaterial): void {
         float heightFog = 1.0 - exp(-max(heightDelta, 0.0) * uFogHeightDensity);
         // Combine: max of distance and height fog
         float fogFactor = max(distFog, heightFog);
+
+        // Edge fog: ramps up toward map borders in XZ to hide hard world cutoff.
+        float edgeDistX = min(vWorldPosition.x - uEdgeMin.x, uEdgeMax.x - vWorldPosition.x);
+        float edgeDistZ = min(vWorldPosition.z - uEdgeMin.y, uEdgeMax.y - vWorldPosition.z);
+        float edgeDist = min(edgeDistX, edgeDistZ);
+        float edgeFog = 0.0;
+        if (uEdgeFadeDistance > 0.0 && uEdgeStrength > 0.0) {
+          float edgeT = 1.0 - smoothstep(0.0, uEdgeFadeDistance, edgeDist);
+          edgeFog = clamp(edgeT * uEdgeStrength, 0.0, 1.0);
+        }
+
+        fogFactor = max(fogFactor, edgeFog);
         fogFactor = clamp(fogFactor, 0.0, 1.0);
         gl_FragColor.rgb = mix(gl_FragColor.rgb, uFogColor, fogFactor);
       }
@@ -157,12 +230,20 @@ export function setFogUniforms(params: {
   far?: number;
   heightDensity?: number;
   heightOrigin?: number;
+  edgeMin?: { x: number; z: number };
+  edgeMax?: { x: number; z: number };
+  edgeFadeDistance?: number;
+  edgeStrength?: number;
 }): void {
   if (params.color) fogConfig.color.copy(params.color);
   if (params.near !== undefined) fogConfig.near = params.near;
   if (params.far !== undefined) fogConfig.far = params.far;
   if (params.heightDensity !== undefined) fogConfig.heightDensity = params.heightDensity;
   if (params.heightOrigin !== undefined) fogConfig.heightOrigin = params.heightOrigin;
+  if (params.edgeMin) fogConfig.edgeMin.set(params.edgeMin.x, params.edgeMin.z);
+  if (params.edgeMax) fogConfig.edgeMax.set(params.edgeMax.x, params.edgeMax.z);
+  if (params.edgeFadeDistance !== undefined) fogConfig.edgeFadeDistance = params.edgeFadeDistance;
+  if (params.edgeStrength !== undefined) fogConfig.edgeStrength = params.edgeStrength;
 
   for (const shader of shaderRefs) {
     if (params.color) (shader.uniforms.uFogColor.value as THREE.Color).copy(params.color);
@@ -170,6 +251,10 @@ export function setFogUniforms(params: {
     if (params.far !== undefined) shader.uniforms.uFogFar.value = params.far;
     if (params.heightDensity !== undefined) shader.uniforms.uFogHeightDensity.value = params.heightDensity;
     if (params.heightOrigin !== undefined) shader.uniforms.uFogHeightOrigin.value = params.heightOrigin;
+    if (params.edgeMin) (shader.uniforms.uEdgeMin.value as THREE.Vector2).set(params.edgeMin.x, params.edgeMin.z);
+    if (params.edgeMax) (shader.uniforms.uEdgeMax.value as THREE.Vector2).set(params.edgeMax.x, params.edgeMax.z);
+    if (params.edgeFadeDistance !== undefined) shader.uniforms.uEdgeFadeDistance.value = params.edgeFadeDistance;
+    if (params.edgeStrength !== undefined) shader.uniforms.uEdgeStrength.value = params.edgeStrength;
   }
 }
 
@@ -208,12 +293,14 @@ export class WorldRenderer {
   private entries = new Map<string, ChunkEntry>();
   private scene: THREE.Scene;
   private elapsedTime = 0;
+  private detailProps: DetailPropSystem;
 
   /** Max chunks to rebuild per LOD update frame to avoid stalls */
   private static readonly MAX_REBUILDS_PER_FRAME = 8;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
+    this.detailProps = new DetailPropSystem(scene);
   }
 
   /** Set or update a chunk's mesh from voxel data (initial load at LOD 0) */
@@ -322,6 +409,19 @@ export class WorldRenderer {
     }
   }
 
+  /**
+   * Update detail props (grass, rocks, rubble) near the camera.
+   * Call periodically from the game loop (e.g. alongside updateLod).
+   */
+  updateDetailProps(cameraPos: { x: number; y: number; z: number }): void {
+    // Build a lightweight map of chunk key → { voxels } for the prop system
+    const chunkMap = new Map<string, { voxels: Uint8Array }>();
+    for (const [key, entry] of this.entries) {
+      chunkMap.set(key, { voxels: entry.voxels });
+    }
+    this.detailProps.update(cameraPos, chunkMap);
+  }
+
   /** Sort water faces back-to-front for correct transparency. Call each frame. */
   sortWater(cameraPos: { x: number; y: number; z: number }): void {
     for (const [_key, entry] of this.entries) {
@@ -373,10 +473,11 @@ export class WorldRenderer {
     return removed;
   }
 
-  /** Dispose all chunk meshes */
+  /** Dispose all chunk meshes and detail props */
   dispose(): void {
     for (const [key] of this.entries) {
       this.removeChunk(key);
     }
+    this.detailProps.dispose();
   }
 }
