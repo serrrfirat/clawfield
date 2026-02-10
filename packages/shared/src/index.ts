@@ -5,5 +5,6 @@ export * from './physics.js';
 export * from './weapons.js';
 export * from './classes.js';
 export * from './combat.js';
+export * from './structural.js';
 export * from './attachments.js';
 export * from './voxel-object.js';

@@ -61,6 +61,83 @@ export const MAT_ROAD = 18;
 export const MAT_WINDOW = 19;
 export const MAT_METAL = 20;
 
+// --- Destruction system constants ---
+
+/** Material hardness: how much damage a voxel can resist. Higher = harder to destroy. */
+export const MATERIAL_HARDNESS: Record<number, number> = {
+  [MAT_AIR]: 0,
+  [MAT_GRASS]: 1,
+  [MAT_DIRT]: 1,
+  [MAT_STONE]: 3,
+  [MAT_WALL]: 2,
+  [MAT_ROOF]: 2,
+  [MAT_WATER]: 0,
+};
+
+/** Default hardness for custom palette materials not in MATERIAL_HARDNESS */
+export const DEFAULT_MATERIAL_HARDNESS = 2;
+
+/** Returns true if the material can be destroyed by weapons.
+ *  Terrain (ground anchors) is indestructible — only structures break. */
+export function isDestructible(mat: number): boolean {
+  return mat !== MAT_AIR && mat !== MAT_WATER && !isGroundAnchor(mat);
+}
+
+/** Grenade destruction radius in voxels */
+export const GRENADE_DESTRUCTION_RADIUS = 6;
+
+/** Bullet damage vs material hardness (destroys if >= hardness). Only soft materials. */
+export const BULLET_VOXEL_DAMAGE = 2;
+
+/** Max voxels a single bullet can destroy along its path */
+export const BULLET_DESTRUCTION_COUNT = 3;
+
+/** Max voxel changes per server tick (budget cap) */
+export const MAX_VOXEL_CHANGES_PER_TICK = 600;
+
+/** BFS budget for bullet-triggered connectivity checks (smaller than explosion budget) */
+export const STRUCTURAL_BUDGET_BULLET = 2000;
+
+/**
+ * Support ratio for structural integrity. Each ground-contact voxel
+ * can support up to this many building voxels. If the ratio is exceeded,
+ * the structure collapses even though it's technically connected to ground.
+ * Example: ratio=50, 1 ground contact can hold 50 voxels but not 200.
+ */
+export const STRUCTURAL_SUPPORT_RATIO = 50;
+
+/** Minimum group size to trigger rigid-body rubble drop (smaller = visual debris only) */
+export const RUBBLE_DROP_MIN_SIZE = 5;
+
+/** Damage dealt to players crushed under falling rubble (100 HP = full health) */
+export const CRUSH_DAMAGE = 200;
+
+/** Gravity for falling sections (slower than gameplay gravity for dramatic effect) */
+export const SECTION_FALL_GRAVITY = 5;
+
+/** Min/max duration for falling section animation (seconds) */
+export const SECTION_FALL_MIN_DURATION = 1.5;
+export const SECTION_FALL_MAX_DURATION = 3.0;
+
+/**
+ * Runtime-configurable ground anchor materials.
+ * Voxels made of these materials (or resting on them) are considered grounded
+ * for structural connectivity checks. Defaults to terrain materials.
+ * Maps with custom palettes override via setGroundAnchors().
+ */
+const _groundAnchors = new Set<number>([MAT_GRASS, MAT_DIRT, MAT_STONE]);
+
+/** Check if a material acts as a ground anchor (terrain that never collapses) */
+export function isGroundAnchor(mat: number): boolean {
+  return _groundAnchors.has(mat);
+}
+
+/** Set which palette indices act as ground anchors (called on map load) */
+export function setGroundAnchors(indices: number[]): void {
+  _groundAnchors.clear();
+  for (const i of indices) _groundAnchors.add(i);
+}
+
 /**
  * Runtime-configurable water indices.
  * Defaults to MAT_WATER (6) and MAT_WATER_DEEP (17).
@@ -202,10 +279,30 @@ export const GRENADE_DAMAGE_RADIUS = 10;
 export const GRENADE_FORCE = 700;
 
 /** Max grenades a player can carry */
-export const GRENADE_MAX_COUNT = 2;
+export const GRENADE_MAX_COUNT = 999;
 
 /** Grenade cooldown between throws (seconds) */
-export const GRENADE_COOLDOWN = 1.0;
+export const GRENADE_COOLDOWN = 0.1;
+
+// --- Smoke grenade constants ---
+
+/** Smoke grenade throw speed in m/s */
+export const SMOKE_GRENADE_THROW_SPEED = 16;
+
+/** Smoke grenade fuse time before smoke deploys (seconds) */
+export const SMOKE_GRENADE_FUSE_TIME = 2;
+
+/** Smoke cloud radius in meters */
+export const SMOKE_GRENADE_RADIUS = 6;
+
+/** Smoke cloud duration in seconds */
+export const SMOKE_GRENADE_DURATION = 15;
+
+/** Smoke grenade bounce factor */
+export const SMOKE_GRENADE_BOUNCINESS = 0.3;
+
+/** Smoke grenade bounce drag */
+export const SMOKE_GRENADE_BOUNCE_DRAG = 0.3;
 
 // --- Gadget constants ---
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { GrenadeState, Vec3 } from '@clawfield/shared';
-import { GRAVITY, GRENADE_FUSE_TIME, GRENADE_DAMAGE_RADIUS } from '@clawfield/shared';
+import type { GrenadeState, SmokeGrenadeState, Vec3 } from '@clawfield/shared';
+import { GRAVITY, GRENADE_FUSE_TIME, GRENADE_DAMAGE_RADIUS, SMOKE_GRENADE_FUSE_TIME } from '@clawfield/shared';
 import { soundManager, SoundId } from '../audio/sound-manager';
 import type { ParticleSystem } from './particle-system';
 
@@ -65,15 +65,17 @@ interface TrackedExplosion {
 export class GrenadeRenderer {
   private scene: THREE.Scene;
   private grenades = new Map<number, TrackedGrenade>();
+  private smokeGrenades = new Map<number, TrackedGrenade>();
   private explosions: TrackedExplosion[] = [];
   private particles: ParticleSystem | null = null;
 
   /** Counter for client-predicted grenade IDs (negative to avoid server ID conflicts) */
   private localNextId = -1;
 
-  /** Shared geometry and material for all grenade meshes */
+  /** Shared geometry and materials for grenade meshes */
   private readonly grenadeGeometry: THREE.BoxGeometry;
   private readonly grenadeMaterial: THREE.MeshStandardMaterial;
+  private readonly smokeGrenadeMaterial: THREE.MeshStandardMaterial;
 
   /** Count of currently active grenade lights */
   private activeGrenadeLightCount = 0;
@@ -87,6 +89,7 @@ export class GrenadeRenderer {
     // Small dark cube for the grenade body
     this.grenadeGeometry = new THREE.BoxGeometry(GRENADE_SIZE, GRENADE_SIZE, GRENADE_SIZE);
     this.grenadeMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    this.smokeGrenadeMaterial = new THREE.MeshStandardMaterial({ color: 0x556b2f }); // olive green for smoke
   }
 
   /** Set the particle system used for explosion effects */
@@ -145,6 +148,51 @@ export class GrenadeRenderer {
     };
 
     this.createGrenade(id, position, velocity, GRENADE_FUSE_TIME);
+  }
+
+  /**
+   * Update from server smoke grenade states.
+   * Adds new smoke grenades, updates existing, removes stale ones.
+   */
+  updateSmokeGrenadesFromServer(grenades: SmokeGrenadeState[]): void {
+    const serverIds = new Set<number>();
+
+    for (const sg of grenades) {
+      serverIds.add(sg.id);
+
+      const existing = this.smokeGrenades.get(sg.id);
+      if (existing) {
+        existing.mesh.position.set(sg.position.x, sg.position.y, sg.position.z);
+        existing.velocity = { ...sg.velocity };
+        existing.fuseRemaining = sg.fuseRemaining;
+        existing.lastUpdate = performance.now();
+        if (existing.light) {
+          existing.light.position.copy(existing.mesh.position);
+        }
+      } else {
+        this.createSmokeGrenade(sg.id, sg.position, sg.velocity, sg.fuseRemaining);
+      }
+    }
+
+    // Remove stale server smoke grenades (don't touch local predicted ones)
+    for (const [id, tracked] of this.smokeGrenades) {
+      if (id > 0 && !serverIds.has(id)) {
+        this.removeSmokeGrenade(id, tracked);
+      }
+    }
+  }
+
+  /**
+   * Spawn a client-predicted smoke grenade for instant visual feedback.
+   */
+  spawnLocalSmoke(position: Vec3, direction: Vec3): void {
+    const id = this.localNextId--;
+    const velocity: Vec3 = {
+      x: direction.x,
+      y: direction.y,
+      z: direction.z,
+    };
+    this.createSmokeGrenade(id, position, velocity, SMOKE_GRENADE_FUSE_TIME);
   }
 
   /**
@@ -250,6 +298,23 @@ export class GrenadeRenderer {
       }
     }
 
+    // --- Update smoke grenades ---
+    for (const [id, tracked] of this.smokeGrenades) {
+      tracked.velocity.y += GRAVITY * dt;
+      tracked.mesh.position.x += tracked.velocity.x * dt;
+      tracked.mesh.position.y += tracked.velocity.y * dt;
+      tracked.mesh.position.z += tracked.velocity.z * dt;
+      if (tracked.light) {
+        tracked.light.position.copy(tracked.mesh.position);
+      }
+      if (id < 0) {
+        tracked.fuseRemaining -= dt;
+        if (tracked.fuseRemaining <= 0) {
+          this.removeSmokeGrenade(id, tracked);
+        }
+      }
+    }
+
     // --- Update explosions ---
     for (let i = this.explosions.length - 1; i >= 0; i--) {
       const exp = this.explosions[i]!;
@@ -300,6 +365,10 @@ export class GrenadeRenderer {
       this.removeGrenade(id, tracked);
     }
 
+    for (const [id, tracked] of this.smokeGrenades) {
+      this.removeSmokeGrenade(id, tracked);
+    }
+
     for (const exp of this.explosions) {
       this.scene.remove(exp.mesh);
       exp.mesh.geometry.dispose();
@@ -315,6 +384,7 @@ export class GrenadeRenderer {
 
     this.grenadeGeometry.dispose();
     this.grenadeMaterial.dispose();
+    this.smokeGrenadeMaterial.dispose();
   }
 
   // ── Private helpers ─────────────────────────────────────────────
@@ -360,5 +430,47 @@ export class GrenadeRenderer {
     }
 
     this.grenades.delete(id);
+  }
+
+  /** Create a smoke grenade mesh with optional light and add to scene. */
+  private createSmokeGrenade(
+    id: number,
+    position: Vec3,
+    velocity: Vec3,
+    fuseRemaining: number,
+  ): void {
+    const mesh = new THREE.Mesh(this.grenadeGeometry, this.smokeGrenadeMaterial);
+    mesh.position.set(position.x, position.y, position.z);
+    this.scene.add(mesh);
+
+    // Subtle green glow to distinguish from frag
+    let light: THREE.PointLight | null = null;
+    if (this.activeGrenadeLightCount < MAX_GRENADE_LIGHTS) {
+      light = new THREE.PointLight(0x88aa66, 0.3, 3);
+      light.position.copy(mesh.position);
+      this.scene.add(light);
+      this.activeGrenadeLightCount++;
+    }
+
+    this.smokeGrenades.set(id, {
+      mesh,
+      light,
+      velocity: { ...velocity },
+      fuseRemaining,
+      lastUpdate: performance.now(),
+    });
+  }
+
+  /** Remove a smoke grenade from the scene and clean up. */
+  private removeSmokeGrenade(id: number, tracked: TrackedGrenade): void {
+    this.scene.remove(tracked.mesh);
+
+    if (tracked.light) {
+      this.scene.remove(tracked.light);
+      tracked.light.dispose();
+      this.activeGrenadeLightCount--;
+    }
+
+    this.smokeGrenades.delete(id);
   }
 }

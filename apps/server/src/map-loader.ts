@@ -61,6 +61,8 @@ export interface MapMetadata {
   waterIndices?: number[];
   /** Placed voxel objects (multi-resolution props, buildings, vegetation) */
   objects?: MapObjectPlacement[];
+  /** Palette indices that are terrain (indestructible ground anchors) */
+  groundIndices?: number[];
 }
 
 function isVec3(value: unknown): value is Vec3 {
@@ -178,6 +180,13 @@ export function parseMapMetadata(value: unknown): MapMetadata | null {
     if (objects.length === 0) objects = undefined;
   }
 
+  // Optional groundIndices: palette indices that are terrain (indestructible ground)
+  let groundIndices: number[] | undefined;
+  const rawGround = raw.groundIndices ?? raw.ground_indices;
+  if (Array.isArray(rawGround) && rawGround.every((v: unknown) => typeof v === 'number')) {
+    groundIndices = rawGround as number[];
+  }
+
   return {
     name: raw.name,
     spawnPoints: {
@@ -188,6 +197,7 @@ export function parseMapMetadata(value: unknown): MapMetadata | null {
     objectives,
     waterIndices,
     objects,
+    groundIndices,
   };
 }
 
