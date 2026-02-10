@@ -40,3 +40,6 @@ Thumbs.db
 
 # Geo-tiles cache
 tools/geo-tiles/cache/
+
+# Large vox asset collections
+assets/vox/mmmm-full/
