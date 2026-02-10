@@ -29,12 +29,14 @@ import {
   setGroundAnchors,
   loadPalette,
   GRENADE_DESTRUCTION_RADIUS,
+  ROCKET_DESTRUCTION_RADIUS,
   REVIVE_RADIUS,
   REVIVE_TIME,
   REVIVE_TIME_MEDIC,
   REVIVE_HEALTH,
   REVIVE_HEALTH_MEDIC,
   GadgetId,
+  WeaponId,
 } from '@clawfield/shared';
 import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
@@ -48,6 +50,7 @@ import {
 } from './capture-point-manager.js';
 import { GrenadeManager, type GrenadeExplosionResult } from './grenade-manager.js';
 import { GadgetManager, type VoxelChange } from './gadget-manager.js';
+import { RocketManager } from './rocket-manager.js';
 import { DestructionManager } from './destruction-manager.js';
 import { SmokeGrenadeManager } from './smoke-grenade-manager.js';
 import {
@@ -96,6 +99,7 @@ export class GameLoop {
   private grenadeManager = new GrenadeManager();
   private smokeGrenadeManager = new SmokeGrenadeManager();
   private gadgetManager = new GadgetManager();
+  private rocketManager = new RocketManager();
   private destructionManager!: DestructionManager;
 
   // --- Map palette (hex colors) ---
@@ -269,6 +273,7 @@ export class GameLoop {
     this.bots = [];
     this.projectileManager = new ProjectileManager();
     this.grenadeManager = new GrenadeManager();
+    this.rocketManager = new RocketManager();
     this.gadgetManager = new GadgetManager();
     this.sentChunks.clear();
     this.gameOver = true;
@@ -582,24 +587,23 @@ export class GameLoop {
     }
   }
 
-  /** Spawn dummy bots and register them in the player list */
+  /** Spawn dummy bots and register them in the player list.
+   *  Fills a 24v24 match: 23 bots per team (human player fills the last slot). */
   private spawnBots(): void {
-    const botDefs = [
-      { id: 'bot1', name: 'Bot_1' },
-      { id: 'bot2', name: 'Bot_2' },
-      { id: 'bot3', name: 'Bot_3' },
-    ];
+    const BOTS_PER_TEAM = 23;
+    const totalBots = BOTS_PER_TEAM * 2;
 
-    for (let i = 0; i < botDefs.length; i++) {
-      const def = botDefs[i];
-      // Alternate bots across both teams so each side has enemies
-      const team = i % 2 === 0 ? Team.Alpha : Team.Bravo;
+    for (let i = 0; i < totalBots; i++) {
+      const team = i < BOTS_PER_TEAM ? Team.Alpha : Team.Bravo;
+      const idx = i + 1;
+      const id = `bot${idx}`;
+      const name = `Bot_${idx}`;
       const spawnPos = this.getSpawnPoint(team);
-      const bot = new DummyBot(def.id, def.name, team, spawnPos);
+      const bot = new DummyBot(id, name, team, spawnPos);
       this.bots.push(bot);
       this.players.set(bot.sim.id, bot.sim);
-      console.log(`Bot spawned: ${def.name} (${def.id}) - Team ${team === Team.Alpha ? 'Alpha' : 'Bravo'} - ${bot.sim.classId}`);
     }
+    console.log(`Spawned ${totalBots} bots (${BOTS_PER_TEAM} per team)`);
   }
 
   // --- Team assignment ---
@@ -929,6 +933,11 @@ export class GameLoop {
       sim.tick(voxelGetter);
     }
 
+    // Reset per-tick firing flag (used for remote gunshot sounds)
+    for (const sim of this.players.values()) {
+      sim.firedThisTick = false;
+    }
+
     // Process shooting: spawn projectiles for all alive players that are firing
     this.processShooting(now);
 
@@ -1041,8 +1050,53 @@ export class GameLoop {
       });
     }
 
-    // Process gadget use
+    // Process gadget use (also spawns rockets via rocketManager)
     this.processGadgetUse(now);
+
+    // Broadcast rocket states BEFORE collision update so newly spawned rockets
+    // get at least one frame of visibility on the client
+    const preUpdateRocketStates = this.rocketManager.getStates();
+    if (preUpdateRocketStates.length > 0) {
+      this.network.broadcast({
+        type: 'rockets',
+        rockets: preUpdateRocketStates,
+      });
+    }
+
+    // Advance rockets and process explosions
+    const rocketExplosions = this.rocketManager.update(
+      TICK_INTERVAL / 1000,
+      voxelGetter,
+      this.players
+    );
+    for (const explosion of rocketExplosions) {
+      // Broadcast explosion effect to all clients
+      this.network.broadcast({
+        type: 'explosion',
+        event: {
+          position: explosion.position,
+          radius: 8,
+          ownerId: explosion.ownerId,
+        },
+      });
+      // Destroy voxels in explosion radius
+      this.destructionManager.explode(explosion.position, ROCKET_DESTRUCTION_RADIUS);
+      // Process downed/kills from rocket splash damage
+      for (const hit of explosion.hits) {
+        if (hit.killed) {
+          const killer = this.players.get(explosion.ownerId);
+          const victim = this.players.get(hit.playerId);
+          if (killer && victim) {
+            if (victim.downed) {
+              victim.downedBy = killer.id;
+              this.onPlayerDowned(killer, victim, 'Rocket');
+            } else if (!victim.alive) {
+              this.onPlayerKilled(killer, victim, 'Rocket');
+            }
+          }
+        }
+      }
+    }
 
     // Update gadgets
     const gadgetResult = this.gadgetManager.update(TICK_INTERVAL / 1000, this.players);
@@ -1190,6 +1244,8 @@ export class GameLoop {
       });
     }
 
+    // Rocket states already broadcast before collision update (see above)
+
     // Broadcast gadget states to all clients
     const gadgetStates = this.gadgetManager.getStates();
     if (gadgetStates.length > 0) {
@@ -1324,7 +1380,13 @@ export class GameLoop {
       // Base aim direction from yaw/pitch
       const baseDir = aimDirection(shooter.yaw, shooter.pitch);
 
-      const weapon = shooter.weapon;
+      const weapon = shooter.activeWeapon;
+
+      // Rocket launcher: spawn rocket instead of hitscan projectile
+      if (weapon.id === WeaponId.RocketLauncher) {
+        this.rocketManager.spawn(shooter.id, shooter.team, eyePos, baseDir);
+        continue;
+      }
 
       // Spawn a projectile for each pellet
       for (let p = 0; p < weapon.pellets; p++) {
@@ -1419,12 +1481,8 @@ export class GameLoop {
       };
       const dir = aimDirection(player.yaw, player.pitch);
 
-      // Determine grenade type from selected gadget index
-      const classDef = CLASSES[player.classId as ClassId];
-      const gadgetIndex = input.gadgetIndex ?? 0;
-      const gadgetId = classDef?.gadgets[gadgetIndex];
-
-      if (gadgetId === GadgetId.SmokeGrenade) {
+      // Determine grenade type from grenadeIndex (0 = frag, 1 = smoke)
+      if ((input.grenadeIndex ?? 0) === 1) {
         this.smokeGrenadeManager.spawn(player.id, eyePos, dir);
       } else {
         this.grenadeManager.spawn(player.id, player.team, eyePos, dir);
@@ -1452,6 +1510,7 @@ export class GameLoop {
       if (now - player.lastGadgetTime < cooldown * 1000) continue;
 
       player.lastGadgetTime = now;
+
       this.gadgetManager.spawn(player, gadgetIndex);
     }
   }

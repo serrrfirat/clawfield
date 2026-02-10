@@ -149,8 +149,10 @@ export class DummyBot {
       throwGrenade: false,
       useGadget: false,
       gadgetIndex: 0,
+      grenadeIndex: 0,
       scope: false,
       interact: false,
+      weaponSlot: 0,
       yaw: Math.random() * Math.PI * 2,
       pitch: 0,
     };

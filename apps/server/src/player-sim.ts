@@ -7,6 +7,7 @@ import {
   ClassId,
   CLASSES,
   WEAPONS,
+  WeaponId,
   fireInterval,
   SPRINT_FIRE_DELAY,
   CROUCH_HEIGHT,
@@ -49,6 +50,8 @@ export class PlayerSim {
   reloading: boolean = false;
   reloadTimer: number = 0;
   lastFireTime: number = 0; // timestamp in ms
+  /** Set to true by tryFire(), reset each tick — used for remote gunshot sounds */
+  firedThisTick: boolean = false;
   deathTime: number = 0; // timestamp in ms when player died
   /** When true, player is on the deploy screen and won't auto-respawn */
   waitingToDeploy: boolean = false;
@@ -85,6 +88,24 @@ export class PlayerSim {
   /** Last gadget use timestamp (ms) */
   lastGadgetTime: number = 0;
 
+  // --- Secondary weapon slot (pistol) ---
+  secondaryWeapon: WeaponStats = WEAPONS[WeaponId.Pistol];
+  secondaryAmmo: number = WEAPONS[WeaponId.Pistol].magSize;
+  secondaryReloading: boolean = false;
+  secondaryReloadTimer: number = 0;
+  lastSecondaryFireTime: number = 0;
+
+  // --- Special weapon slot (e.g. Rocket Launcher for Engineer) ---
+  specialWeapon: WeaponStats | null = null;
+  specialAmmo: number = 0;
+  specialReloading: boolean = false;
+  specialReloadTimer: number = 0;
+  lastSpecialFireTime: number = 0;
+  /** Active weapon slot: 0 = primary, 1 = secondary (pistol), 2 = special */
+  currentWeaponSlot: number = 0;
+  /** Swap animation timer (can't fire during swap) */
+  swapTimer: number = 0;
+
   // --- KDA tracking ---
   kills = 0;
   deaths = 0;
@@ -97,6 +118,17 @@ export class PlayerSim {
   /** Record that a player damaged us (for assist tracking) */
   recordDamageFrom(attackerId: string): void {
     this.recentDamagers.set(attackerId, Date.now());
+  }
+
+  /** Returns the active weapon (primary, secondary, or special based on current slot) */
+  get activeWeapon(): WeaponStats {
+    if (this.currentWeaponSlot === 1) {
+      return this.secondaryWeapon;
+    }
+    if (this.currentWeaponSlot === 2 && this.specialWeapon) {
+      return this.specialWeapon;
+    }
+    return this.weapon;
   }
 
   private inputQueue: QueuedInput[] = [];
@@ -132,6 +164,12 @@ export class PlayerSim {
         totalDt += qi.dt;
       }
       this.updateReload(totalDt);
+      this.updateSecondaryReload(totalDt);
+      this.updateSpecialReload(totalDt);
+      // Count down swap timer
+      if (this.swapTimer > 0) {
+        this.swapTimer = Math.max(0, this.swapTimer - totalDt);
+      }
     }
 
     // Dead players don't move
@@ -188,9 +226,27 @@ export class PlayerSim {
         // Track crouch state for eye offset calculation
         this.crouching = qi.input.crouch && !qi.input.sprint;
 
-        // Start reload if client pressed reload
-        if (qi.input.reload && !this.reloading && this.ammo < this.weapon.magSize) {
-          this.startReload();
+        // Weapon slot switching (0=primary, 1=secondary, 2=special)
+        const desiredSlot = qi.input.weaponSlot ?? 0;
+        if (desiredSlot !== this.currentWeaponSlot && this.swapTimer <= 0) {
+          // Block switching to special slot if class has no special weapon
+          if (desiredSlot === 2 && !this.specialWeapon) {
+            // no-op
+          } else {
+            this.swapTimer = this.activeWeapon.swapTime;
+            this.currentWeaponSlot = desiredSlot;
+          }
+        }
+
+        // Start reload if client pressed reload (for the active weapon)
+        if (qi.input.reload) {
+          if (this.currentWeaponSlot === 0 && !this.reloading && this.ammo < this.weapon.magSize) {
+            this.startReload();
+          } else if (this.currentWeaponSlot === 1 && !this.secondaryReloading && this.secondaryAmmo < this.secondaryWeapon.magSize) {
+            this.startSecondaryReload();
+          } else if (this.currentWeaponSlot === 2 && this.specialWeapon && !this.specialReloading && this.specialAmmo < this.specialWeapon.magSize) {
+            this.startSpecialReload();
+          }
         }
       }
     }
@@ -265,16 +321,49 @@ export class PlayerSim {
 
   /**
    * Attempt to fire the weapon.
-   * Checks fire rate cooldown, ammo, and sprint state.
+   * Checks fire rate cooldown, ammo, swap timer, and sprint state.
    * Returns true if the shot is allowed.
    */
   tryFire(now: number): boolean {
     if (!this.alive || this.downed) return false;
-    if (this.reloading) return false;
-    if (this.ammo <= 0) return false;
+    if (this.swapTimer > 0) return false;
 
     // Sprint prevents firing (with delay after releasing sprint)
     if (this.sprintFireTimer > 0) return false;
+
+    // Secondary weapon slot (pistol)
+    if (this.currentWeaponSlot === 1) {
+      if (this.secondaryReloading) return false;
+      if (this.secondaryAmmo <= 0) return false;
+      const interval = fireInterval(this.secondaryWeapon) * 1000;
+      if (now - this.lastSecondaryFireTime < interval) return false;
+      this.secondaryAmmo--;
+      this.lastSecondaryFireTime = now;
+      if (this.secondaryAmmo <= 0) {
+        this.startSecondaryReload();
+      }
+      this.firedThisTick = true;
+      return true;
+    }
+
+    // Special weapon slot
+    if (this.currentWeaponSlot === 2 && this.specialWeapon) {
+      if (this.specialReloading) return false;
+      if (this.specialAmmo <= 0) return false;
+      const interval = fireInterval(this.specialWeapon) * 1000;
+      if (now - this.lastSpecialFireTime < interval) return false;
+      this.specialAmmo--;
+      this.lastSpecialFireTime = now;
+      if (this.specialAmmo <= 0) {
+        this.startSpecialReload();
+      }
+      this.firedThisTick = true;
+      return true;
+    }
+
+    // Primary weapon
+    if (this.reloading) return false;
+    if (this.ammo <= 0) return false;
 
     const interval = fireInterval(this.weapon) * 1000; // convert to ms
     if (now - this.lastFireTime < interval) return false;
@@ -286,6 +375,7 @@ export class PlayerSim {
     if (this.ammo <= 0) {
       this.startReload();
     }
+    this.firedThisTick = true;
 
     return true;
   }
@@ -306,6 +396,45 @@ export class PlayerSim {
       this.reloading = false;
       this.reloadTimer = 0;
       this.ammo = this.weapon.magSize;
+    }
+  }
+
+  /** Begin secondary weapon reload */
+  startSecondaryReload(): void {
+    if (this.secondaryReloading) return;
+    if (this.secondaryAmmo >= this.secondaryWeapon.magSize) return;
+    this.secondaryReloading = true;
+    this.secondaryReloadTimer = this.secondaryWeapon.reloadTime;
+  }
+
+  /** Update secondary weapon reload progress. dt in seconds. */
+  updateSecondaryReload(dt: number): void {
+    if (!this.secondaryReloading) return;
+    this.secondaryReloadTimer -= dt;
+    if (this.secondaryReloadTimer <= 0) {
+      this.secondaryReloading = false;
+      this.secondaryReloadTimer = 0;
+      this.secondaryAmmo = this.secondaryWeapon.magSize;
+    }
+  }
+
+  /** Begin special weapon reload */
+  startSpecialReload(): void {
+    if (!this.specialWeapon) return;
+    if (this.specialReloading) return;
+    if (this.specialAmmo >= this.specialWeapon.magSize) return;
+    this.specialReloading = true;
+    this.specialReloadTimer = this.specialWeapon.reloadTime;
+  }
+
+  /** Update special weapon reload progress. dt in seconds. */
+  updateSpecialReload(dt: number): void {
+    if (!this.specialReloading || !this.specialWeapon) return;
+    this.specialReloadTimer -= dt;
+    if (this.specialReloadTimer <= 0) {
+      this.specialReloading = false;
+      this.specialReloadTimer = 0;
+      this.specialAmmo = this.specialWeapon.magSize;
     }
   }
 
@@ -330,6 +459,20 @@ export class PlayerSim {
     this.lastGrenadeTime = 0;
     this.lastGadgetTime = 0;
     this.recentDamagers.clear();
+    // Reset secondary weapon state
+    this.secondaryAmmo = this.secondaryWeapon.magSize;
+    this.secondaryReloading = false;
+    this.secondaryReloadTimer = 0;
+    this.lastSecondaryFireTime = 0;
+    // Reset special weapon state
+    this.currentWeaponSlot = 0;
+    this.swapTimer = 0;
+    if (this.specialWeapon) {
+      this.specialAmmo = this.specialWeapon.magSize;
+      this.specialReloading = false;
+      this.specialReloadTimer = 0;
+      this.lastSpecialFireTime = 0;
+    }
   }
 
   /** Change class and update weapon accordingly */
@@ -339,17 +482,51 @@ export class PlayerSim {
     this.classId = classId;
     // Use requested weapon if it belongs to this class, otherwise default
     if (weaponId && (weaponId === classDef.defaultPrimary || weaponId === classDef.altPrimary)) {
-      this.weapon = WEAPONS[weaponId as import('@clawfield/shared').WeaponId];
+      this.weapon = WEAPONS[weaponId as WeaponId];
     } else {
       this.weapon = WEAPONS[classDef.defaultPrimary];
     }
     this.ammo = this.weapon.magSize;
     this.reloading = false;
     this.reloadTimer = 0;
+    // Set up secondary weapon (pistol)
+    this.secondaryWeapon = WEAPONS[classDef.secondary];
+    this.secondaryAmmo = this.secondaryWeapon.magSize;
+    this.secondaryReloading = false;
+    this.secondaryReloadTimer = 0;
+    // Set up special weapon if class has one
+    if (classDef.specialWeapon) {
+      this.specialWeapon = WEAPONS[classDef.specialWeapon];
+      this.specialAmmo = this.specialWeapon.magSize;
+      this.specialReloading = false;
+      this.specialReloadTimer = 0;
+    } else {
+      this.specialWeapon = null;
+      this.specialAmmo = 0;
+    }
+    this.currentWeaponSlot = 0;
+    this.swapTimer = 0;
   }
 
   /** Get current state snapshot */
   getState(): PlayerState {
+    // Report ammo for the active weapon slot
+    let ammo: number;
+    let maxAmmo: number;
+    let reloading: boolean;
+    if (this.currentWeaponSlot === 1) {
+      ammo = this.secondaryAmmo;
+      maxAmmo = this.secondaryWeapon.magSize;
+      reloading = this.secondaryReloading;
+    } else if (this.currentWeaponSlot === 2 && this.specialWeapon) {
+      ammo = this.specialAmmo;
+      maxAmmo = this.specialWeapon.magSize;
+      reloading = this.specialReloading;
+    } else {
+      ammo = this.ammo;
+      maxAmmo = this.weapon.magSize;
+      reloading = this.reloading;
+    }
     return {
       id: this.id,
       name: this.name,
@@ -363,9 +540,12 @@ export class PlayerSim {
       downed: this.downed,
       team: this.team,
       classId: this.classId,
-      ammo: this.ammo,
-      maxAmmo: this.weapon.magSize,
-      reloading: this.reloading,
+      ammo,
+      maxAmmo,
+      reloading,
+      weaponSlot: this.currentWeaponSlot,
+      shooting: this.firedThisTick,
+      weaponName: this.activeWeapon.name,
     };
   }
 }
