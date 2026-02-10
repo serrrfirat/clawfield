@@ -1135,7 +1135,9 @@ function gameLoop(): void {
   // Update chunk LOD levels based on distance to camera
   if (localPlayer && frameCount % LOD_UPDATE_INTERVAL === 0) {
     const cam = renderer.camera;
-    worldRenderer.updateLod({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
+    const camPos = { x: cam.position.x, y: cam.position.y, z: cam.position.z };
+    worldRenderer.updateLod(camPos);
+    voxelObjectRenderer.updateLod(camPos);
   }
 
   // Prune distant chunks every ~60 frames (~1 second at 60fps)

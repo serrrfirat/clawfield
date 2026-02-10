@@ -17,8 +17,8 @@ const shaderRefs: ShaderRef[] = [];
 /** Fog configuration (can be updated at runtime via setFogUniforms) */
 const fogConfig = {
   color: new THREE.Color(0xa9c2d0),
-  near: 120,
-  far: 320,
+  near: 160,
+  far: 420,
   heightDensity: 0.015,
   heightOrigin: 8,
 };

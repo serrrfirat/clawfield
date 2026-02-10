@@ -219,8 +219,8 @@ export const LOD_LEVELS = 3;
 
 /** Chunk distance thresholds for each LOD level (in chunk units, squared for fast comparison) */
 export const LOD_DISTANCE_SQ = [
-  5 * 5,   // LOD 0 → LOD 1 at 5 chunks
-  8 * 8,   // LOD 1 → LOD 2 at 8 chunks
+  7 * 7,   // LOD 0 → LOD 1 at 7 chunks
+  12 * 12, // LOD 1 → LOD 2 at 12 chunks
 ] as const;
 
 /** Downsample factor per LOD level: LOD 0 = 1×, LOD 1 = 2×, LOD 2 = 4× */
@@ -230,7 +230,15 @@ export const LOD_FACTORS = [1, 2, 4] as const;
 export const LOD_UPDATE_INTERVAL = 30;
 
 /** Chunk streaming radius in chunks (how many chunks around the player to load) */
-export const STREAM_RADIUS = 10;
+export const STREAM_RADIUS = 14;
+
+// --- Object LOD constants ---
+
+/** Distance thresholds for voxel object LOD in world units (meters), squared for fast comparison */
+export const OBJECT_LOD_DISTANCE_SQ = [
+  40 * 40,   // LOD 0 → LOD 1 at 40m
+  80 * 80,   // LOD 1 → LOD 2 at 80m
+] as const;
 
 /** How often (in ticks) the server checks for new chunks to stream to players */
 export const STREAM_CHECK_INTERVAL = 10; // every 0.5s at 20Hz
