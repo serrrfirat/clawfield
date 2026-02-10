@@ -113,6 +113,8 @@ function handleServerMessage(msg: ServerMessage): void {
       gameState.myId = msg.id;
       gameState.myTeam = msg.team;
       gameState.gameMode = msg.gameMode;
+      // Store session token for reconnection
+      network.sessionToken = msg.sessionToken;
       console.log(`Joined as ${gameState.myId} on team ${msg.team} (mode: ${msg.gameMode})`);
 
       // Load palette before building meshes so colors are correct
@@ -1037,9 +1039,13 @@ loadSoldierModel();
 mainMenu.show((choice) => {
   mainMenu.hide();
 
-  // Connect and join with chosen name + mode
+  // Connect and join with chosen name + mode (or rejoin existing session)
   network.onConnected = () => {
-    network.join(choice.name, choice.gameMode);
+    if (network.sessionToken) {
+      network.rejoin(network.sessionToken);
+    } else {
+      network.join(choice.name, choice.gameMode);
+    }
   };
   network.connect();
 });

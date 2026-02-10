@@ -50,6 +50,9 @@ export class NetworkClient {
   private _connected = false;
   private _onConnected: (() => void) | null = null;
 
+  /** Session token for reconnection (set after welcome) */
+  sessionToken: string | null = null;
+
   constructor(handler: MessageHandler) {
     this.handler = handler;
   }
@@ -106,6 +109,11 @@ export class NetworkClient {
   /** Send a join message to the server with the chosen name and game mode. */
   join(name: string, gameMode: GameMode): void {
     this.send({ type: 'join', name, classId: 'assault', gameMode });
+  }
+
+  /** Send a rejoin message to reconnect to an existing session. */
+  rejoin(token: string): void {
+    this.send({ type: 'rejoin', sessionToken: token });
   }
 
   /** Client → server messages are always plain JSON strings */

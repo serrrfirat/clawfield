@@ -193,6 +193,7 @@ export interface SpawnPointOption {
 
 export type ClientMessage =
   | { type: 'join'; name: string; classId: string; gameMode: GameMode }
+  | { type: 'rejoin'; sessionToken: string }
   | { type: 'input'; seq: number; input: InputState; dt: number }
   | { type: 'select_class'; classId: string }
   | { type: 'deploy'; classId: string; weaponId: string; spawnPointId: string };
@@ -202,6 +203,7 @@ export type ServerMessage =
       type: 'welcome';
       id: string;
       team: number;
+      sessionToken: string;
       mapData: ChunkData[];
       palette?: number[];
       waterIndices?: number[];

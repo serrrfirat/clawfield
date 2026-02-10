@@ -53,6 +53,13 @@ export class PlayerSim {
   /** When true, player is on the deploy screen and won't auto-respawn */
   waitingToDeploy: boolean = false;
 
+  /** Session token for reconnection */
+  sessionToken: string = '';
+  /** Whether this player is currently disconnected */
+  disconnected: boolean = false;
+  /** Timestamp when the player disconnected (ms) */
+  disconnectTime: number = 0;
+
   // --- Revive system ---
   /** Player is downed but can be revived */
   downed: boolean = false;
