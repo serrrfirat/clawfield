@@ -12,6 +12,10 @@ export enum WeaponId {
   // Recon
   SniperRifle = 'sniper_rifle',
   DMR = 'dmr',
+  // Sidearm
+  Pistol = 'pistol',
+  // Special
+  RocketLauncher = 'rocket_launcher',
 }
 
 /** Weapon stats */
@@ -292,6 +296,60 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     spreadBloom: 0.0,
     spreadRecovery: 0.0,
     sprintToFireTime: 0.28,
+  },
+  [WeaponId.Pistol]: {
+    id: WeaponId.Pistol,
+    name: 'Pistol',
+    damage: 30,
+    maxRange: 30,
+    falloffStart: 15,
+    falloffEnd: 0.4,
+    rpm: 400,
+    magSize: 12,
+    reloadTime: 1.5,
+    spread: 0.015,
+    pellets: 1,
+    projectileSpeed: 100,
+    primary: false,
+    recoilKick: 0.025,
+    recoilRandom: 0.006,
+    adsSpeed: 1.8,
+    adsSpreadMultiplier: 0.35,
+    moveSpeedMultiplier: 1.0,
+    swapTime: 0.3,
+    aimSway: 0.002,
+    bobIntensity: 0.7,
+    recoilRecovery: 6.0,
+    spreadBloom: 0.005,
+    spreadRecovery: 8.0,
+    sprintToFireTime: 0.1,
+  },
+  [WeaponId.RocketLauncher]: {
+    id: WeaponId.RocketLauncher,
+    name: 'Rocket Launcher',
+    damage: 0, // splash damage handled by RocketManager
+    maxRange: 150,
+    falloffStart: 150,
+    falloffEnd: 1,
+    rpm: 15, // 60/4 — one shot per 4s reload
+    magSize: 1,
+    reloadTime: 4,
+    spread: 0,
+    pellets: 1,
+    projectileSpeed: 45,
+    primary: false,
+    recoilKick: 0.04,
+    recoilRandom: 0.005,
+    adsSpeed: 0.6,
+    adsSpreadMultiplier: 1,
+    moveSpeedMultiplier: 0.85,
+    swapTime: 0.8,
+    aimSway: 0.003,
+    bobIntensity: 1.4,
+    recoilRecovery: 2.0,
+    spreadBloom: 0,
+    spreadRecovery: 0,
+    sprintToFireTime: 0.35,
   },
 };
 

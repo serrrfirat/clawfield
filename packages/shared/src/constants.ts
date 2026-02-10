@@ -35,6 +35,9 @@ export const CROUCH_HEIGHT = 1.0;
 /** Time in seconds after releasing sprint before firing is allowed */
 export const SPRINT_FIRE_DELAY = 0.2;
 
+/** Wall climb speed when scrambling up walls (m/s) — slower than jump */
+export const CLIMB_SPEED = 4;
+
 /** Maximum pitch angle (radians) */
 export const MAX_PITCH = Math.PI / 2 - 0.01;
 
@@ -84,7 +87,7 @@ export function isDestructible(mat: number): boolean {
 }
 
 /** Grenade destruction radius in voxels */
-export const GRENADE_DESTRUCTION_RADIUS = 6;
+export const GRENADE_DESTRUCTION_RADIUS = 5;
 
 /** Bullet damage vs material hardness (destroys if >= hardness). Only soft materials. */
 export const BULLET_VOXEL_DAMAGE = 2;
@@ -270,19 +273,45 @@ export const GRENADE_BOUNCINESS = 0.25;
 export const GRENADE_BOUNCE_DRAG = 0.25;
 
 /** Frag grenade explosion damage at center */
-export const GRENADE_DAMAGE = 200;
+export const GRENADE_DAMAGE = 350;
 
 /** Frag grenade explosion damage radius in meters */
-export const GRENADE_DAMAGE_RADIUS = 10;
+export const GRENADE_DAMAGE_RADIUS = 8;
 
 /** Frag grenade knockback force */
-export const GRENADE_FORCE = 700;
+export const GRENADE_FORCE = 1200;
 
 /** Max grenades a player can carry */
 export const GRENADE_MAX_COUNT = 999;
 
 /** Grenade cooldown between throws (seconds) */
 export const GRENADE_COOLDOWN = 0.1;
+
+// --- Rocket launcher constants ---
+
+/** Rocket projectile speed in m/s */
+export const ROCKET_SPEED = 45;
+
+/** Rocket gravity while motor is active (m/s²) — light dropoff */
+export const ROCKET_MOTOR_GRAVITY = -5;
+
+/** Rocket motor burn time in seconds */
+export const ROCKET_MOTOR_TIME = 1.3;
+
+/** Rocket center damage */
+export const ROCKET_DAMAGE = 150;
+
+/** Rocket splash damage radius in meters */
+export const ROCKET_DAMAGE_RADIUS = 5;
+
+/** Rocket voxel destruction radius */
+export const ROCKET_DESTRUCTION_RADIUS = 4;
+
+/** Rocket max range in meters before despawn */
+export const ROCKET_MAX_RANGE = 150;
+
+/** Rocket launcher cooldown in seconds */
+export const ROCKET_COOLDOWN = 12;
 
 // --- Smoke grenade constants ---
 
@@ -293,10 +322,10 @@ export const SMOKE_GRENADE_THROW_SPEED = 16;
 export const SMOKE_GRENADE_FUSE_TIME = 2;
 
 /** Smoke cloud radius in meters */
-export const SMOKE_GRENADE_RADIUS = 6;
+export const SMOKE_GRENADE_RADIUS = 12;
 
 /** Smoke cloud duration in seconds */
-export const SMOKE_GRENADE_DURATION = 15;
+export const SMOKE_GRENADE_DURATION = 25;
 
 /** Smoke grenade bounce factor */
 export const SMOKE_GRENADE_BOUNCINESS = 0.3;

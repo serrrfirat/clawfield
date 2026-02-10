@@ -14,6 +14,7 @@ import {
   WATER_SINK_SPEED,
   WATER_GRAVITY,
   WATER_DRAG,
+  CLIMB_SPEED,
 } from './constants.js';
 import type { AABB, InputState, Vec3 } from './types.js';
 
@@ -26,6 +27,7 @@ export interface MoveResult {
   velocity: Vec3;
   grounded: boolean;
   inWater: boolean;
+  climbing: boolean;
 }
 
 /** Build an AABB from a player position (position is at feet center) */
@@ -190,11 +192,13 @@ export function movePlayer(
   let pz = position.z;
 
   // Sweep X axis
+  let xBlocked = false;
   const newPx = px + vx * clampedDt;
   const testAABBx = playerAABB({ x: newPx, y: py, z: pz }, height);
   if (!aabbOverlapsSolid(testAABBx, getVoxel)) {
     px = newPx;
   } else {
+    xBlocked = moveVel.x !== 0;
     vx = 0;
   }
 
@@ -213,12 +217,26 @@ export function movePlayer(
   }
 
   // Sweep Z axis
+  let zBlocked = false;
   const newPz = pz + vz * clampedDt;
   const testAABBz = playerAABB({ x: px, y: py, z: newPz }, height);
   if (!aabbOverlapsSolid(testAABBz, getVoxel)) {
     pz = newPz;
   } else {
+    zBlocked = moveVel.z !== 0;
     vz = 0;
+  }
+
+  // Wall climb: if pressing jump into a wall while falling/stationary, scramble up
+  let climbing = false;
+  if (input.jump && !isCrouching && !submerged && (xBlocked || zBlocked) && vy <= 0) {
+    const climbY = py + CLIMB_SPEED * clampedDt;
+    const testClimb = playerAABB({ x: px, y: climbY, z: pz }, height);
+    if (!aabbOverlapsSolid(testClimb, getVoxel)) {
+      py = climbY;
+      vy = CLIMB_SPEED;
+      climbing = true;
+    }
   }
 
   const grounded = isGrounded({ x: px, y: py, z: pz }, getVoxel);
@@ -229,6 +247,7 @@ export function movePlayer(
     velocity: { x: vx, y: vy, z: vz },
     grounded,
     inWater,
+    climbing,
   };
 }
 

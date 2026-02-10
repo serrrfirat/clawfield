@@ -283,6 +283,8 @@ export const WEAPON_ATTACHMENTS: Record<WeaponId, Partial<Record<AttachmentSlot,
     [AttachmentSlot.Grip]: [AttachmentId.VerticalGrip, AttachmentId.AngledGrip],
     [AttachmentSlot.Magazine]: [AttachmentId.ExtendedMag, AttachmentId.QuickDrawMag],
   },
+  [WeaponId.Pistol]: {},
+  [WeaponId.RocketLauncher]: {},
 };
 
 // ── Loadout type ───────────────────────────────────────────────────

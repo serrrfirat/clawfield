@@ -28,6 +28,10 @@ export interface ClassDef {
   defaultPrimary: WeaponId;
   /** Alternative primary weapon */
   altPrimary: WeaponId;
+  /** Secondary sidearm weapon (all classes get a pistol) */
+  secondary: WeaponId;
+  /** Universal grenades available to all classes [frag, smoke] */
+  grenades: [GadgetId, GadgetId];
   /** Available gadgets (pick one) */
   gadgets: [GadgetId, GadgetId];
   /** Max health */
@@ -36,6 +40,8 @@ export interface ClassDef {
   abilityName: string;
   /** Ability cooldown in seconds */
   abilityCooldown: number;
+  /** Optional special weapon (extra slot, press 3 to switch) */
+  specialWeapon?: WeaponId;
 }
 
 /** All class definitions */
@@ -45,6 +51,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     name: 'Assault',
     defaultPrimary: WeaponId.AssaultRifle,
     altPrimary: WeaponId.SMG_Assault,
+    secondary: WeaponId.Pistol,
+    grenades: [GadgetId.FragGrenade, GadgetId.SmokeGrenade],
     gadgets: [GadgetId.FragGrenade, GadgetId.SmokeGrenade],
     maxHealth: 100,
     abilityName: 'Sprint Boost',
@@ -55,6 +63,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     name: 'Medic',
     defaultPrimary: WeaponId.SMG_Medic,
     altPrimary: WeaponId.Shotgun,
+    secondary: WeaponId.Pistol,
+    grenades: [GadgetId.FragGrenade, GadgetId.SmokeGrenade],
     gadgets: [GadgetId.Medkit, GadgetId.Bandage],
     maxHealth: 100,
     abilityName: 'Heal Aura',
@@ -65,7 +75,10 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     name: 'Engineer',
     defaultPrimary: WeaponId.Carbine,
     altPrimary: WeaponId.PDW,
+    secondary: WeaponId.Pistol,
+    grenades: [GadgetId.FragGrenade, GadgetId.SmokeGrenade],
     gadgets: [GadgetId.AmmoBox, GadgetId.RepairTool],
+    specialWeapon: WeaponId.RocketLauncher,
     maxHealth: 100,
     abilityName: 'Deploy Cover',
     abilityCooldown: 30,
@@ -75,6 +88,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     name: 'Recon',
     defaultPrimary: WeaponId.SniperRifle,
     altPrimary: WeaponId.DMR,
+    secondary: WeaponId.Pistol,
+    grenades: [GadgetId.FragGrenade, GadgetId.SmokeGrenade],
     gadgets: [GadgetId.SpottingScope, GadgetId.Claymore],
     maxHealth: 100,
     abilityName: 'Mark Targets',

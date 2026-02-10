@@ -26,6 +26,12 @@ export interface PlayerState {
   ammo: number;
   maxAmmo: number;
   reloading: boolean;
+  /** Active weapon slot: 0 = primary, 1 = secondary (pistol), 2 = special */
+  weaponSlot: number;
+  /** True when this player fired this tick */
+  shooting: boolean;
+  /** Display name of the active weapon (for remote gunshot sounds) */
+  weaponName: string;
 }
 
 /** Input state captured on the client each frame */
@@ -42,9 +48,13 @@ export interface InputState {
   throwGrenade: boolean;
   useGadget: boolean;
   gadgetIndex: number;
+  /** Selected grenade type: 0 = frag, 1 = smoke */
+  grenadeIndex: number;
   scope: boolean;
   /** Hold to interact (revive downed teammate) */
   interact: boolean;
+  /** Active weapon slot: 0 = primary, 1 = secondary (pistol), 2 = special */
+  weaponSlot: number;
   yaw: number;
   pitch: number;
 }
@@ -161,6 +171,16 @@ export interface ScoreboardEntry {
   score: number;
 }
 
+/** Rocket state for network sync */
+export interface RocketState {
+  id: number;
+  ownerId: string;
+  ownerTeam: number;
+  position: Vec3;
+  velocity: Vec3;
+  motorTime: number;
+}
+
 /** Gadget state for network sync */
 export interface GadgetState {
   id: number;
@@ -251,6 +271,7 @@ export type ServerMessage =
   | { type: 'game_over'; winner: number }
   | { type: 'scoreboard'; players: ScoreboardEntry[] }
   | { type: 'gadgets'; gadgets: GadgetState[] }
+  | { type: 'rockets'; rockets: RocketState[] }
   | { type: 'enemy_spotted'; positions: Vec3[]; duration: number }
   | { type: 'voxel_update'; changes: { x: number; y: number; z: number; material: number }[] }
   | { type: 'destruction_event'; events: DestructionEvent[] }
