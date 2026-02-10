@@ -20,7 +20,7 @@ const GodRaysShader = {
     density: { value: 0.96 },
     weight: { value: 0.15 },
     decay: { value: 0.93 },
-    exposure: { value: 0.25 },
+    exposure: { value: 0.06 },
     numSamples: { value: 60 },
     sunColor: { value: new THREE.Vector3(1.0, 0.95, 0.85) },
   },
@@ -60,7 +60,7 @@ const GodRaysShader = {
         // Use luminance to determine bright areas (sky vs geometry)
         float lum = dot(sampleColor, vec3(0.299, 0.587, 0.114));
         // Only scatter from bright pixels (sky, not geometry)
-        float brightMask = smoothstep(0.45, 0.9, lum);
+        float brightMask = smoothstep(0.7, 1.0, lum);
         sampleColor *= brightMask * illuminationDecay * weight;
         godRayColor += sampleColor;
         illuminationDecay *= decay;

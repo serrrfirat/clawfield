@@ -9,7 +9,7 @@ import * as THREE from 'three';
  * and continuous emission around the camera.
  */
 
-const MAX_WEATHER_PARTICLES = 4000;
+const MAX_WEATHER_PARTICLES = 20000;
 
 /** Per-particle CPU state */
 interface WeatherParticle {
@@ -21,7 +21,7 @@ interface WeatherParticle {
   velZ: number;
 }
 
-export type WeatherType = 'none' | 'rain' | 'snow';
+export type WeatherType = 'none' | 'rain' | 'snow' | 'storm';
 
 /** Tuning parameters per weather type */
 interface WeatherPreset {
@@ -49,7 +49,7 @@ interface WeatherPreset {
   alpha: number;
 }
 
-const PRESETS: Record<'rain' | 'snow', WeatherPreset> = {
+const PRESETS: Record<'rain' | 'snow' | 'storm', WeatherPreset> = {
   rain: {
     emitRate: 1200,
     spawnRadius: 60,
@@ -64,6 +64,21 @@ const PRESETS: Record<'rain' | 'snow', WeatherPreset> = {
     sizeMax: 0.15,
     color: [0.7, 0.75, 0.85],
     alpha: 0.5,
+  },
+  storm: {
+    emitRate: 10000,
+    spawnRadius: 100,
+    spawnHeight: 80,
+    fallSpeedMin: -45,
+    fallSpeedMax: -35,
+    driftX: 10.0,
+    driftZ: 5.0,
+    lifetimeMin: 1.0,
+    lifetimeMax: 2.0,
+    sizeMin: 0.12,
+    sizeMax: 0.3,
+    color: [0.6, 0.65, 0.75],
+    alpha: 0.75,
   },
   snow: {
     emitRate: 400,

@@ -21,7 +21,7 @@ const _color = new THREE.Color();
 const MAX_PHYSICS_BODIES = 2000;
 
 /** Max lifetime before forced cleanup */
-const MAX_LIFETIME = 120.0;
+const MAX_LIFETIME = 15.0;
 
 /** Voxel half-extent — voxels occupy 1x1x1 in world coords */
 const HALF_EXTENT = 0.5;
@@ -401,7 +401,7 @@ export class PhysicsDebrisSystem {
 
       // Remove group after all debris settled + a brief linger, or on timeout
       const allSettled = group.debris.every(d => d.settled);
-      const SETTLED_LINGER = 8.0; // seconds to keep settled debris visible
+      const SETTLED_LINGER = 3.0; // seconds to keep settled debris visible
       const settledLongEnough = allSettled && groupAge > SETTLED_LINGER;
       if (settledLongEnough || groupAge > MAX_LIFETIME) {
         this.cleanupGroup(group);

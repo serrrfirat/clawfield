@@ -7,12 +7,6 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { GodRaysPass } from './shaders/god-rays';
-import {
-  VignetteShader,
-  ColorGradeShader,
-  FilmGrainShader,
-  ChromaticAberrationShader,
-} from './shaders/post-effects';
 
 export class Renderer {
   readonly scene: THREE.Scene;
@@ -22,11 +16,10 @@ export class Renderer {
   private composer: EffectComposer;
   private fxaaPass: ShaderPass;
   private ssaoPass: SSAOPass;
-  private filmGrainPass: ShaderPass;
 
   constructor() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x7ec8e3); // slightly desaturated sky
+    this.scene.background = null; // Sky shader mesh handles the sky
     // Fog is handled by custom height+distance shader in world-renderer.ts
     // (no scene.fog — our shader replaces #include <fog_fragment>)
 
@@ -47,7 +40,7 @@ export class Renderer {
 
     // Tone mapping for richer colors and natural falloff
     this.webglRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.webglRenderer.toneMappingExposure = 1.1;
+    this.webglRenderer.toneMappingExposure = 0.75;
 
     // Shadow mapping
     this.webglRenderer.shadowMap.enabled = true;
@@ -113,25 +106,13 @@ export class Renderer {
     // 4. Bloom — muzzle flash, explosions, bright sky glow
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(w, h),
-      0.4,  // strength — moderate, not overdone
-      0.6,  // radius
-      0.85  // threshold — only bright pixels bloom
+      0.15, // strength  — subtle, only for muzzle flash / explosions
+      0.3,  // radius    — tight focus
+      0.95  // threshold — very high, sky won't trigger this
     );
     this.composer.addPass(bloomPass);
 
-    // 5. Color grading — desaturated, cool shadows, warm highlights (military look)
-    const colorGradePass = new ShaderPass(ColorGradeShader);
-    this.composer.addPass(colorGradePass);
-
-    // 6. Chromatic aberration — subtle RGB split at edges (lens feel)
-    const chromaticPass = new ShaderPass(ChromaticAberrationShader);
-    this.composer.addPass(chromaticPass);
-
-    // 7. Vignette — darkened screen edges (combat goggle look)
-    const vignettePass = new ShaderPass(VignetteShader);
-    this.composer.addPass(vignettePass);
-
-    // 8. FXAA — anti-aliasing to smooth voxel edges
+    // 5. FXAA — anti-aliasing to smooth voxel edges
     this.fxaaPass = new ShaderPass(FXAAShader);
     this.fxaaPass.uniforms['resolution'].value.set(
       1 / (w * pixelRatio),
@@ -139,11 +120,7 @@ export class Renderer {
     );
     this.composer.addPass(this.fxaaPass);
 
-    // 9. Film grain — animated noise for gritty war-footage feel (after AA so it stays sharp)
-    this.filmGrainPass = new ShaderPass(FilmGrainShader);
-    this.composer.addPass(this.filmGrainPass);
-
-    // 10. Output pass — handles tone mapping and color space conversion
+    // 6. Output pass — handles tone mapping and color space conversion
     const outputPass = new OutputPass();
     this.composer.addPass(outputPass);
 
@@ -176,7 +153,6 @@ export class Renderer {
   }
 
   render(): void {
-    this.filmGrainPass.uniforms['time'].value = performance.now() * 0.001;
     this.composer.render();
   }
 }
