@@ -21,6 +21,7 @@ import {
   checkConnectivity,
 } from '@clawfield/shared';
 import type { VoxelChange } from './gadget-manager.js';
+import type { DebrisPhysicsManager, DebrisState } from './debris-physics-manager.js';
 
 export interface CrushZone {
   min: Vec3;
@@ -52,6 +53,9 @@ interface PendingVoxelDrop {
  * Handles voxel removal from bullet impacts and explosions,
  * runs structural connectivity checks after explosions,
  * and queues voxel changes + visual events for broadcast.
+ * 
+ * Now with physics debris support - destroyed voxels become Rapier rigid bodies
+ * that players can collide with and stand on.
  */
 export class DestructionManager {
   private chunks: Map<string, Uint8Array>;
@@ -60,9 +64,25 @@ export class DestructionManager {
   private pendingCrushZones: CrushZone[] = [];
   private pendingDrops: PendingDrop[] = [];
   private pendingVoxelDrops: PendingVoxelDrop[] = [];
+  private debrisPhysics: DebrisPhysicsManager | null = null;
+  private pendingDebrisBodies: Array<{
+    voxels: Vec3[];
+    colors: number[];
+    materials: number[];
+    impactPos: Vec3;
+    impactDir: Vec3;
+  }> = [];
 
-  constructor(chunks: Map<string, Uint8Array>) {
+  constructor(chunks: Map<string, Uint8Array>, debrisPhysics?: DebrisPhysicsManager) {
     this.chunks = chunks;
+    this.debrisPhysics = debrisPhysics ?? null;
+  }
+  
+  /**
+   * Set the debris physics manager (call after construction if not provided)
+   */
+  setDebrisPhysics(debrisPhysics: DebrisPhysicsManager): void {
+    this.debrisPhysics = debrisPhysics;
   }
 
   /**
@@ -150,9 +170,6 @@ export class DestructionManager {
 
     if (removed.length === 0) return;
 
-    // Rubble collision is handled client-side: when Rapier debris settles,
-    // the client snaps it to the voxel grid for player collision.
-
     // Use centroid of actually-destroyed voxels as the visual center
     // (grenade center may be underground/in terrain, making VFX look offset)
     let vx = 0, vy = 0, vz = 0;
@@ -162,6 +179,16 @@ export class DestructionManager {
       y: vy / removed.length + 0.5,
       z: vz / removed.length + 0.5,
     };
+
+    // Queue physics debris body creation.
+    // Even if physics is not ready yet, keep this queued and process later when available.
+    this.pendingDebrisBodies.push({
+      voxels: removed,
+      colors: removedColors,
+      materials: removedMats,
+      impactPos: center,
+      impactDir: { x: 0, y: 1, z: 0 },
+    });
 
     this.pendingEvents.push({
       position: visualCenter,
@@ -484,5 +511,32 @@ export class DestructionManager {
     const zones = this.pendingCrushZones;
     this.pendingCrushZones = [];
     return zones;
+  }
+  
+  /**
+   * Process pending debris body creation requests.
+   * Call this from game loop to create Rapier physics bodies for destroyed voxels.
+   * Returns the IDs of created debris bodies.
+   */
+  processPendingDebrisBodies(): number[] {
+    if (!this.debrisPhysics || this.pendingDebrisBodies.length === 0) {
+      return [];
+    }
+    
+    const createdIds: number[] = [];
+    
+    for (const pending of this.pendingDebrisBodies) {
+      const ids = this.debrisPhysics.spawnDebris(
+        pending.voxels,
+        pending.colors,
+        pending.materials,
+        pending.impactPos,
+        pending.impactDir
+      );
+      createdIds.push(...ids);
+    }
+    
+    this.pendingDebrisBodies = [];
+    return createdIds;
   }
 }

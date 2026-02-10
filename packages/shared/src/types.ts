@@ -191,6 +191,17 @@ export interface GadgetState {
   lifetime: number;
 }
 
+/** Physics debris state for server-authoritative debris sync */
+export interface DebrisState {
+  id: number;
+  position: Vec3;
+  rotation: { x: number; y: number; z: number; w: number };
+  scale: number;
+  color: number;
+  material: number;
+  settled: boolean;
+}
+
 // --- Room / Lobby types ---
 
 /** Server phase for the room lifecycle */
@@ -234,6 +245,7 @@ export type ClientMessage =
   | { type: 'join_room'; name: string; roomCode: string }
   | { type: 'lobby_set_team'; team: number }
   | { type: 'lobby_set_mode'; gameMode: GameMode }
+  | { type: 'lobby_set_map'; mapName: string }
   | { type: 'start_game' }
   | { type: 'return_to_menu' };
 
@@ -242,7 +254,7 @@ export type ServerMessage =
       type: 'welcome';
       id: string;
       team: number;
-      sessionToken: string;
+      sessionToken?: string;
       mapData: ChunkData[];
       palette?: number[];
       waterIndices?: number[];
@@ -272,6 +284,7 @@ export type ServerMessage =
   | { type: 'scoreboard'; players: ScoreboardEntry[] }
   | { type: 'gadgets'; gadgets: GadgetState[] }
   | { type: 'rockets'; rockets: RocketState[] }
+  | { type: 'debris_states'; debris: DebrisState[] }
   | { type: 'enemy_spotted'; positions: Vec3[]; duration: number }
   | { type: 'voxel_update'; changes: { x: number; y: number; z: number; material: number }[] }
   | { type: 'destruction_event'; events: DestructionEvent[] }
@@ -281,7 +294,7 @@ export type ServerMessage =
   | { type: 'room_created'; roomCode: string; playerId: string }
   | { type: 'room_joined'; roomCode: string; playerId: string; hostId: string }
   | { type: 'room_error'; message: string }
-  | { type: 'lobby_state'; players: LobbyPlayer[]; gameMode: GameMode; hostId: string; roomCode: string; phase: ServerPhase }
+  | { type: 'lobby_state'; players: LobbyPlayer[]; gameMode: GameMode; hostId: string; roomCode: string; phase: ServerPhase; mapName: string; availableMaps: { id: string; name: string }[] }
   | { type: 'game_starting'; countdown: number }
   | { type: 'return_to_lobby' }
   | { type: 'room_closed' };

@@ -16,7 +16,9 @@ import {
   BLEEDOUT_TIME,
   DOWNED_SPEED_MULT,
   type WeaponStats,
+  PLAYER_WIDTH,
 } from '@clawfield/shared';
+import type { DebrisPhysicsManager } from './debris-physics-manager.js';
 
 /** Queued input from a client */
 export interface QueuedInput {
@@ -153,7 +155,7 @@ export class PlayerSim {
   }
 
   /** Process all queued inputs for this tick */
-  tick(getVoxel: VoxelGetter): void {
+  tick(getVoxel: VoxelGetter, debrisPhysics?: DebrisPhysicsManager): void {
     this.latestInput = null;
 
     // Update reload timer regardless of alive status
@@ -205,6 +207,40 @@ export class PlayerSim {
         this.downed ? qi.dt * DOWNED_SPEED_MULT : qi.dt,
         getVoxel
       );
+      
+      // Check for debris collision if debris physics is enabled
+      if (debrisPhysics) {
+        const height = effectiveInput.crouch ? CROUCH_HEIGHT : PLAYER_HEIGHT;
+        const collision = debrisPhysics.checkPlayerCollision(
+          result.position,
+          PLAYER_WIDTH / 2,
+          height
+        );
+        
+        if (collision.collision && collision.normal) {
+          // Push player back along collision normal
+          const pushDistance = collision.penetration || 0.1;
+          result.position.x += collision.normal.x * pushDistance;
+          result.position.y += collision.normal.y * pushDistance;
+          result.position.z += collision.normal.z * pushDistance;
+          
+          // Zero out velocity in the collision direction
+          const dot = result.velocity.x * collision.normal.x +
+                      result.velocity.y * collision.normal.y +
+                      result.velocity.z * collision.normal.z;
+          if (dot < 0) {
+            result.velocity.x -= dot * collision.normal.x;
+            result.velocity.y -= dot * collision.normal.y;
+            result.velocity.z -= dot * collision.normal.z;
+          }
+
+          // Standing on top of debris counts as grounded
+          if (collision.normal.y > 0.5) {
+            result.grounded = true;
+          }
+        }
+      }
+      
       this.position = result.position;
       this.velocity = result.velocity;
       this.grounded = result.grounded;

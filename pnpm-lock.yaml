@@ -60,6 +60,9 @@ importers:
       '@clawfield/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@dimforge/rapier3d-compat':
+        specifier: ^0.19.0
+        version: 0.19.3
       lz4js:
         specifier: ^0.2.0
         version: 0.2.0

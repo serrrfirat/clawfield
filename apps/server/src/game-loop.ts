@@ -53,6 +53,21 @@ import { GadgetManager, type VoxelChange } from './gadget-manager.js';
 import { RocketManager } from './rocket-manager.js';
 import { DestructionManager } from './destruction-manager.js';
 import { SmokeGrenadeManager } from './smoke-grenade-manager.js';
+// Dynamic import — Rapier WASM may not load in all environments (e.g. tsx)
+let DebrisPhysicsManager: typeof import('./debris-physics-manager.js').DebrisPhysicsManager | null = null;
+let initRapier: (() => Promise<void>) | null = null;
+let rapierModuleLoaded = false;
+
+import('./debris-physics-manager.js')
+  .then(m => { 
+    DebrisPhysicsManager = m.DebrisPhysicsManager; 
+    initRapier = m.initRapier;
+    rapierModuleLoaded = true;
+    console.log('[GameLoop] Debris physics module loaded, will initialize on first explosion');
+  })
+  .catch((e) => { 
+    console.warn('[GameLoop] Debris physics unavailable:', e.message);
+  });
 import {
   loadBinaryMap,
   getConfiguredMapName,
@@ -101,6 +116,7 @@ export class GameLoop {
   private gadgetManager = new GadgetManager();
   private rocketManager = new RocketManager();
   private destructionManager!: DestructionManager;
+  private debrisPhysicsManager: import('./debris-physics-manager.js').DebrisPhysicsManager | null = null;
 
   // --- Map palette (hex colors) ---
   private palette: number[] = [];
@@ -140,15 +156,23 @@ export class GameLoop {
   // --- Game over callback ---
   private onGameOverCallback: ((winner: number) => void) | null = null;
 
+  // --- Debris physics initialization tracking ---
+  private debrisPhysicsInitialized = false;
+
+  /** Optional map override from lobby selection */
+  private mapOverride: string | undefined;
+
   constructor(
     network: NetworkServer,
     lobbyPlayers: LobbyPlayerInfo[],
     gameMode: GameMode,
-    onGameOver: (winner: number) => void
+    onGameOver: (winner: number) => void,
+    mapOverride?: string
   ) {
     this.network = network;
     this.gameMode = gameMode;
     this.onGameOverCallback = onGameOver;
+    this.mapOverride = mapOverride;
 
     // Try to load the configured binary map; fall back to test map
     this.loadMap();
@@ -282,7 +306,7 @@ export class GameLoop {
 
   /** Attempt to load a configured binary map; fall back to Oasis, then test map if missing */
   private loadMap(): void {
-    const configuredMap = getConfiguredMapName();
+    const configuredMap = this.mapOverride ?? getConfiguredMapName();
 
     if (this.tryLoadMap(configuredMap)) {
       return;
@@ -299,7 +323,7 @@ export class GameLoop {
       `WARNING: Binary map not found for "${configuredMap}" (and Oasis fallback unavailable), using test map`
     );
     this.generateTestMap();
-    this.destructionManager = new DestructionManager(this.chunks);
+    void this.initializeDebrisPhysics();
     this.mapCapturePoints = DEFAULT_CAPTURE_POINTS.map((cp) => ({
       ...cp,
       position: { ...cp.position },
@@ -308,6 +332,64 @@ export class GameLoop {
     this.mapName = 'test';
     this.mapDisplayName = 'Test';
     this.mapObjectives = [];
+  }
+  
+  /**
+   * Initialize the debris physics system.
+   * Creates the physics manager and links it to the destruction manager.
+   * Returns true if successfully initialized, false if not ready yet.
+   */
+  private async initializeDebrisPhysics(): Promise<boolean> {
+    if (this.debrisPhysicsInitialized) {
+      return true;
+    }
+
+    // Check if module is loaded
+    if (!rapierModuleLoaded || !DebrisPhysicsManager || !initRapier) {
+      // Module not loaded yet - create destruction manager without physics for now
+      if (!this.destructionManager) {
+        this.destructionManager = new DestructionManager(this.chunks, null as any);
+        console.log('⏳ Debris physics module not loaded yet...');
+      }
+      return false;
+    }
+
+    // Cleanup existing if any
+    if (this.debrisPhysicsManager) {
+      this.debrisPhysicsManager.dispose();
+    }
+
+    // Try to create debris physics manager
+    try {
+      // Initialize Rapier WASM first
+      await initRapier();
+      
+      // Now create the physics manager
+      this.debrisPhysicsManager = new DebrisPhysicsManager((x, y, z) =>
+        getVoxel(this.chunks, x, y, z)
+      );
+      
+      // If we already have a destruction manager, just update it with the physics manager
+      // This preserves any pending debris bodies
+      if (this.destructionManager) {
+        this.destructionManager.setDebrisPhysics(this.debrisPhysicsManager);
+        console.log('✓ Debris physics system initialized (linked to existing destruction manager)');
+      } else {
+        this.destructionManager = new DestructionManager(this.chunks, this.debrisPhysicsManager);
+        console.log('✓ Debris physics system initialized');
+      }
+      
+      this.debrisPhysicsInitialized = true;
+      return true;
+    } catch (e) {
+      console.error('✗ Failed to initialize debris physics:', e);
+      this.debrisPhysicsManager = null;
+      if (!this.destructionManager) {
+        this.destructionManager = new DestructionManager(this.chunks, null as any);
+      }
+      this.debrisPhysicsInitialized = true; // Don't keep retrying on error
+      return true;
+    }
   }
 
   private tryLoadMap(mapName: string): boolean {
@@ -318,7 +400,7 @@ export class GameLoop {
     }
 
     this.chunks = mapData.chunks;
-    this.destructionManager = new DestructionManager(this.chunks);
+    void this.initializeDebrisPhysics();
     this.palette = mapData.palette;
     if (mapData.palette.length > 0) {
       loadPalette(mapData.palette);
@@ -915,6 +997,11 @@ export class GameLoop {
     this.tickCount++;
     const now = Date.now();
 
+    // Try to initialize debris physics if not ready yet (dynamic import may have loaded)
+    if (!this.debrisPhysicsInitialized) {
+      void this.initializeDebrisPhysics();
+    }
+
     const voxelGetter = (wx: number, wy: number, wz: number) =>
       getVoxel(this.chunks, wx, wy, wz);
 
@@ -930,7 +1017,7 @@ export class GameLoop {
 
     // Process all player inputs (movement, reload)
     for (const sim of this.players.values()) {
-      sim.tick(voxelGetter);
+      sim.tick(voxelGetter, this.debrisPhysicsManager ?? undefined);
     }
 
     // Reset per-tick firing flag (used for remote gunshot sounds)
@@ -947,6 +1034,16 @@ export class GameLoop {
 
     // Advance pending rubble drops (delayed voxel placement for falling sections)
     this.destructionManager.update(now);
+    
+    // --- Debris Physics Update ---
+    // Process any pending debris bodies from explosions
+    this.destructionManager.processPendingDebrisBodies();
+    
+    // Step debris physics simulation
+    let debrisStates: import('./debris-physics-manager.js').DebrisState[] = [];
+    if (this.debrisPhysicsManager) {
+      debrisStates = this.debrisPhysicsManager.update(TICK_INTERVAL / 1000);
+    }
 
     // Bullet voxel destruction disabled — only explosions destroy terrain for now
 
@@ -1252,6 +1349,14 @@ export class GameLoop {
       this.network.broadcast({
         type: 'gadgets',
         gadgets: gadgetStates,
+      });
+    }
+
+    // Broadcast debris physics states to all clients
+    if (debrisStates.length > 0) {
+      this.network.broadcast({
+        type: 'debris_states',
+        debris: debrisStates,
       });
     }
 

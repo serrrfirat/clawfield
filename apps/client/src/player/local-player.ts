@@ -1,5 +1,16 @@
-import type { Vec3, InputState, PlayerState } from '@clawfield/shared';
-import { movePlayer, clampPitch, SPRINT_FIRE_DELAY, MAT_STONE, MAT_WALL, MAT_ROOF, type VoxelGetter } from '@clawfield/shared';
+import type { Vec3, InputState, PlayerState, DebrisState } from '@clawfield/shared';
+import {
+  movePlayer,
+  clampPitch,
+  SPRINT_FIRE_DELAY,
+  MAT_STONE,
+  MAT_WALL,
+  MAT_ROOF,
+  PLAYER_WIDTH,
+  PLAYER_HEIGHT,
+  CROUCH_HEIGHT,
+  type VoxelGetter,
+} from '@clawfield/shared';
 import { InputCapture } from './input';
 import { CameraController } from './camera-controller';
 import { WeaponController } from './weapon-controller';
@@ -22,6 +33,7 @@ export class LocalPlayer {
   readonly weaponCtrl: WeaponController;
   private cameraCtrl: CameraController;
   private getVoxel: VoxelGetter;
+  private getDebrisStates?: () => DebrisState[];
 
   position: Vec3 = { x: 64, y: 2, z: 64 };
   velocity: Vec3 = { x: 0, y: 0, z: 0 };
@@ -46,6 +58,7 @@ export class LocalPlayer {
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
     getVoxel: VoxelGetter,
+    getDebrisStates: (() => DebrisState[]) | undefined,
     classId: string = 'assault',
     weaponId: string = ''
   ) {
@@ -53,6 +66,7 @@ export class LocalPlayer {
     this.cameraCtrl = new CameraController(camera);
     this.weaponCtrl = new WeaponController(scene, camera, classId, weaponId);
     this.getVoxel = getVoxel;
+    this.getDebrisStates = getDebrisStates;
 
     // Wire up camera shake between weapon controller and camera
     this.weaponCtrl.setCameraShake(this.cameraCtrl.shake);
@@ -118,6 +132,7 @@ export class LocalPlayer {
 
     // Client-side prediction: apply physics locally
     const result = movePlayer(this.position, this.velocity, inputState, dt, this.getVoxel);
+    this.resolveDebrisCollision(result.position, result.velocity, result, inputState.crouch && !inputState.sprint);
     this.position = result.position;
     this.velocity = result.velocity;
     this.grounded = result.grounded;
@@ -200,6 +215,7 @@ export class LocalPlayer {
     // Re-apply unacknowledged inputs
     for (const pending of this.pendingInputs) {
       const result = movePlayer(pos, vel, pending.input, pending.dt, this.getVoxel);
+      this.resolveDebrisCollision(pos, vel, result, pending.input.crouch && !pending.input.sprint);
       pos = result.position;
       vel = result.velocity;
     }
@@ -245,5 +261,75 @@ export class LocalPlayer {
     // Reset weapon state on respawn
     this.weaponCtrl.ammo = this.weaponCtrl.maxAmmo;
     this.weaponCtrl.reloading = false;
+  }
+
+  /** Apply client-side prediction collision against server-authoritative debris */
+  private resolveDebrisCollision(
+    position: Vec3,
+    velocity: Vec3,
+    result: { position: Vec3; velocity: Vec3; grounded: boolean },
+    crouching: boolean
+  ): void {
+    const debrisStates = this.getDebrisStates?.();
+    if (!debrisStates || debrisStates.length === 0) return;
+
+    const playerRadius = PLAYER_WIDTH * 0.5;
+    const playerHeight = crouching ? CROUCH_HEIGHT : PLAYER_HEIGHT;
+
+    // Iterate a few times to resolve stacked overlaps
+    for (let i = 0; i < 3; i++) {
+      let hit = false;
+
+      for (const debris of debrisStates) {
+        const halfSize = debris.scale * 0.5;
+        const playerCenterY = position.y + playerHeight * 0.5;
+        const dx = position.x - debris.position.x;
+        const dy = playerCenterY - debris.position.y;
+        const dz = position.z - debris.position.z;
+
+        const overlapX = playerRadius + halfSize - Math.abs(dx);
+        const overlapY = playerHeight * 0.5 + halfSize - Math.abs(dy);
+        const overlapZ = playerRadius + halfSize - Math.abs(dz);
+
+        if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) continue;
+
+        hit = true;
+        let nx = 0;
+        let ny = 0;
+        let nz = 0;
+        let penetration = overlapY;
+
+        if (overlapX <= overlapY && overlapX <= overlapZ) {
+          nx = dx >= 0 ? 1 : -1;
+          penetration = overlapX;
+        } else if (overlapZ <= overlapX && overlapZ <= overlapY) {
+          nz = dz >= 0 ? 1 : -1;
+          penetration = overlapZ;
+        } else {
+          ny = dy >= 0 ? 1 : -1;
+          penetration = overlapY;
+        }
+
+        const push = penetration + 0.001;
+        position.x += nx * push;
+        position.y += ny * push;
+        position.z += nz * push;
+
+        const dot = velocity.x * nx + velocity.y * ny + velocity.z * nz;
+        if (dot < 0) {
+          velocity.x -= dot * nx;
+          velocity.y -= dot * ny;
+          velocity.z -= dot * nz;
+        }
+        if (ny > 0.5) {
+          result.grounded = true;
+        }
+      }
+
+      if (!hit) break;
+    }
+
+    result.position = position;
+    result.velocity = velocity;
   }
 }

@@ -16,6 +16,7 @@ import { GadgetRenderer } from './combat/gadget-renderer';
 import { ParticleSystem } from './combat/particle-system';
 import { DebrisSystem } from './combat/debris-system';
 import { PhysicsDebrisSystem } from './combat/physics-debris';
+import { ServerDebrisRenderer } from './combat/server-debris-renderer';
 import { SmokeSystem } from './combat/smoke-system';
 
 import { DamageIndicatorSystem } from './hud/damage-indicator';
@@ -101,6 +102,7 @@ const worldRenderer = new WorldRenderer(renderer.scene);
 const particleSystem = new ParticleSystem(renderer.scene);
 const debrisSystem = new DebrisSystem(renderer.scene);
 const physicsDebrisSystem = new PhysicsDebrisSystem(renderer.scene);
+const serverDebrisRenderer = new ServerDebrisRenderer(renderer.scene);
 const projectileRenderer = new ProjectileRenderer(renderer.scene);
 projectileRenderer.setParticleSystem(particleSystem);
 const capturePointRenderer = new CapturePointRenderer(renderer.scene);
@@ -163,7 +165,7 @@ function handleServerMessage(msg: ServerMessage): void {
       gameState.myTeam = msg.team;
       gameState.gameMode = msg.gameMode;
       // Store session token for reconnection
-      network.sessionToken = msg.sessionToken;
+      network.sessionToken = msg.sessionToken ?? null;
       console.log(`Joined as ${gameState.myId} on team ${msg.team} (mode: ${msg.gameMode})`);
 
       // Load palette before building meshes so colors are correct
@@ -387,7 +389,14 @@ function handleServerMessage(msg: ServerMessage): void {
       hud.hideDeath();
       if (!localPlayer) {
         // First spawn — create local player
-        localPlayer = new LocalPlayer(renderer.scene, renderer.camera, voxelGetter, gameState.selectedClass, gameState.selectedWeapon);
+        localPlayer = new LocalPlayer(
+          renderer.scene,
+          renderer.camera,
+          voxelGetter,
+          () => serverDebrisRenderer.getDebrisStates(),
+          gameState.selectedClass,
+          gameState.selectedWeapon
+        );
         localPlayer.weaponCtrl.setParticleSystem(particleSystem);
       } else {
         // Subsequent spawn — update class and weapon
@@ -527,6 +536,12 @@ function handleServerMessage(msg: ServerMessage): void {
       break;
     }
 
+    case 'debris_states': {
+      // Server-authoritative debris positions
+      serverDebrisRenderer.updateFromServer(msg.debris);
+      break;
+    }
+
     case 'enemy_spotted': {
       // Minimap removed — spotted enemies are a no-op for now
       break;
@@ -590,7 +605,7 @@ function handleServerMessage(msg: ServerMessage): void {
     }
 
     case 'lobby_state': {
-      lobbyScreen.update(msg.players, msg.gameMode, msg.hostId, msg.roomCode);
+      lobbyScreen.update(msg.players, msg.gameMode, msg.hostId, msg.roomCode, msg.mapName, msg.availableMaps);
       break;
     }
 
@@ -623,7 +638,8 @@ function handleDestructionEvent(evt: DestructionEvent): void {
   const materialColor = evt.materialColor || 0x888888;
   const r = Math.max(1, evt.radius);
 
-  // ALL destroyed voxels become Rapier physics bodies
+  // Spawn client-side visual debris for effects (particles, motion, etc.)
+  // Note: Server also creates physics bodies for actual collision - these are separate systems
   if (evt.voxels && evt.voxels.length > 0 && evt.voxelColors && evt.voxelColors.length > 0) {
     physicsDebrisSystem.spawn(
       evt.kind,
@@ -963,7 +979,8 @@ function gameLoop(): void {
   // Update particles (dust, sparks) and debris cubes
   particleSystem.update(dt);
   debrisSystem.update(dt);
-  physicsDebrisSystem.update(dt);
+  physicsDebrisSystem.update(dt); // Client-side visual debris (effects only)
+  serverDebrisRenderer.update();
 
   // Update volumetric smoke clouds
   smokeSystem.update(dt);
@@ -1245,6 +1262,7 @@ function resetClientGameState(): void {
   rocketRenderer.updateFromServer([]);
   gadgetRenderer.updateFromServer([]);
   capturePointRenderer.updateFromServer([]);
+  serverDebrisRenderer.updateFromServer([]);
   knownGadgetIds.clear();
 
   // Hide game UI
@@ -1280,6 +1298,9 @@ const lobbyCallbacks = {
   },
   onSetMode: (mode: GameMode) => {
     network.send({ type: 'lobby_set_mode', gameMode: mode });
+  },
+  onSetMap: (mapName: string) => {
+    network.send({ type: 'lobby_set_map', mapName });
   },
   onStartGame: () => {
     network.send({ type: 'start_game' });
