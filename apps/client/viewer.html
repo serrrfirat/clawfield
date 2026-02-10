@@ -41,8 +41,8 @@
   </head>
   <body>
     <div id="top-bar">
-      <button id="file-btn">Open .vobj.json</button>
-      <input id="file-input" type="file" accept=".json" />
+      <button id="file-btn">Open model</button>
+      <input id="file-input" type="file" accept=".json,.map,.vox,.glb,.gltf" />
       <span id="model-name">No model loaded</span>
       <div id="wireframe-toggle">
         <label><input type="checkbox" id="wireframe-cb" /> Wireframe</label>
@@ -53,8 +53,9 @@
       <span id="info-voxels">--</span>
       <span id="info-palette">--</span>
       <span id="info-world">--</span>
+      <span style="margin-left:auto; color:#aaa">[F] fly mode | WASD move | QE up/down | Shift fast | Right-click look</span>
     </div>
-    <div id="drop-overlay">Drop .vobj.json file here</div>
+    <div id="drop-overlay">Drop .vox, .map, .glb, or .vobj.json file here</div>
     <script type="module" src="/src/viewer.ts"></script>
   </body>
 </html>
