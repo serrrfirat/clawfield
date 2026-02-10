@@ -159,6 +159,16 @@ class SoundManager {
     }
   }
 
+  /** Get the AudioContext (for VoIP integration). */
+  getAudioContext(): AudioContext | null {
+    return this.ctx;
+  }
+
+  /** Get the master gain node (for routing VoIP audio through main volume). */
+  getMasterGain(): GainNode | null {
+    return this.masterGain;
+  }
+
   /** Update the listener position and orientation for spatial audio. */
   updateListener(position: Vec3, forward: Vec3, up: Vec3): void {
     if (!this.ctx) return;

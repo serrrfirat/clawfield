@@ -427,3 +427,14 @@ export const REVIVE_HEALTH_MEDIC = 75;
 
 /** Movement speed multiplier for downed players (crawling) */
 export const DOWNED_SPEED_MULT = 0.15;
+
+// --- VoIP proximity constants ---
+
+/** Distance (meters) within which voice is at full volume */
+export const VOICE_FULL_DISTANCE = 10;
+
+/** Distance (meters) beyond which voice is silent */
+export const VOICE_MAX_DISTANCE = 50;
+
+/** How often (in server ticks) to recompute voice proximity */
+export const VOICE_PROXIMITY_TICKS = 5;

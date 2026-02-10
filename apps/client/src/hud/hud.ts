@@ -132,6 +132,9 @@ export class HUD {
   /** Match start time for timer display */
   private matchStartTime = 0;
 
+  // Voice chat indicator
+  private voiceIndicator: HTMLDivElement;
+
   /** Initial ticket count for progress bars (captured on first update) */
   private initialTickets = 0;
 
@@ -266,6 +269,24 @@ export class HUD {
     const centerTick = this.el('div', 'hud-compass-center');
     compassWrap.appendChild(centerTick);
     this.root.appendChild(compassWrap);
+
+    // ── Voice indicator (bottom-center, above crosshair area) ──
+    this.voiceIndicator = this.el('div', 'hud-voice');
+    this.voiceIndicator.textContent = '\u{1F3A4}'; // microphone emoji
+    this.voiceIndicator.style.cssText = `
+      position: fixed;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px;
+      color: #fff;
+      opacity: 0;
+      pointer-events: none;
+      text-shadow: 0 0 6px rgba(0,255,100,0.6);
+      transition: opacity 0.1s;
+      z-index: 100;
+    `;
+    this.root.appendChild(this.voiceIndicator);
 
     // ── Game over ──
     this.gameoverOverlay = this.el('div', 'hud-gameover');
@@ -536,6 +557,21 @@ export class HUD {
       this.revivePrompt.classList.add('visible');
     } else {
       this.revivePrompt.classList.remove('visible');
+    }
+  }
+
+  /** Update the voice indicator (show when local player is speaking). */
+  updateVoice(speaking: boolean, micDenied: boolean): void {
+    if (micDenied) {
+      this.voiceIndicator.textContent = '\u{1F507}'; // muted speaker
+      this.voiceIndicator.style.opacity = '0.5';
+      this.voiceIndicator.style.color = '#f44';
+    } else if (speaking) {
+      this.voiceIndicator.textContent = '\u{1F3A4}'; // microphone
+      this.voiceIndicator.style.opacity = '1';
+      this.voiceIndicator.style.color = '#4f4';
+    } else {
+      this.voiceIndicator.style.opacity = '0';
     }
   }
 

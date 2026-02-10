@@ -224,6 +224,25 @@ export interface SpawnPointOption {
   type: 'base' | 'flag';
 }
 
+/** VoIP signaling data (offer, answer, or ICE candidate) */
+export interface VoipSignalData {
+  type: 'offer' | 'answer' | 'ice';
+  sdp?: string;
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+}
+
+/** Per-peer proximity entry sent by server to each client */
+export interface VoipProximityEntry {
+  /** Player ID of the speaker */
+  peerId: string;
+  /** Gain level 0.0–1.0 based on distance */
+  gain: number;
+  /** Speaker's world position for spatial panning */
+  position: Vec3;
+}
+
 export type ClientMessage =
   | { type: 'join'; name: string; classId: string; gameMode: GameMode }
   | { type: 'rejoin'; sessionToken: string }
@@ -235,7 +254,8 @@ export type ClientMessage =
   | { type: 'lobby_set_team'; team: number }
   | { type: 'lobby_set_mode'; gameMode: GameMode }
   | { type: 'start_game' }
-  | { type: 'return_to_menu' };
+  | { type: 'return_to_menu' }
+  | { type: 'voip_signal'; targetId: string; signal: VoipSignalData };
 
 export type ServerMessage =
   | {
@@ -284,4 +304,6 @@ export type ServerMessage =
   | { type: 'lobby_state'; players: LobbyPlayer[]; gameMode: GameMode; hostId: string; roomCode: string; phase: ServerPhase }
   | { type: 'game_starting'; countdown: number }
   | { type: 'return_to_lobby' }
-  | { type: 'room_closed' };
+  | { type: 'room_closed' }
+  | { type: 'voip_signal'; fromId: string; signal: VoipSignalData }
+  | { type: 'voip_proximity'; peers: VoipProximityEntry[] };

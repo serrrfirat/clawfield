@@ -53,6 +53,7 @@ import { GadgetManager, type VoxelChange } from './gadget-manager.js';
 import { RocketManager } from './rocket-manager.js';
 import { DestructionManager } from './destruction-manager.js';
 import { SmokeGrenadeManager } from './smoke-grenade-manager.js';
+import { VoipManager } from './voip-manager.js';
 import {
   loadBinaryMap,
   getConfiguredMapName,
@@ -133,6 +134,9 @@ export class GameLoop {
 
   // --- Game mode ---
   private gameMode: GameMode = 'tdm';
+
+  // --- VoIP proximity manager (set externally by RoomManager) ---
+  voipManager: VoipManager | null = null;
 
   // --- Tick timer reference ---
   private tickTimer: ReturnType<typeof setInterval> | null = null;
@@ -816,6 +820,11 @@ export class GameLoop {
     // Clean up chunk streaming state
     this.sentChunks.delete(client.id);
 
+    // Clean up VoIP proximity tracking for this player
+    if (this.voipManager) {
+      this.voipManager.removePlayer(client.id);
+    }
+
     this.network.broadcast({
       type: 'player_left',
       id: client.id,
@@ -1195,6 +1204,11 @@ export class GameLoop {
     // Clean up stale disconnected sessions periodically
     if (this.tickCount % SESSION_CLEANUP_INTERVAL === 0) {
       this.cleanupStaleSessions(now);
+    }
+
+    // Update VoIP proximity routing (runs at its own interval internally)
+    if (this.voipManager) {
+      this.voipManager.updateProximity(this.players);
     }
 
     // Build state snapshot (exclude disconnected players)

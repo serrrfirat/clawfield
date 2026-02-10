@@ -2,6 +2,7 @@ import type { ClientMessage, GameMode, ServerPhase, LobbyPlayer } from '@clawfie
 import { Team } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
 import { GameLoop, type LobbyPlayerInfo } from './game-loop.js';
+import { VoipManager } from './voip-manager.js';
 
 /** Maximum players per room */
 const MAX_PLAYERS = 10;
@@ -34,6 +35,7 @@ export class RoomManager {
   private roomPlayers = new Map<string, RoomPlayer>();
   private gameMode: GameMode = 'tdm';
   private gameLoop: GameLoop | null = null;
+  private voipManager: VoipManager | null = null;
   private postGameTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(port: number) {
@@ -97,6 +99,11 @@ export class RoomManager {
       // These message types are handled by the game loop
       if (msg.type === 'input' || msg.type === 'select_class' || msg.type === 'deploy') {
         this.gameLoop.handleMessage(client, msg);
+        return;
+      }
+      // VoIP signaling: relay to the target peer
+      if (msg.type === 'voip_signal' && this.voipManager) {
+        this.voipManager.relaySignal(client, msg.targetId, msg.signal);
         return;
       }
     }
@@ -282,6 +289,9 @@ export class RoomManager {
     // Broadcast game starting (clients can show a brief countdown)
     this.network.broadcast({ type: 'game_starting', countdown: 0 });
 
+    // Create VoIP manager for proximity voice chat
+    this.voipManager = new VoipManager(this.network);
+
     // Create game loop with current players
     this.gameLoop = new GameLoop(
       this.network,
@@ -289,6 +299,9 @@ export class RoomManager {
       this.gameMode,
       (winner) => this.onGameOver(winner)
     );
+
+    // Wire VoIP proximity updates into the game loop
+    this.gameLoop.voipManager = this.voipManager;
   }
 
   private onGameOver(winner: number): void {
@@ -317,6 +330,10 @@ export class RoomManager {
     if (this.gameLoop) {
       this.gameLoop.destroy();
       this.gameLoop = null;
+    }
+    if (this.voipManager) {
+      this.voipManager.destroy();
+      this.voipManager = null;
     }
     if (this.postGameTimer) {
       clearTimeout(this.postGameTimer);

@@ -30,6 +30,7 @@ import { RadialMenu } from './hud/radial-menu';
 import { GrenadeRadialMenu } from './hud/grenade-radial-menu';
 import { CoverPreview } from './combat/cover-preview';
 import { SoundId } from './audio/sound-manager';
+import { VoipClient } from './audio/voip-client';
 import { VoxelObjectRenderer } from './voxel/voxel-object-renderer';
 import { WeatherManager } from './weather/weather-manager';
 import type { WeatherState } from './weather/weather-manager';
@@ -70,6 +71,7 @@ export const gameState = {
 let chunks = new Map<string, Uint8Array>();
 let localPlayer: LocalPlayer | null = null;
 const remotePlayers = new Map<string, RemotePlayer>();
+let voipClient: VoipClient | null = null;
 
 /** Map weapon display name → SoundId for remote gunshot audio */
 const REMOTE_WEAPON_SOUND: Record<string, SoundId> = {
@@ -196,6 +198,19 @@ function handleServerMessage(msg: ServerMessage): void {
 
       // Tell projectile renderer which player is local (skip our own server projectiles)
       projectileRenderer.setLocalPlayerId(msg.id);
+
+      // Initialize VoIP proximity chat
+      {
+        const audioCtx = soundManager.getAudioContext();
+        const masterGainNode = soundManager.getMasterGain();
+        if (audioCtx && masterGainNode) {
+          voipClient = new VoipClient(network, audioCtx, masterGainNode, msg.id);
+          voipClient.init().catch(err => {
+            console.warn('VoIP init failed:', err);
+          });
+        }
+      }
+
       // Player starts in deploy screen — local player created on first deploy
       break;
     }
@@ -204,6 +219,8 @@ function handleServerMessage(msg: ServerMessage): void {
       if (msg.id !== gameState.myId && !remotePlayers.has(msg.id)) {
         const remote = new RemotePlayer(msg.id, msg.name, renderer.scene, msg.team);
         remotePlayers.set(msg.id, remote);
+        // Initiate VoIP peer connection
+        voipClient?.connectToPeer(msg.id);
         console.log(`Player joined: ${msg.name} (team ${msg.team})`);
       }
       break;
@@ -214,6 +231,8 @@ function handleServerMessage(msg: ServerMessage): void {
       if (remote) {
         remote.dispose(renderer.scene);
         remotePlayers.delete(msg.id);
+        // Clean up VoIP peer connection
+        voipClient?.disconnectPeer(msg.id);
         console.log(`Player left: ${msg.id}`);
       }
       break;
@@ -244,6 +263,8 @@ function handleServerMessage(msg: ServerMessage): void {
               playerState.team
             );
             remotePlayers.set(playerState.id, remote);
+            // Initiate VoIP peer connection for newly discovered player
+            voipClient?.connectToPeer(playerState.id);
           }
           remote.pushState(playerState);
         }
@@ -613,6 +634,16 @@ function handleServerMessage(msg: ServerMessage): void {
       mainMenu.show(onMainMenuChoice);
       mainMenu.showError('Room was closed by the host.');
       console.log('Room closed');
+      break;
+    }
+
+    case 'voip_signal': {
+      voipClient?.handleSignal(msg.fromId, msg.signal);
+      break;
+    }
+
+    case 'voip_proximity': {
+      voipClient?.updateProximity(msg.peers);
       break;
     }
   }
@@ -1107,6 +1138,9 @@ function gameLoop(): void {
     playerYaw,
   });
 
+  // Update voice indicator
+  hud.updateVoice(voipClient?.speaking ?? false, voipClient?.micDenied ?? false);
+
   // Update damage indicators
   damageIndicator.update(dt);
 
@@ -1226,6 +1260,12 @@ function showDeployScreen(spawns: SpawnPointOption[]): void {
 
 /** Reset all client-side game state for returning to lobby */
 function resetClientGameState(): void {
+  // Clean up VoIP connections
+  if (voipClient) {
+    voipClient.destroy();
+    voipClient = null;
+  }
+
   // Clear local player reference (no dispose method — GC will clean up)
   localPlayer = null;
 
