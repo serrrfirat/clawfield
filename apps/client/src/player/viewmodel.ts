@@ -338,6 +338,64 @@ function buildDMR(): WeaponModelParts {
   };
 }
 
+function buildRocketLauncher(): WeaponModelParts {
+  const meshes: THREE.Mesh[] = [];
+  // Main tube (wide bore)
+  meshes.push(cylinder(0.04, 0.04, 0.55, COL.olive, 0, 0, -0.1));
+  // Front flare / blast shield
+  meshes.push(cylinder(0.045, 0.04, 0.06, COL.darkSteel, 0, 0, -0.4));
+  // Rear exhaust bell
+  meshes.push(cylinder(0.04, 0.048, 0.06, COL.darkSteel, 0, 0, 0.19));
+  // Pistol grip
+  meshes.push(box(0.04, 0.08, 0.04, COL.darkBrown, 0, -0.06, 0.05));
+  // Forward grip
+  meshes.push(box(0.035, 0.06, 0.03, COL.darkBrown, 0, -0.05, -0.15));
+  // Trigger guard
+  meshes.push(box(0.035, 0.015, 0.06, COL.gunmetal, 0, -0.04, 0.05));
+  // Iron sight post
+  meshes.push(box(0.01, 0.025, 0.01, COL.darkSteel, 0, 0.05, -0.25));
+  // Rear sight notch
+  meshes.push(box(0.02, 0.02, 0.01, COL.darkSteel, 0, 0.05, 0.0));
+
+  return {
+    meshes,
+    mountPoints: {
+      sight: new THREE.Vector3(0, 0.06, -0.1),
+      barrel: new THREE.Vector3(0, 0, -0.45),
+    },
+    recoilScale: 2.0,
+    recoilDuration: 0.2,
+  };
+}
+
+function buildPistol(): WeaponModelParts {
+  const meshes: THREE.Mesh[] = [];
+  // Slide
+  meshes.push(box(0.05, 0.04, 0.18, COL.darkSteel, 0, 0.01, -0.02));
+  // Frame / lower receiver
+  meshes.push(box(0.045, 0.03, 0.14, COL.gunmetal, 0, -0.02, 0));
+  // Grip
+  meshes.push(box(0.04, 0.07, 0.04, COL.darkBrown, 0, -0.06, 0.04));
+  // Trigger guard
+  meshes.push(box(0.03, 0.015, 0.05, COL.gunmetal, 0, -0.04, 0.01));
+  // Barrel (short)
+  meshes.push(cylinder(0.008, 0.008, 0.1, COL.darkSteel, 0, 0.01, -0.14));
+  // Front sight post
+  meshes.push(box(0.008, 0.015, 0.006, COL.black, 0, 0.035, -0.09));
+  // Rear sight notch
+  meshes.push(box(0.02, 0.012, 0.006, COL.black, 0, 0.035, 0.05));
+
+  return {
+    meshes,
+    mountPoints: {
+      sight: new THREE.Vector3(0, 0.04, -0.02),
+      barrel: new THREE.Vector3(0, 0.01, -0.2),
+    },
+    recoilScale: 1.0,
+    recoilDuration: 0.1,
+  };
+}
+
 // ── Weapon model factory ───────────────────────────────────────────
 
 const MODEL_BUILDERS: Record<WeaponId, () => WeaponModelParts> = {
@@ -349,29 +407,89 @@ const MODEL_BUILDERS: Record<WeaponId, () => WeaponModelParts> = {
   [WeaponId.PDW]: buildPDW,
   [WeaponId.SniperRifle]: buildSniperRifle,
   [WeaponId.DMR]: buildDMR,
+  [WeaponId.Pistol]: buildPistol,
+  [WeaponId.RocketLauncher]: buildRocketLauncher,
 };
 
 // ── Attachment model builders ──────────────────────────────────────
 
 function buildRedDot(): THREE.Group {
   const g = new THREE.Group();
-  // Mount base
-  g.add(box(0.025, 0.015, 0.03, COL.darkSteel, 0, 0, 0));
-  // Housing
-  g.add(box(0.022, 0.025, 0.04, COL.black, 0, 0.02, 0));
-  // Lens (front & rear openings)
-  g.add(box(0.018, 0.018, 0.002, COL.sightRed, 0, 0.022, -0.018));
+  const glowRed = new THREE.MeshBasicMaterial({ color: 0xff1100 });
+
+  // Rail mount clamp
+  g.add(box(0.028, 0.01, 0.025, COL.darkSteel, 0, 0, 0));
+  // Mount riser
+  g.add(box(0.022, 0.008, 0.02, COL.darkSteel, 0, 0.009, 0));
+
+  // Sight body — tube housing
+  const tube = cylinder(0.013, 0.013, 0.045, COL.black, 0, 0.026, 0, 12);
+  tube.rotation.x = Math.PI / 2;
+  g.add(tube);
+
+  // Front lens ring
+  const frontRing = cylinder(0.015, 0.015, 0.004, COL.darkSteel, 0, 0.026, -0.022, 12);
+  frontRing.rotation.x = Math.PI / 2;
+  g.add(frontRing);
+
+  // Rear lens ring
+  const rearRing = cylinder(0.015, 0.015, 0.004, COL.darkSteel, 0, 0.026, 0.022, 12);
+  rearRing.rotation.x = Math.PI / 2;
+  g.add(rearRing);
+
+  // Brightness dial on top
+  g.add(box(0.008, 0.006, 0.008, COL.chrome, 0, 0.04, 0.005));
+
+  // Glowing red dot reticle (emissive, always visible)
+  const dotGeo = new THREE.SphereGeometry(0.002, 8, 8);
+  const dot = new THREE.Mesh(dotGeo, glowRed);
+  dot.position.set(0, 0.026, -0.01);
+  g.add(dot);
+
   return g;
 }
 
 function buildHolographic(): THREE.Group {
   const g = new THREE.Group();
-  // Wide rectangular housing
-  g.add(box(0.035, 0.028, 0.045, COL.black, 0, 0.018, 0));
-  // Hood (top protection)
-  g.add(box(0.038, 0.005, 0.048, COL.darkSteel, 0, 0.035, 0));
-  // Reticle window
-  g.add(box(0.028, 0.02, 0.002, COL.sightGreen, 0, 0.02, -0.022));
+  const glowGreen = new THREE.MeshBasicMaterial({ color: 0x22ff44 });
+
+  // Rail mount
+  g.add(box(0.032, 0.01, 0.03, COL.darkSteel, 0, 0, 0));
+
+  // Main housing — wider rectangular body
+  g.add(box(0.034, 0.03, 0.05, COL.black, 0, 0.022, 0));
+
+  // Top hood / protective shroud
+  g.add(box(0.038, 0.004, 0.055, COL.darkSteel, 0, 0.04, 0));
+  // Side walls
+  g.add(box(0.004, 0.028, 0.052, COL.darkSteel, 0.019, 0.022, 0));
+  g.add(box(0.004, 0.028, 0.052, COL.darkSteel, -0.019, 0.022, 0));
+
+  // Rear window frame (what you look through)
+  g.add(box(0.03, 0.025, 0.003, COL.darkSteel, 0, 0.022, 0.025));
+  // Cut out the center by overlapping with dark interior
+  g.add(box(0.022, 0.018, 0.004, COL.black, 0, 0.024, 0.025));
+
+  // Front window
+  g.add(box(0.03, 0.025, 0.003, COL.darkSteel, 0, 0.022, -0.025));
+
+  // Buttons on the side
+  g.add(box(0.005, 0.005, 0.008, COL.chrome, -0.02, 0.028, 0.01));
+  g.add(box(0.005, 0.005, 0.008, COL.chrome, -0.02, 0.028, -0.005));
+
+  // Glowing reticle circle (emissive ring + center dot)
+  // Center dot
+  const dotGeo = new THREE.SphereGeometry(0.002, 8, 8);
+  const dot = new THREE.Mesh(dotGeo, glowGreen);
+  dot.position.set(0, 0.024, -0.005);
+  g.add(dot);
+
+  // Reticle ring (torus)
+  const ringGeo = new THREE.TorusGeometry(0.007, 0.001, 6, 16);
+  const ring = new THREE.Mesh(ringGeo, glowGreen);
+  ring.position.set(0, 0.024, -0.005);
+  g.add(ring);
+
   return g;
 }
 
@@ -577,6 +695,13 @@ export class Viewmodel {
   /** Hands group (procedural forearms/hands) */
   private handsGroup: THREE.Group;
 
+  /** ADS (aim down sights) state — 0 = hip, 1 = fully aimed */
+  private adsAmount = 0;
+  private wantsAds = false;
+
+  /** ADS position: weapon centered with sight at screen center */
+  private readonly adsPosition = new THREE.Vector3(0, -0.18, -0.4);
+
   constructor(camera: THREE.PerspectiveCamera) {
     this.group = new THREE.Group();
     this.weaponGroup = new THREE.Group();
@@ -665,6 +790,11 @@ export class Viewmodel {
     this.isSprinting = sprinting;
   }
 
+  /** Set ADS amount (0 = hip fire, 1 = fully aimed) */
+  setAdsAmount(amount: number): void {
+    this.adsAmount = amount;
+  }
+
   /** Build the 3D model for a given weapon */
   private buildWeapon(weaponId: WeaponId): void {
     // Clear existing weapon meshes
@@ -745,50 +875,54 @@ export class Viewmodel {
   }
 
   /**
-   * Animate recoil, idle sway, and walk bob each frame.
+   * Animate recoil, idle sway, walk bob, and ADS each frame.
    *
    * BattleBit-style: sharp snap back with asymmetric timing.
-   * Idle sway: gentle figure-8 breathing motion.
-   * Walk bob: rhythmic side-to-side and up-down bounce.
+   * Idle sway: gentle figure-8 breathing motion (suppressed when ADS).
+   * Walk bob: rhythmic bounce (suppressed when ADS).
+   * ADS: smooth lerp to centered sight position.
    */
   update(dt: number): void {
-    // ── Idle sway (always ticking) ──
-    this.swayTime += dt;
-    // Figure-8 breathing pattern using Lissajous curves
-    const idleSwayX = Math.sin(this.swayTime * 1.2) * 0.003;
-    const idleSwayY = Math.sin(this.swayTime * 0.8) * 0.002;
-    const idleRotX = Math.sin(this.swayTime * 0.9) * 0.004;
-    const idleRotY = Math.sin(this.swayTime * 1.1) * 0.003;
+    const ads = this.adsAmount;
+    const hipFactor = 1 - ads; // how much hip-fire motion to apply
 
-    // ── Walk bob ──
+    // ── Base position: lerp between hip and ADS ──
+    const baseX = this.restPosition.x + (this.adsPosition.x - this.restPosition.x) * ads;
+    const baseY = this.restPosition.y + (this.adsPosition.y - this.restPosition.y) * ads;
+    const baseZ = this.restPosition.z + (this.adsPosition.z - this.restPosition.z) * ads;
+
+    // ── Idle sway (suppressed when ADS) ──
+    this.swayTime += dt;
+    const idleSwayX = Math.sin(this.swayTime * 1.2) * 0.003 * hipFactor;
+    const idleSwayY = Math.sin(this.swayTime * 0.8) * 0.002 * hipFactor;
+    const idleRotX = Math.sin(this.swayTime * 0.9) * 0.004 * hipFactor;
+    const idleRotY = Math.sin(this.swayTime * 1.1) * 0.003 * hipFactor;
+
+    // ── Walk bob (suppressed when ADS) ──
     if (this.isMoving) {
       const bobSpeed = this.isSprinting ? 14 : 9;
       this.bobTime += dt * bobSpeed;
     }
-    // Smooth bob targets (decays when stopped)
     const bobIntensity = this.isMoving ? (this.isSprinting ? 1.4 : 1.0) : 0;
-    const targetBobX = Math.sin(this.bobTime) * 0.012 * bobIntensity;
-    const targetBobY = Math.abs(Math.sin(this.bobTime * 2)) * 0.008 * bobIntensity;
-    // Smooth interpolation for natural start/stop
+    const targetBobX = Math.sin(this.bobTime) * 0.012 * bobIntensity * hipFactor;
+    const targetBobY = Math.abs(Math.sin(this.bobTime * 2)) * 0.008 * bobIntensity * hipFactor;
     const bobLerp = this.isMoving ? 8 : 5;
     this.smoothBobX += (targetBobX - this.smoothBobX) * Math.min(1, bobLerp * dt);
     this.smoothBobY += (targetBobY - this.smoothBobY) * Math.min(1, bobLerp * dt);
 
-    // Walk bob rotation (slight tilt as you step)
-    const bobRotZ = this.smoothBobX * 0.8;  // roll with bob
-    const bobRotX = this.smoothBobY * 0.3;  // slight pitch with bounce
+    const bobRotZ = this.smoothBobX * 0.8 * hipFactor;
+    const bobRotX = this.smoothBobY * 0.3 * hipFactor;
 
-    // Decay visual recoil smoothly (always runs, even when not in recoil animation)
+    // Decay visual recoil smoothly
     const recoverySpeed = 8;
     this.visualRecoilPitch += (0 - this.visualRecoilPitch) * Math.min(1, recoverySpeed * dt);
     this.visualRecoilYaw += (0 - this.visualRecoilYaw) * Math.min(1, recoverySpeed * dt);
 
     if (!this.inRecoil) {
-      // Combine idle sway + walk bob + visual recoil drift
       this.group.position.set(
-        this.restPosition.x + idleSwayX + this.smoothBobX + this.visualRecoilYaw * 0.3,
-        this.restPosition.y + idleSwayY + this.smoothBobY,
-        this.restPosition.z,
+        baseX + idleSwayX + this.smoothBobX + this.visualRecoilYaw * 0.3,
+        baseY + idleSwayY + this.smoothBobY,
+        baseZ,
       );
       this.group.rotation.set(
         this.visualRecoilPitch + idleRotX + bobRotX,
@@ -801,7 +935,6 @@ export class Viewmodel {
     this.recoilTime += dt;
     const t = Math.min(this.recoilTime / this.recoilDuration, 1);
 
-    // Asymmetric kick curve: fast snap (0-0.3), slow return (0.3-1.0)
     let kickAmount: number;
     if (t < 0.3) {
       const tSnap = t / 0.3;
@@ -811,17 +944,16 @@ export class Viewmodel {
       kickAmount = 1 - tReturn * tReturn;
     }
 
-    const kick = kickAmount * this.recoilScale;
+    // Recoil is slightly reduced when ADS for better control feel
+    const kick = kickAmount * this.recoilScale * (1 - ads * 0.3);
 
-    // Position kick + sway + bob
     const sideKick = Math.sin(this.shotCount * 2.1) * kick * 0.008;
     this.group.position.set(
-      this.restPosition.x + sideKick + idleSwayX + this.smoothBobX + this.visualRecoilYaw * 0.3,
-      this.restPosition.y + kick * 0.025 + idleSwayY + this.smoothBobY,
-      this.restPosition.z + kick * 0.12,
+      baseX + sideKick + idleSwayX + this.smoothBobX + this.visualRecoilYaw * 0.3,
+      baseY + kick * 0.025 + idleSwayY + this.smoothBobY,
+      baseZ + kick * 0.12,
     );
 
-    // Rotation kick + sway + bob
     const rollKick = Math.sin(this.shotCount * 1.7) * kick * 0.015;
     this.group.rotation.set(
       -kick * 0.1 + this.visualRecoilPitch + idleRotX + bobRotX,
@@ -881,6 +1013,7 @@ export class Viewmodel {
   dispose(): void {
     this.clearAttachments();
     this.clearWeaponGroup();
+
     if (this.group.parent) {
       this.group.parent.remove(this.group);
     }

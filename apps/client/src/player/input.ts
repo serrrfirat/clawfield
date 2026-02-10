@@ -42,8 +42,23 @@ export class InputCapture {
   /** Accumulated mouse delta X while radial menu is open */
   private radialDeltaX = 0;
 
+  /** Timestamp when G key was pressed (for long-press detection) */
+  private gKeyDownTime = 0;
+
+  /** Whether the grenade radial menu is currently open */
+  private _grenadeRadialMenuOpen = false;
+
+  /** Currently selected grenade index (0 = frag, 1 = smoke) */
+  selectedGrenadeIndex = 0;
+
+  /** Accumulated mouse delta X while grenade radial menu is open */
+  private grenadeRadialDeltaX = 0;
+
   /** Whether the scoreboard is visible (Tab held) */
   scoreboardVisible = false;
+
+  /** Currently selected weapon slot (0 = primary, 1 = secondary, 2 = special) */
+  weaponSlot = 0;
 
   /** Whether input is disabled (e.g. player is dead) */
   disabled = false;
@@ -59,11 +74,20 @@ export class InputCapture {
       if (e.code === 'KeyR') {
         this.reloadPressed = true;
       }
-      if (e.code === 'KeyG') {
-        this.grenadePressed = true;
+      if (e.code === 'KeyG' && !e.repeat) {
+        this.gKeyDownTime = performance.now();
       }
       if (e.code === 'KeyF' && !e.repeat) {
         this.fKeyDownTime = performance.now();
+      }
+      if (e.code === 'Digit1' && !e.repeat) {
+        this.weaponSlot = 0;
+      }
+      if (e.code === 'Digit2' && !e.repeat) {
+        this.weaponSlot = 1;
+      }
+      if (e.code === 'Digit3' && !e.repeat) {
+        this.weaponSlot = 2;
       }
       if (e.code === 'Tab') {
         e.preventDefault();
@@ -96,6 +120,17 @@ export class InputCapture {
         }
         // If held >= 200ms but radial not open, do nothing (menu was just opened in consume)
       }
+      if (e.code === 'KeyG') {
+        const held = performance.now() - this.gKeyDownTime;
+        if (this._grenadeRadialMenuOpen) {
+          // Closing grenade radial — confirm selection
+          this._grenadeRadialMenuOpen = false;
+          this.grenadeRadialDeltaX = 0;
+        } else if (held < 200) {
+          // Quick tap — throw grenade
+          this.grenadePressed = true;
+        }
+      }
     });
 
     document.addEventListener('mousedown', (e) => {
@@ -125,6 +160,8 @@ export class InputCapture {
       if (!this._locked) return;
       if (this._radialMenuOpen) {
         this.radialDeltaX += e.movementX;
+      } else if (this._grenadeRadialMenuOpen) {
+        this.grenadeRadialDeltaX += e.movementX;
       } else {
         this.mouseDeltaX += e.movementX;
         this.mouseDeltaY += e.movementY;
@@ -199,6 +236,24 @@ export class InputCapture {
       }
     }
 
+    // Check if G key is being held long enough for grenade radial menu
+    if (this.keys.has('KeyG') && this.gKeyDownTime > 0) {
+      const held = performance.now() - this.gKeyDownTime;
+      if (held >= 200 && !this._grenadeRadialMenuOpen) {
+        this._grenadeRadialMenuOpen = true;
+        this.grenadeRadialDeltaX = 0;
+      }
+    }
+
+    // Update grenade selection from accumulated mouse delta when grenade radial is open
+    if (this._grenadeRadialMenuOpen) {
+      if (this.grenadeRadialDeltaX > 30) {
+        this.selectedGrenadeIndex = 1;
+      } else if (this.grenadeRadialDeltaX < -30) {
+        this.selectedGrenadeIndex = 0;
+      }
+    }
+
     // If disabled (dead), zero out all action inputs
     if (this.disabled) {
       return {
@@ -214,8 +269,10 @@ export class InputCapture {
         throwGrenade: false,
         useGadget: false,
         gadgetIndex: this.selectedGadgetIndex,
+        grenadeIndex: this.selectedGrenadeIndex,
         scope: false,
         interact: false,
+        weaponSlot: this.weaponSlot,
         yaw: this.yaw,
         pitch: this.pitch,
       };
@@ -230,15 +287,18 @@ export class InputCapture {
       left: this.keys.has('KeyA'),
       right: this.keys.has('KeyD'),
       jump: this.keys.has('Space'),
-      shoot: this._radialMenuOpen ? false : this.mouseDown,
+      shoot: (this._radialMenuOpen || this._grenadeRadialMenuOpen) ? false : (this.mouseDown ||
+        (this.rightMouseDown && (this.keys.has('AltLeft') || this.keys.has('AltRight')))),
       reload,
       sprint,
       crouch: sprint ? false : crouch, // mutually exclusive
       throwGrenade,
       useGadget,
       gadgetIndex: this.selectedGadgetIndex,
+      grenadeIndex: this.selectedGrenadeIndex,
       scope: this.rightMouseDown,
       interact: this.keys.has('KeyE'),
+      weaponSlot: this.weaponSlot,
       yaw: this.yaw,
       pitch: this.pitch,
     };
@@ -247,5 +307,10 @@ export class InputCapture {
   /** Whether the radial gadget menu is currently open */
   get radialMenuOpen(): boolean {
     return this._radialMenuOpen;
+  }
+
+  /** Whether the grenade radial menu is currently open */
+  get grenadeRadialMenuOpen(): boolean {
+    return this._grenadeRadialMenuOpen;
   }
 }

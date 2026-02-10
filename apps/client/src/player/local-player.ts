@@ -26,6 +26,7 @@ export class LocalPlayer {
   position: Vec3 = { x: 64, y: 2, z: 64 };
   velocity: Vec3 = { x: 0, y: 0, z: 0 };
   grounded = false;
+  climbing = false;
   alive = true;
 
   /** Time since sprint was released; prevents firing until delay elapses */
@@ -95,12 +96,14 @@ export class LocalPlayer {
     }
 
     // Sprint prevents firing (with 0.2s delay after releasing sprint)
+    // Climbing also prevents firing (hands are occupied)
     const canFireFromSprint = !isSprinting && this.sprintFireTimer <= 0;
+    const canFire = canFireFromSprint && !this.climbing;
 
     // Gate shoot input through weapon controller (fire rate, ammo)
     // Track firing state for recoil recovery system
-    this.weaponCtrl.setFiring(inputState.shoot && canFireFromSprint);
-    if (inputState.shoot && canFireFromSprint && this.weaponCtrl.canFire()) {
+    this.weaponCtrl.setFiring(inputState.shoot && canFire);
+    if (inputState.shoot && canFire && this.weaponCtrl.canFire()) {
       this.weaponCtrl.onFire(this.input);
     } else {
       inputState.shoot = false;
@@ -118,6 +121,7 @@ export class LocalPlayer {
     this.position = result.position;
     this.velocity = result.velocity;
     this.grounded = result.grounded;
+    this.climbing = result.climbing;
 
     // --- Footstep sounds based on movement speed ---
     if (this.grounded) {
