@@ -57,6 +57,8 @@ import {
   getDefaultMapPath,
   getChunksInRadius,
   loadMapMetadata,
+  loadObjectDefs,
+  stampObjectsIntoChunks,
 } from './map-loader.js';
 
 /** Eye offset from player feet position */
@@ -100,6 +102,7 @@ export class GameLoop {
   private mapName = 'test';
   private mapDisplayName = 'Test';
   private waterIndices: number[] | undefined;
+  private objectPlacements: import('@clawfield/shared').MapObjectPlacement[] = [];
 
   // --- Team & ticket tracking ---
   private ticketsAlpha = TDM_TICKETS;
@@ -224,6 +227,20 @@ export class GameLoop {
       console.warn(
         `WARNING: No valid metadata found at ${mapMetaPath}; using discovered spawn points`
       );
+    }
+
+    // Load and stamp voxel objects for collision
+    this.objectPlacements = [];
+    if (metadata?.objects && metadata.objects.length > 0) {
+      const defs = loadObjectDefs(metadata.objects);
+      if (defs.size > 0) {
+        const stamped = stampObjectsIntoChunks(this.chunks, defs, metadata.objects);
+        this.objectPlacements = metadata.objects;
+        console.log(
+          `[VoxelObjects] Placed ${metadata.objects.length} objects ` +
+            `(${defs.size} types, ${stamped} collision voxels stamped)`
+        );
+      }
     }
 
     console.log(`${this.mapName} map loaded: ${this.chunks.size} chunks`);
@@ -610,6 +627,7 @@ export class GameLoop {
           waterIndices: this.waterIndices,
           mapName: this.mapDisplayName,
           objectives: this.mapObjectives,
+          objectPlacements: this.objectPlacements.length > 0 ? this.objectPlacements : undefined,
           gameMode: this.gameMode,
         });
 

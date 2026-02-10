@@ -661,40 +661,203 @@ function writeOutput(
 }
 
 // ---------------------------------------------------------------------------
+// Object extraction mode
+// ---------------------------------------------------------------------------
+
+interface VoxelObjectDef {
+  name: string;
+  version: 1;
+  category: string;
+  sizeX: number;
+  sizeY: number;
+  sizeZ: number;
+  voxelSize: number;
+  origin: { x: number; y: number; z: number };
+  palette: number[];
+  voxels: number[];
+}
+
+/**
+ * Extract individual models from a .vox file as .vobj.json files.
+ *
+ * Each model in the scene graph becomes a separate voxel object file
+ * with its own dimensions, palette, and voxel data.
+ */
+function extractObjects(
+  voxFile: VoxFile,
+  outputDir: string,
+  voxelSize: number,
+  category: string
+): void {
+  const { models, palette, nodes } = voxFile;
+
+  // Ensure output directory exists
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  // Convert palette to hex array
+  const hexPalette: number[] = new Array(256);
+  hexPalette[0] = 0; // air
+  for (let i = 1; i < 256; i++) {
+    const c = palette[i];
+    hexPalette[i] = (c.r << 16) | (c.g << 8) | c.b;
+  }
+
+  // Try to get names from scene graph transform nodes
+  const modelNames = new Map<number, string>();
+  for (const [, node] of nodes) {
+    if (node.type === 'nTRN') {
+      const name = node.attributes.get('_name');
+      if (name) {
+        // Walk to find which model this transform references
+        const child = nodes.get(node.childNodeId);
+        if (child?.type === 'nSHP') {
+          for (const m of child.models) {
+            modelNames.set(m.modelId, name);
+          }
+        }
+      }
+    }
+  }
+
+  console.log(`\nExtracting ${models.length} models as voxel objects...`);
+
+  for (let mi = 0; mi < models.length; mi++) {
+    const model = models[mi];
+    if (model.voxels.length === 0) continue;
+
+    // MagicaVoxel coordinate swap:
+    // vox: x=right, y=depth, z=up
+    // game: x=right, y=up, z=depth (negated)
+    // So: vox(sizeX, sizeY, sizeZ) → game(sizeX, sizeZ, sizeY)
+    const gameSizeX = model.sizeX;
+    const gameSizeY = model.sizeZ;  // vox Z (up) → game Y (up)
+    const gameSizeZ = model.sizeY;  // vox Y (depth) → game Z (depth)
+
+    // Build flat voxel array in game coordinates
+    const totalVoxels = gameSizeX * gameSizeY * gameSizeZ;
+    const voxels = new Array<number>(totalVoxels).fill(0);
+
+    for (const v of model.voxels) {
+      // Coordinate swap: vox(x,y,z) → game(x, z, sizeY-1-y)
+      const gx = v.x;
+      const gy = v.z;                       // vox Z → game Y
+      const gz = model.sizeY - 1 - v.y;     // vox Y → game Z (flipped)
+
+      const idx = gx + gy * gameSizeX + gz * gameSizeX * gameSizeY;
+      voxels[idx] = v.colorIndex;
+    }
+
+    // Name: use scene graph name if available, else fallback to model index
+    const baseName = modelNames.get(mi)
+      ?? `model_${mi}`;
+    const safeName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+
+    // Origin at bottom-center of the model
+    const origin = {
+      x: Math.floor(gameSizeX / 2),
+      y: 0,
+      z: Math.floor(gameSizeZ / 2),
+    };
+
+    const objDef: VoxelObjectDef = {
+      name: baseName,
+      version: 1,
+      category,
+      sizeX: gameSizeX,
+      sizeY: gameSizeY,
+      sizeZ: gameSizeZ,
+      voxelSize,
+      origin,
+      palette: hexPalette,
+      voxels,
+    };
+
+    const outPath = path.join(outputDir, `${safeName}.vobj.json`);
+    fs.writeFileSync(outPath, JSON.stringify(objDef), 'utf-8');
+
+    const fileSizeKB = (Buffer.byteLength(JSON.stringify(objDef)) / 1024).toFixed(1);
+    console.log(
+      `  [${mi + 1}/${models.length}] ${safeName}: ` +
+        `${gameSizeX}×${gameSizeY}×${gameSizeZ} ` +
+        `(${model.voxels.length} voxels, ${fileSizeKB} KB)`
+    );
+  }
+
+  console.log(`\nDone! Objects written to ${outputDir}`);
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 function main(): void {
   const args = process.argv.slice(2);
 
-  const inputPath = args[0] ?? 'assets/vox/shoreline_mvp.vox';
-  const outputPrefix = args[1] ?? 'assets/maps/shoreline';
+  // Check for --mode flag
+  const modeIdx = args.indexOf('--mode');
+  const mode = modeIdx !== -1 && args[modeIdx + 1] ? args[modeIdx + 1] : 'terrain';
 
-  // Resolve relative paths from cwd
-  const resolvedInput = path.resolve(inputPath);
-  const resolvedOutput = path.resolve(outputPrefix);
+  if (mode === 'object') {
+    // Object extraction mode
+    const inputIdx = args.indexOf('--input');
+    const outputIdx = args.indexOf('--output-dir');
+    const voxelSizeIdx = args.indexOf('--voxel-size');
+    const categoryIdx = args.indexOf('--category');
 
-  if (!fs.existsSync(resolvedInput)) {
-    console.error(`Error: input file not found: ${resolvedInput}`);
-    process.exit(1);
+    const inputPath = inputIdx !== -1 ? args[inputIdx + 1] : 'assets/vox/shoreline_mvp.vox';
+    const outputDir = outputIdx !== -1 ? args[outputIdx + 1] : 'assets/objects/props';
+    const voxelSize = voxelSizeIdx !== -1 ? parseFloat(args[voxelSizeIdx + 1]) : 0.125;
+    const category = categoryIdx !== -1 ? args[categoryIdx + 1] : 'prop';
+
+    const resolvedInput = path.resolve(inputPath);
+    const resolvedOutput = path.resolve(outputDir);
+
+    if (!fs.existsSync(resolvedInput)) {
+      console.error(`Error: input file not found: ${resolvedInput}`);
+      process.exit(1);
+    }
+
+    console.log('=== Clawfield VOX Converter (Object Mode) ===\n');
+    console.log(`  Input:      ${resolvedInput}`);
+    console.log(`  Output dir: ${resolvedOutput}`);
+    console.log(`  Voxel size: ${voxelSize}m`);
+    console.log(`  Category:   ${category}`);
+
+    const voxFile = parseVox(resolvedInput);
+    extractObjects(voxFile, resolvedOutput, voxelSize, category);
+  } else {
+    // Original terrain chunk mode
+    const inputPath = args[0] ?? 'assets/vox/shoreline_mvp.vox';
+    const outputPrefix = args[1] ?? 'assets/maps/shoreline';
+
+    // Resolve relative paths from cwd
+    const resolvedInput = path.resolve(inputPath);
+    const resolvedOutput = path.resolve(outputPrefix);
+
+    if (!fs.existsSync(resolvedInput)) {
+      console.error(`Error: input file not found: ${resolvedInput}`);
+      process.exit(1);
+    }
+
+    console.log('=== Clawfield VOX Converter ===\n');
+
+    // 1. Parse .vox file
+    const voxFile = parseVox(resolvedInput);
+
+    console.log(`\nModels: ${voxFile.models.length}`);
+
+    // 2. Build scene graph and collect placed models
+    const placedModels = collectPlacedModels(voxFile);
+    console.log(`Placed model instances: ${placedModels.length}`);
+
+    // 3. Build chunk map
+    const chunkMap = buildChunks(voxFile, placedModels);
+
+    // 4. Write output
+    writeOutput(chunkMap, voxFile.palette, resolvedOutput, voxFile.models.length, placedModels.length);
   }
-
-  console.log('=== Clawfield VOX Converter ===\n');
-
-  // 1. Parse .vox file
-  const voxFile = parseVox(resolvedInput);
-
-  console.log(`\nModels: ${voxFile.models.length}`);
-
-  // 2. Build scene graph and collect placed models
-  const placedModels = collectPlacedModels(voxFile);
-  console.log(`Placed model instances: ${placedModels.length}`);
-
-  // 3. Build chunk map
-  const chunkMap = buildChunks(voxFile, placedModels);
-
-  // 4. Write output
-  writeOutput(chunkMap, voxFile.palette, resolvedOutput, voxFile.models.length, placedModels.length);
 }
 
 main();

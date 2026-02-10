@@ -158,8 +158,16 @@ export function greedyMesh(voxels: Uint8Array, waterPass: boolean = false, gridS
   return quads;
 }
 
-/** Convert greedy mesh quads to indexed geometry data (4 verts + 6 indices per quad) */
-export function quadsToGeometryData(quads: MeshQuad[]): {
+/**
+ * Convert greedy mesh quads to indexed geometry data (4 verts + 6 indices per quad).
+ *
+ * @param quads - Output from greedyMesh()
+ * @param paletteOverride - Optional per-object palette (hex colors indexed by material).
+ *   When provided, all quads use the fallback tile and vertex colors come from this
+ *   palette instead of the global MATERIAL_COLORS. Used for voxel objects with their
+ *   own color palettes.
+ */
+export function quadsToGeometryData(quads: MeshQuad[], paletteOverride?: number[]): {
   positions: Float32Array;
   normals: Float32Array;
   colors: Float32Array;
@@ -208,8 +216,9 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
     }
 
     // Use atlas tile texture if the material has one, otherwise fall back to white tile
-    // (which passes palette RGB through via vertex colors)
-    const hasAtlasTile = MATERIAL_TILES[quad.material] !== undefined;
+    // (which passes palette RGB through via vertex colors).
+    // When paletteOverride is provided (voxel objects), always use fallback tile + object palette.
+    const hasAtlasTile = !paletteOverride && MATERIAL_TILES[quad.material] !== undefined;
     const tile = hasAtlasTile ? getTileForFace(quad.material, quad.face) : FALLBACK_TILE;
 
     let sr: number, sg: number, sb: number;
@@ -220,7 +229,7 @@ export function quadsToGeometryData(quads: MeshQuad[]): {
       sb = shade;
     } else {
       // Fallback: palette RGB * shade (atlas samples white tile = neutral)
-      const hex = MATERIAL_COLORS[quad.material] ?? 0xff00ff;
+      const hex = (paletteOverride ? paletteOverride[quad.material] : MATERIAL_COLORS[quad.material]) ?? 0xff00ff;
       sr = ((hex >> 16) & 0xff) / 255 * shade;
       sg = ((hex >> 8) & 0xff) / 255 * shade;
       sb = (hex & 0xff) / 255 * shade;
