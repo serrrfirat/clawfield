@@ -19,7 +19,7 @@ import * as path from 'node:path';
 // CLI argument parsing
 // ---------------------------------------------------------------------------
 
-type Template = 'urban' | 'desert' | 'forest' | 'coastal' | 'industrial';
+type Template = 'urban' | 'desert' | 'forest' | 'coastal' | 'industrial' | 'crossroads';
 type MapSize = 'small' | 'medium' | 'large';
 type TeamLayout = 'symmetric' | 'asymmetric';
 
@@ -37,7 +37,7 @@ function printUsage(): void {
 Usage: npx tsx tools/map-prompt.ts [options]
 
 Options:
-  --template <type>   Map template: urban | desert | forest | coastal | industrial
+  --template <type>   Map template: urban | desert | forest | coastal | industrial | crossroads
   --size <size>       Map size: small (120x120) | medium (200x200) | large (300x300)
   --name <name>       Map display name (quoted if contains spaces)
   --teams <layout>    Team layout: symmetric | asymmetric
@@ -71,7 +71,7 @@ function parseArgs(): CliArgs | null {
   const seedStr = get('--seed');
   const output = get('--output');
 
-  const validTemplates: Template[] = ['urban', 'desert', 'forest', 'coastal', 'industrial'];
+  const validTemplates: Template[] = ['urban', 'desert', 'forest', 'coastal', 'industrial', 'crossroads'];
   const validSizes: MapSize[] = ['small', 'medium', 'large'];
   const validTeams: TeamLayout[] = ['symmetric', 'asymmetric'];
 
@@ -248,6 +248,28 @@ function templatePalette(template: Template): Record<string, PaletteEntry> {
       p.ROAD =        { index: 18, r: 75,  g: 75,  b: 75  };
       p.ROOF_TILE =   { index: 16, r: 120, g: 60,  b: 25  };
       break;
+
+    case 'crossroads':
+      // Urban warfare: dark asphalt, concrete sidewalks, rich greens for parks
+      p.GRASS =         { index: 1,  r: 68,  g: 135, b: 55  };
+      p.DIRT =          { index: 2,  r: 115, g: 88,  b: 52  };
+      p.STONE =         { index: 3,  r: 145, g: 145, b: 145 };
+      p.GRASS_DARK =    { index: 9,  r: 48,  g: 105, b: 38  };
+      p.STONE_DARK =    { index: 10, r: 110, g: 110, b: 110 };
+      p.CONCRETE =      { index: 11, r: 180, g: 180, b: 180 };
+      p.CONCRETE_DARK = { index: 12, r: 145, g: 145, b: 145 };
+      p.WOOD =          { index: 13, r: 135, g: 100, b: 22  };
+      p.WOOD_DARK =     { index: 14, r: 100, g: 74,  b: 18  };
+      p.BRICK =         { index: 15, r: 155, g: 78,  b: 38  };
+      p.ROOF_TILE =     { index: 16, r: 135, g: 65,  b: 22  };
+      p.ROAD =          { index: 18, r: 60,  g: 60,  b: 60  };  // dark asphalt
+      p.WINDOW =        { index: 19, r: 130, g: 200, b: 230 };
+      p.METAL =         { index: 20, r: 105, g: 120, b: 138 };
+      // Add sidewalk and curb colors
+      p.SIDEWALK =      { index: 21, r: 190, g: 185, b: 175 };
+      p.CURB =          { index: 22, r: 165, g: 160, b: 150 };
+      p.ROAD_MARKING =  { index: 23, r: 220, g: 220, b: 200 };
+      break;
   }
 
   return p;
@@ -307,6 +329,14 @@ const BUILDING_COMPONENTS = {
     'oasis/model_279',
     'oasis/model_086',
   ],
+  crossroads: [
+    'craftsman_home', 'colonial_house', 'townhouse', 'ranch_house',
+    'corner_store', 'pharmacy', 'bookstore', 'hardware_store', 'bakery',
+    'diner', 'pizza_place', 'apartment_block_1', 'apartment_block_2',
+    'office_building_1', 'office_building_2', 'bunker', 'watchtower',
+    'spanish_villa', 'suburban_house', 'compact_home', 'modern_house',
+    'laundromat', 'small_shop', 'market', 'deli',
+  ],
 };
 
 const VEHICLE_COMPONENTS = [
@@ -323,6 +353,34 @@ const VEHICLE_COMPONENTS = [
   'vehicles/emergency-police-1/model_000',
   'vehicles/tractor/model_000',
 ];
+
+// Crossroads uses vobj registry IDs for vehicles
+const CROSSROADS_VEHICLE_COMPONENTS = [
+  'sedan_1', 'sedan_2', 'sedan_3', 'sedan_4', 'sedan_5',
+  'taxi', 'city_bus', 'police_car', 'suv_1', 'suv_2',
+  'truck', 'delivery_truck',
+];
+
+// Prop components for crossroads (vobj registry IDs)
+const PROP_COMPONENTS: Record<string, string[]> = {
+  crossroads: [
+    'street_light_1', 'street_light_2', 'street_light_3',
+    'traffic_light_1', 'traffic_light_2',
+    'park_bench', 'park_bench_2', 'park_bench_3',
+    'trash_can', 'dumpster_1',
+    'fire_hydrant', 'bus_stop',
+    'planter_1', 'planter_2',
+    'traffic_cone', 'newsbox_1', 'newsbox_2',
+    'mailbox_1', 'street_sign_1', 'street_sign_2',
+    'shipping_container_1', 'column_1',
+    'fountain', 'statue_1',
+  ],
+};
+
+// Vegetation components (vobj registry IDs)
+const VEGETATION_COMPONENTS: Record<string, string[]> = {
+  crossroads: ['small_tree', 'medium_tree', 'pine_tree'],
+};
 
 // ---------------------------------------------------------------------------
 // Map generation types
@@ -599,12 +657,66 @@ const industrialLayout: LayoutStrategy = {
   },
 };
 
+/** Crossroads: buildings in 4 quadrants around a central intersection, roads kept clear */
+const crossroadsLayout: LayoutStrategy = {
+  generate(rng, count, bounds) {
+    const results: PlacedRect[] = [];
+    const margin = 8;
+    // Road corridors: main roads at x≈0 and z≈0, keep ±10 voxels clear
+    const roadClearance = 12;
+    const perQuadrant = Math.ceil(count / 4);
+
+    // 4 quadrants: NE (+x, +z), NW (-x, +z), SW (-x, -z), SE (+x, -z)
+    const quadrants = [
+      { xMin: roadClearance, xMax: bounds.xMax - 15, zMin: roadClearance, zMax: bounds.zMax - 15 },
+      { xMin: bounds.xMin + 15, xMax: -roadClearance, zMin: roadClearance, zMax: bounds.zMax - 15 },
+      { xMin: bounds.xMin + 15, xMax: -roadClearance, zMin: bounds.zMin + 15, zMax: -roadClearance },
+      { xMin: roadClearance, xMax: bounds.xMax - 15, zMin: bounds.zMin + 15, zMax: -roadClearance },
+    ];
+
+    for (const quad of quadrants) {
+      const quadWidth = quad.xMax - quad.xMin;
+      const quadDepth = quad.zMax - quad.zMin;
+      if (quadWidth < 20 || quadDepth < 20) continue;
+
+      // Grid cells within the quadrant
+      const cellSize = Math.max(18, Math.floor(Math.sqrt((quadWidth * quadDepth * 0.5) / perQuadrant)));
+      const candidates: { x: number; z: number }[] = [];
+      for (let gx = quad.xMin + 3; gx < quad.xMax - 10; gx += cellSize) {
+        for (let gz = quad.zMin + 3; gz < quad.zMax - 10; gz += cellSize) {
+          candidates.push({ x: gx + rng.int(-2, 2), z: gz + rng.int(-2, 2) });
+        }
+      }
+      rng.shuffle(candidates);
+
+      let placed = 0;
+      for (const c of candidates) {
+        if (placed >= perQuadrant) break;
+        const w = rng.int(10, 18);
+        const d = rng.int(8, 16);
+        const rect: PlacedRect = { x: c.x, z: c.z, w, d };
+        if (rect.x + rect.w > quad.xMax) continue;
+        if (rect.z + rect.d > quad.zMax) continue;
+        // Ensure not overlapping road corridors
+        if (rect.x < roadClearance && rect.x + rect.w > -roadClearance) continue;
+        if (rect.z < roadClearance && rect.z + rect.d > -roadClearance) continue;
+        if (isValidPlacement(rect, results, margin)) {
+          results.push(rect);
+          placed++;
+        }
+      }
+    }
+    return results;
+  },
+};
+
 const LAYOUT_STRATEGIES: Record<Template, LayoutStrategy> = {
   urban: urbanLayout,
   desert: desertLayout,
   forest: forestLayout,
   coastal: coastalLayout,
   industrial: industrialLayout,
+  crossroads: crossroadsLayout,
 };
 
 // ---------------------------------------------------------------------------
@@ -623,11 +735,15 @@ function generateBuildingPlacements(
   const components = BUILDING_COMPONENTS[template];
   const rotations = [0, 90, 180, 270];
 
+  const heightFn = template === 'crossroads'
+    ? (x: number, z: number) => estimateHeightCrossroads(x, z, bounds)
+    : (x: number, z: number) => estimateHeight(x, z, seed, bounds);
+
   const placements: Placement[] = rects.map((rect) => {
     const compId = rng.pick(components);
     const centerX = rect.x + Math.floor(rect.w / 2);
     const centerZ = rect.z + Math.floor(rect.d / 2);
-    const y = estimateHeight(centerX, centerZ, seed, bounds);
+    const y = heightFn(centerX, centerZ);
     return {
       componentId: compId,
       position: { x: centerX, y, z: centerZ },
@@ -643,34 +759,232 @@ function generateBuildingPlacements(
 // Vehicle placement generation
 // ---------------------------------------------------------------------------
 
+/** Crossroads height estimate: mostly flat urban terrain */
+function estimateHeightCrossroads(x: number, z: number, bounds: Bounds): number {
+  let h = 3;
+  // Road corridors depressed slightly
+  const inRoadX = Math.abs(x) < 5;
+  const inRoadZ = Math.abs(z) < 5;
+  if (inRoadX || inRoadZ) {
+    h = 2;
+  }
+  // Gentle hills at map corners
+  const cornerDist = Math.min(
+    Math.sqrt((x - bounds.xMax * 0.7) ** 2 + (z - bounds.zMax * 0.7) ** 2),
+    Math.sqrt((x - bounds.xMin * 0.7) ** 2 + (z - bounds.zMin * 0.7) ** 2),
+    Math.sqrt((x - bounds.xMax * 0.7) ** 2 + (z - bounds.zMin * 0.7) ** 2),
+    Math.sqrt((x - bounds.xMin * 0.7) ** 2 + (z - bounds.zMax * 0.7) ** 2),
+  );
+  const cornerInfluence = Math.max(0, 1 - cornerDist / 60);
+  h += cornerInfluence * 3;
+  // Edge drop-off
+  const xEdge = Math.min(Math.abs(x - bounds.xMin), Math.abs(x - bounds.xMax));
+  const zEdge = Math.min(Math.abs(z - bounds.zMin), Math.abs(z - bounds.zMax));
+  const edgeDist = Math.min(xEdge, zEdge);
+  if (edgeDist < 10) {
+    h = h * (edgeDist / 10) + 1 * (1 - edgeDist / 10);
+  }
+  return Math.max(1, Math.round(h));
+}
+
 function generateVehiclePlacements(
   rng: Rng,
   count: number,
   bounds: Bounds,
   buildingRects: PlacedRect[],
   seed: number,
+  template?: Template,
 ): Placement[] {
   const placements: Placement[] = [];
   const rotations = [0, 90, 180, 270];
   const vehicleRect: PlacedRect = { x: 0, z: 0, w: 4, d: 2 };
   const usedRects: PlacedRect[] = [...buildingRects];
+  const vehiclePool = template === 'crossroads' ? CROSSROADS_VEHICLE_COMPONENTS : VEHICLE_COMPONENTS;
+  const heightFn = template === 'crossroads'
+    ? (x: number, z: number) => estimateHeightCrossroads(x, z, bounds)
+    : (x: number, z: number) => estimateHeight(x, z, seed, bounds);
 
   let attempts = 0;
   while (placements.length < count && attempts < count * 30) {
     attempts++;
-    const x = rng.int(bounds.xMin + 10, bounds.xMax - 10);
-    const z = rng.int(bounds.zMin + 10, bounds.zMax - 10);
+    let x: number, z: number;
+    if (template === 'crossroads') {
+      // Place vehicles along road corridors
+      if (rng.random() < 0.5) {
+        // Along E-W road
+        x = rng.int(bounds.xMin + 15, bounds.xMax - 15);
+        z = rng.int(-12, 12);
+      } else {
+        // Along N-S road
+        x = rng.int(-12, 12);
+        z = rng.int(bounds.zMin + 15, bounds.zMax - 15);
+      }
+    } else {
+      x = rng.int(bounds.xMin + 10, bounds.xMax - 10);
+      z = rng.int(bounds.zMin + 10, bounds.zMax - 10);
+    }
     vehicleRect.x = x;
     vehicleRect.z = z;
     if (isValidPlacement(vehicleRect, usedRects, 3)) {
-      const y = estimateHeight(x, z, seed, bounds);
+      const y = heightFn(x, z);
       placements.push({
-        componentId: rng.pick(VEHICLE_COMPONENTS),
+        componentId: rng.pick(vehiclePool),
         position: { x, y, z },
         rotation: rng.pick(rotations),
         terrainCarve: false,
       });
       usedRects.push({ ...vehicleRect });
+    }
+  }
+
+  return placements;
+}
+
+// ---------------------------------------------------------------------------
+// Prop placement generation (crossroads)
+// ---------------------------------------------------------------------------
+
+function generatePropPlacements(
+  rng: Rng,
+  template: Template,
+  bounds: Bounds,
+  buildingRects: PlacedRect[],
+): Placement[] {
+  const propPool = PROP_COMPONENTS[template];
+  if (!propPool) return [];
+
+  const placements: Placement[] = [];
+  const rotations = [0, 90, 180, 270];
+  const usedRects: PlacedRect[] = [...buildingRects];
+  const propRect: PlacedRect = { x: 0, z: 0, w: 2, d: 2 };
+  const heightFn = template === 'crossroads'
+    ? (x: number, z: number) => estimateHeightCrossroads(x, z, bounds)
+    : (x: number, z: number) => estimateHeight(x, z, 0, bounds);
+
+  // Street lights and signs along road edges (every 15-20 voxels)
+  const streetProps = propPool.filter((p) =>
+    p.includes('street_light') || p.includes('traffic_light') || p.includes('sign')
+  );
+  const otherProps = propPool.filter((p) =>
+    !p.includes('street_light') && !p.includes('traffic_light') && !p.includes('sign')
+  );
+
+  // Place props along E-W road edges
+  for (let x = bounds.xMin + 20; x < bounds.xMax - 20; x += rng.int(14, 22)) {
+    for (const zOff of [-6, 6]) {
+      if (streetProps.length === 0) break;
+      propRect.x = x;
+      propRect.z = zOff;
+      if (isValidPlacement(propRect, usedRects, 2)) {
+        const y = heightFn(x, zOff);
+        placements.push({
+          componentId: rng.pick(streetProps),
+          position: { x, y, z: zOff },
+          rotation: rng.pick(rotations),
+          terrainCarve: false,
+        });
+        usedRects.push({ ...propRect });
+      }
+    }
+  }
+
+  // Place props along N-S road edges
+  for (let z = bounds.zMin + 20; z < bounds.zMax - 20; z += rng.int(14, 22)) {
+    for (const xOff of [-6, 6]) {
+      if (streetProps.length === 0) break;
+      propRect.x = xOff;
+      propRect.z = z;
+      if (isValidPlacement(propRect, usedRects, 2)) {
+        const y = heightFn(xOff, z);
+        placements.push({
+          componentId: rng.pick(streetProps),
+          position: { x: xOff, y, z },
+          rotation: rng.pick(rotations),
+          terrainCarve: false,
+        });
+        usedRects.push({ ...propRect });
+      }
+    }
+  }
+
+  // Traffic lights at intersection
+  for (const [x, z] of [[7, 7], [-7, 7], [-7, -7], [7, -7]] as [number, number][]) {
+    const y = heightFn(x, z);
+    placements.push({
+      componentId: rng.pick(propPool.filter((p) => p.includes('traffic_light')) || streetProps),
+      position: { x, y, z },
+      rotation: rng.pick(rotations),
+      terrainCarve: false,
+    });
+  }
+
+  // Scatter other props near buildings and in open areas
+  let attempts = 0;
+  const targetMiscProps = rng.int(12, 20);
+  while (placements.length < targetMiscProps + 30 && attempts < 200) {
+    attempts++;
+    const x = rng.int(bounds.xMin + 15, bounds.xMax - 15);
+    const z = rng.int(bounds.zMin + 15, bounds.zMax - 15);
+    // Skip if in road corridor
+    if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
+    propRect.x = x;
+    propRect.z = z;
+    if (isValidPlacement(propRect, usedRects, 3) && otherProps.length > 0) {
+      const y = heightFn(x, z);
+      placements.push({
+        componentId: rng.pick(otherProps),
+        position: { x, y, z },
+        rotation: rng.pick(rotations),
+        terrainCarve: false,
+      });
+      usedRects.push({ ...propRect });
+    }
+  }
+
+  return placements;
+}
+
+// ---------------------------------------------------------------------------
+// Vegetation placement generation
+// ---------------------------------------------------------------------------
+
+function generateVegetationPlacements(
+  rng: Rng,
+  template: Template,
+  bounds: Bounds,
+  buildingRects: PlacedRect[],
+): Placement[] {
+  const treePool = VEGETATION_COMPONENTS[template];
+  if (!treePool) return [];
+
+  const placements: Placement[] = [];
+  const rotations = [0, 90, 180, 270];
+  const usedRects: PlacedRect[] = [...buildingRects];
+  const treeRect: PlacedRect = { x: 0, z: 0, w: 4, d: 4 };
+  const heightFn = template === 'crossroads'
+    ? (x: number, z: number) => estimateHeightCrossroads(x, z, bounds)
+    : (x: number, z: number) => estimateHeight(x, z, 0, bounds);
+
+  // Place trees in quadrant interiors (green areas / parks)
+  const targetTrees = rng.int(12, 24);
+  let attempts = 0;
+  while (placements.length < targetTrees && attempts < targetTrees * 20) {
+    attempts++;
+    const x = rng.int(bounds.xMin + 20, bounds.xMax - 20);
+    const z = rng.int(bounds.zMin + 20, bounds.zMax - 20);
+    // Skip road corridors
+    if (Math.abs(x) < 10 || Math.abs(z) < 10) continue;
+    treeRect.x = x;
+    treeRect.z = z;
+    if (isValidPlacement(treeRect, usedRects, 4)) {
+      const y = heightFn(x, z);
+      placements.push({
+        componentId: rng.pick(treePool),
+        position: { x, y, z },
+        rotation: rng.pick(rotations),
+        terrainCarve: false,
+      });
+      usedRects.push({ ...treeRect });
     }
   }
 
@@ -841,6 +1155,7 @@ const OBJECTIVE_NAME_POOLS: Record<Template, string[]> = {
   forest: ['clearing', 'creek', 'lodge', 'overlook', 'trail', 'ravine', 'grove', 'hilltop', 'camp', 'falls'],
   coastal: ['harbor', 'beach', 'lighthouse', 'pier', 'cliff', 'inlet', 'seawall', 'docks', 'cove', 'boardwalk'],
   industrial: ['warehouse', 'silo', 'railyard', 'refinery', 'loading_dock', 'smokestack', 'crane', 'foundry', 'pipeline', 'yard'],
+  crossroads: ['intersection', 'plaza', 'market', 'alley', 'overpass', 'courtyard', 'parking', 'park', 'monument', 'depot'],
 };
 
 function generateObjectives(
@@ -968,8 +1283,10 @@ function printSummary(mapdef: MapdefOutput, args: CliArgs, outputPath: string, w
     console.log(`  Water:     none (dry map)`);
   }
 
-  console.log(`\n  Buildings: ${mapdef.placements.filter(p => p.terrainCarve).length}`);
-  console.log(`  Vehicles:  ${mapdef.placements.filter(p => !p.terrainCarve).length}`);
+  const buildings = mapdef.placements.filter(p => p.terrainCarve).length;
+  const nonBuildings = mapdef.placements.filter(p => !p.terrainCarve);
+  console.log(`\n  Buildings: ${buildings}`);
+  console.log(`  Other:     ${nonBuildings.length} (vehicles, props, vegetation)`);
   console.log(`  Total:     ${mapdef.placements.length} placements`);
 
   console.log(`\n  Spawns:`);
@@ -1019,6 +1336,7 @@ function getWaterLevel(template: Template, rng: Rng): number {
     case 'urban':
     case 'desert':
     case 'industrial':
+    case 'crossroads':
       return -999;  // no water
   }
 }
@@ -1058,10 +1376,16 @@ function main(): void {
 
   // Vehicle placements
   const vehicleCount = rng.int(sizeConfig.vehicleCount.min, sizeConfig.vehicleCount.max);
-  const vehiclePlacements = generateVehiclePlacements(rng, vehicleCount, bounds, buildingRects, args.seed);
+  const vehiclePlacements = generateVehiclePlacements(rng, vehicleCount, bounds, buildingRects, args.seed, args.template);
+
+  // Prop placements (crossroads and future templates)
+  const propPlacements = generatePropPlacements(rng, args.template, bounds, buildingRects);
+
+  // Vegetation placements
+  const vegetationPlacements = generateVegetationPlacements(rng, args.template, bounds, buildingRects);
 
   // All placements
-  const allPlacements = [...buildingPlacements, ...vehiclePlacements];
+  const allPlacements = [...buildingPlacements, ...vehiclePlacements, ...propPlacements, ...vegetationPlacements];
 
   // Capture points
   const cpCount = rng.int(sizeConfig.capturePointCount.min, sizeConfig.capturePointCount.max);
@@ -1093,6 +1417,10 @@ function main(): void {
 
   // For desert template, set negative water level so map-compose uses sand surface textures
   if (args.template === 'desert') {
+    mapdef.terrain.waterLevel = -10;
+  }
+  // Crossroads: no water at all
+  if (args.template === 'crossroads') {
     mapdef.terrain.waterLevel = -10;
   }
 

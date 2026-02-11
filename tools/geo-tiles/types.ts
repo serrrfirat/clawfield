@@ -125,4 +125,5 @@ export interface CLIOptions {
   dryRun: boolean;
   verbose: boolean;
   cacheOnly: boolean;
+  rawPalette: boolean;
 }

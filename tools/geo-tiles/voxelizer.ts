@@ -1,13 +1,186 @@
 /**
- * voxelizer.ts — Convert merged triangle mesh to a voxel grid via raycasting.
+ * voxelizer.ts — Convert merged triangle mesh to a voxel grid.
  *
- * Uses three-mesh-bvh for accelerated ray-mesh intersection.
- * For each (x,z) column, casts a downward ray and fills solid volumes.
+ * Two-pass approach:
+ *   Pass 1: Column raycasting — casts downward rays per (x,z) cell to fill solid volumes.
+ *   Pass 2: Surface rasterization — iterates every triangle and rasterizes its surface
+ *           into the grid, catching thin walls and tile-boundary seams that rays miss.
+ *
+ * Color sampling uses decoded textures (via sharp) with barycentric UV interpolation,
+ * falling back to vertex colors, then gray.
  */
 
-import type { MergedScene, VoxelGrid, RGB, CLIOptions } from './types.js';
+import sharp from 'sharp';
+import type { MergedScene, MaterialGroup, VoxelGrid, RGB, CLIOptions } from './types.js';
 
 const CHUNK_SIZE = 16;
+
+// ---------------------------------------------------------------------------
+// Decoded texture cache
+// ---------------------------------------------------------------------------
+
+interface DecodedTexture {
+  rgba: Buffer;
+  width: number;
+  height: number;
+}
+
+const textureDecodeCache = new Map<Uint8Array, DecodedTexture | null>();
+
+/**
+ * Decode a MaterialGroup's compressed texture (JPEG/PNG) into raw RGBA.
+ * Caches by raw data reference so each image is decoded once.
+ */
+async function decodeTextureIfNeeded(
+  group: MaterialGroup,
+): Promise<DecodedTexture | null> {
+  if (!group.texture || group.texture.data.length === 0) return null;
+
+  const cached = textureDecodeCache.get(group.texture.data);
+  if (cached !== undefined) return cached;
+
+  try {
+    const img = sharp(Buffer.from(group.texture.data));
+    const meta = await img.metadata();
+    if (!meta.width || !meta.height) {
+      textureDecodeCache.set(group.texture.data, null);
+      return null;
+    }
+    const rgba = await img.raw().ensureAlpha().toBuffer();
+
+    const decoded: DecodedTexture = {
+      rgba,
+      width: meta.width,
+      height: meta.height,
+    };
+
+    // Write real dimensions back into the MaterialGroup
+    group.texture.width = meta.width;
+    group.texture.height = meta.height;
+
+    textureDecodeCache.set(group.texture.data, decoded);
+    return decoded;
+  } catch {
+    textureDecodeCache.set(group.texture.data, null);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Barycentric utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute barycentric coordinates of point (px, pz) with respect to
+ * triangle projected onto the XZ plane.
+ * Returns [u, v, w] where u + v + w ≈ 1, or null if degenerate.
+ */
+function barycentricXZ(
+  px: number, pz: number,
+  x0: number, z0: number,
+  x1: number, z1: number,
+  x2: number, z2: number,
+): [number, number, number] | null {
+  const d00 = (x1 - x0) * (x1 - x0) + (z1 - z0) * (z1 - z0);
+  const d01 = (x1 - x0) * (x2 - x0) + (z1 - z0) * (z2 - z0);
+  const d11 = (x2 - x0) * (x2 - x0) + (z2 - z0) * (z2 - z0);
+  const d20 = (px - x0) * (x1 - x0) + (pz - z0) * (z1 - z0);
+  const d21 = (px - x0) * (x2 - x0) + (pz - z0) * (z2 - z0);
+
+  const denom = d00 * d11 - d01 * d01;
+  if (Math.abs(denom) < 1e-12) return null;
+
+  const v = (d11 * d20 - d01 * d21) / denom;
+  const w = (d00 * d21 - d01 * d20) / denom;
+  const u = 1.0 - v - w;
+
+  return [u, v, w];
+}
+
+/**
+ * Sample a decoded texture at UV coordinates. Nearest-neighbor, UV wrapping.
+ */
+function sampleTextureAt(decoded: DecodedTexture, u: number, v: number): RGB {
+  const wu = ((u % 1) + 1) % 1;
+  const wv = ((v % 1) + 1) % 1;
+
+  const px = Math.min(Math.floor(wu * decoded.width), decoded.width - 1);
+  const py = Math.min(Math.floor(wv * decoded.height), decoded.height - 1);
+  const offset = (py * decoded.width + px) * 4;
+
+  return {
+    r: decoded.rgba[offset],
+    g: decoded.rgba[offset + 1],
+    b: decoded.rgba[offset + 2],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Color sampling
+// ---------------------------------------------------------------------------
+
+/**
+ * Sample the color at a world-space point (sampleX, sampleZ) on a triangle.
+ *
+ * Priority:
+ * 1. Texture via barycentric UV interpolation
+ * 2. Vertex color via barycentric interpolation
+ * 3. Flat gray fallback
+ */
+function sampleTriangleColor(
+  scene: MergedScene,
+  tri: Triangle,
+  sampleX: number,
+  sampleZ: number,
+  decodedTextures: Map<number, DecodedTexture | null>,
+): RGB {
+  const bary = barycentricXZ(
+    sampleX, sampleZ,
+    tri.x0, tri.z0,
+    tri.x1, tri.z1,
+    tri.x2, tri.z2,
+  );
+
+  const idx = scene.indices;
+  const i0 = idx[tri.originalIndex * 3];
+  const i1 = idx[tri.originalIndex * 3 + 1];
+  const i2 = idx[tri.originalIndex * 3 + 2];
+
+  // Try texture sampling
+  const decoded = decodedTextures.get(tri.groupIndex);
+  if (decoded && scene.uvs && bary) {
+    const [u, v, w] = bary;
+    const uvs = scene.uvs;
+    const texU = u * uvs[i0 * 2] + v * uvs[i1 * 2] + w * uvs[i2 * 2];
+    const texV = u * uvs[i0 * 2 + 1] + v * uvs[i1 * 2 + 1] + w * uvs[i2 * 2 + 1];
+    return sampleTextureAt(decoded, texU, texV);
+  }
+
+  // Fall back to vertex colors with barycentric interpolation
+  if (scene.vertexColors) {
+    const vc = scene.vertexColors;
+    if (bary) {
+      const [u, v, w] = bary;
+      return {
+        r: Math.round(u * vc[i0 * 3] + v * vc[i1 * 3] + w * vc[i2 * 3]),
+        g: Math.round(u * vc[i0 * 3 + 1] + v * vc[i1 * 3 + 1] + w * vc[i2 * 3 + 1]),
+        b: Math.round(u * vc[i0 * 3 + 2] + v * vc[i1 * 3 + 2] + w * vc[i2 * 3 + 2]),
+      };
+    }
+    // Degenerate XZ projection — average
+    return {
+      r: Math.round((vc[i0 * 3] + vc[i1 * 3] + vc[i2 * 3]) / 3),
+      g: Math.round((vc[i0 * 3 + 1] + vc[i1 * 3 + 1] + vc[i2 * 3 + 1]) / 3),
+      b: Math.round((vc[i0 * 3 + 2] + vc[i1 * 3 + 2] + vc[i2 * 3 + 2]) / 3),
+    };
+  }
+
+  return { r: 180, g: 180, b: 180 };
+}
+
+// ---------------------------------------------------------------------------
+// Main voxelization
+// ---------------------------------------------------------------------------
 
 /**
  * Voxelize a merged scene into a 3D grid.
@@ -53,6 +226,37 @@ export async function voxelize(
   // Build simple spatial grid acceleration structure
   const grid = buildSpatialGrid(triangles, vs, gxMin, gzMin, gxMax, gzMax);
 
+  // --- Decode textures ---
+  console.log('  Decoding textures...');
+  const decodedTextures = new Map<number, DecodedTexture | null>();
+
+  // Group material groups by shared texture data to decode each image once
+  const groupsByTexRef = new Map<Uint8Array, number[]>();
+  for (let gi = 0; gi < scene.materialGroups.length; gi++) {
+    const group = scene.materialGroups[gi];
+    if (group.texture && group.texture.data.length > 0) {
+      const existing = groupsByTexRef.get(group.texture.data);
+      if (existing) {
+        existing.push(gi);
+      } else {
+        groupsByTexRef.set(group.texture.data, [gi]);
+      }
+    }
+  }
+
+  let decodedCount = 0;
+  for (const [, groupIndices] of groupsByTexRef) {
+    const group = scene.materialGroups[groupIndices[0]];
+    const decoded = await decodeTextureIfNeeded(group);
+    for (const gi of groupIndices) {
+      decodedTextures.set(gi, decoded);
+    }
+    if (decoded) decodedCount++;
+  }
+  console.log(`  Decoded ${decodedCount} textures (${groupsByTexRef.size} unique images)`);
+
+  // --- Pass 1: Column raycasting ---
+
   const chunks = new Map<string, Uint8Array>();
   const colorMap = new Map<string, RGB>();
 
@@ -60,13 +264,12 @@ export async function voxelize(
   const totalColumns = (gxMax - gxMin) * (gzMax - gzMin);
   const reportInterval = Math.max(1, Math.floor(totalColumns / 20));
 
-  // Cast rays column by column
   for (let gx = gxMin; gx < gxMax; gx++) {
     for (let gz = gzMin; gz < gzMax; gz++) {
       columnsProcessed++;
       if (columnsProcessed % reportInterval === 0) {
         const pct = ((columnsProcessed / totalColumns) * 100).toFixed(0);
-        process.stdout.write(`\r  Voxelizing: ${pct}% (${columnsProcessed}/${totalColumns} columns)`);
+        process.stdout.write(`\r  Pass 1 (raycast): ${pct}% (${columnsProcessed}/${totalColumns} columns)`);
       }
 
       // Get triangles that might intersect this column
@@ -86,8 +289,7 @@ export async function voxelize(
         const tri = triangles[triIdx];
         const hitY = rayTriangleIntersectY(rayX, rayOriginY, rayZ, tri);
         if (hitY !== null) {
-          // Determine if ray is entering or exiting based on face normal Y
-          const entering = tri.normalY <= 0; // Downward-facing normal = entering solid
+          const entering = tri.normalY <= 0;
           hits.push({ y: hitY, entering, triIdx });
         }
       }
@@ -98,59 +300,128 @@ export async function voxelize(
       hits.sort((a, b) => b.y - a.y);
 
       // Process hits: pair enter/exit to fill solid regions
-      // Use a simple approach: every odd-numbered surface flip starts/stops solid
       let inside = false;
       let prevY = gyMax;
+      let enterColor: RGB = { r: 160, g: 160, b: 160 };
 
       for (const hit of hits) {
         const hitVoxelY = Math.floor(hit.y / vs);
 
         if (!inside) {
-          // First surface hit from above → mark the surface and start filling
           inside = true;
 
-          // Sample color at this surface point
-          const color = sampleTriangleColor(scene, triangles[hit.triIdx], rayX, rayZ);
+          const color = sampleTriangleColor(scene, triangles[hit.triIdx], rayX, rayZ, decodedTextures);
+          enterColor = color;
           const vy = hitVoxelY;
           setVoxel(chunks, gx, vy, gz);
-          if (color) colorMap.set(`${gx},${vy},${gz}`, color);
+          colorMap.set(`${gx},${vy},${gz}`, color);
 
           // Fill a few voxels below for ground thickness
           for (let fill = 1; fill <= 2; fill++) {
             setVoxel(chunks, gx, vy - fill, gz);
-            if (color) colorMap.set(`${gx},${vy - fill},${gz}`, color);
+            colorMap.set(`${gx},${vy - fill},${gz}`, color);
           }
 
           prevY = hitVoxelY;
         } else {
-          // Second surface = exiting solid
-          // Fill between prevY and this hit
+          // Exiting solid — fill between prevY and this hit
+          // Use enter/exit surface colors instead of flat gray
           const bottomY = Math.floor(hit.y / vs);
+          const exitColor = sampleTriangleColor(scene, triangles[hit.triIdx], rayX, rayZ, decodedTextures);
+          const spanHeight = prevY - bottomY;
+
           for (let fy = prevY - 1; fy >= bottomY; fy--) {
             setVoxel(chunks, gx, fy, gz);
-            // Interior voxels get the surface color
             const key = `${gx},${fy},${gz}`;
             if (!colorMap.has(key)) {
-              colorMap.set(key, { r: 160, g: 160, b: 160 }); // Default gray for interior
+              // Gradient blend from enter color (top) to exit color (bottom)
+              if (spanHeight <= 1) {
+                colorMap.set(key, enterColor);
+              } else {
+                const t = (prevY - fy) / spanHeight; // 0 at top, 1 at bottom
+                colorMap.set(key, {
+                  r: Math.round(enterColor.r * (1 - t) + exitColor.r * t),
+                  g: Math.round(enterColor.g * (1 - t) + exitColor.g * t),
+                  b: Math.round(enterColor.b * (1 - t) + exitColor.b * t),
+                });
+              }
             }
           }
 
-          // Sample color for bottom surface
-          const exitColor = sampleTriangleColor(scene, triangles[hit.triIdx], rayX, rayZ);
-          if (exitColor) colorMap.set(`${gx},${bottomY},${gz}`, exitColor);
+          colorMap.set(`${gx},${bottomY},${gz}`, exitColor);
 
           inside = false;
         }
       }
+    }
+  }
 
-      // If we're still "inside" after all hits, fill down a bit (single surface)
-      if (inside && hits.length === 1) {
-        // Single surface: already filled above
+  const pass1Voxels = colorMap.size;
+  console.log(`\n  Pass 1 complete: ${chunks.size} chunks, ${pass1Voxels} colored voxels`);
+
+  // --- Pass 2: Surface rasterization ---
+  // Iterates all triangles and rasterizes their surfaces into the voxel grid.
+  // Catches thin walls, tile-boundary seams, and geometry that column rays miss.
+
+  console.log('  Pass 2 (surface rasterization)...');
+  let surfaceVoxelsAdded = 0;
+  const triReportInterval = Math.max(1, Math.floor(triangles.length / 20));
+
+  for (let ti = 0; ti < triangles.length; ti++) {
+    if (ti % triReportInterval === 0 && ti > 0) {
+      const pct = ((ti / triangles.length) * 100).toFixed(0);
+      process.stdout.write(`\r  Pass 2 (surface): ${pct}% (${ti}/${triangles.length} triangles)`);
+    }
+
+    const tri = triangles[ti];
+
+    // Triangle AABB in grid coords
+    const txMin = Math.max(Math.floor(Math.min(tri.x0, tri.x1, tri.x2) / vs), gxMin);
+    const txMax = Math.min(Math.floor(Math.max(tri.x0, tri.x1, tri.x2) / vs), gxMax - 1);
+    const tzMin = Math.max(Math.floor(Math.min(tri.z0, tri.z1, tri.z2) / vs), gzMin);
+    const tzMax = Math.min(Math.floor(Math.max(tri.z0, tri.z1, tri.z2) / vs), gzMax - 1);
+
+    for (let gx = txMin; gx <= txMax; gx++) {
+      for (let gz = tzMin; gz <= tzMax; gz++) {
+        const px = (gx + 0.5) * vs;
+        const pz = (gz + 0.5) * vs;
+
+        const bary = barycentricXZ(
+          px, pz,
+          tri.x0, tri.z0,
+          tri.x1, tri.z1,
+          tri.x2, tri.z2,
+        );
+
+        if (!bary) continue;
+        const [bu, bv, bw] = bary;
+
+        // Small negative epsilon for edge coverage at tile boundaries
+        const EPS = -0.01;
+        if (bu < EPS || bv < EPS || bw < EPS) continue;
+
+        // Interpolate Y
+        const hitY = bu * tri.y0 + bv * tri.y1 + bw * tri.y2;
+        const gy = Math.floor(hitY / vs);
+        if (gy < gyMin || gy > gyMax) continue;
+
+        // Only add — don't overwrite existing raycast voxels
+        const voxelKey = `${gx},${gy},${gz}`;
+        if (colorMap.has(voxelKey)) continue;
+
+        const color = sampleTriangleColor(scene, tri, px, pz, decodedTextures);
+        setVoxel(chunks, gx, gy, gz);
+        colorMap.set(voxelKey, color);
+        surfaceVoxelsAdded++;
       }
     }
   }
 
-  console.log(`\n  Voxelization complete: ${chunks.size} chunks, ${colorMap.size} colored voxels`);
+  console.log(`\r  Pass 2 complete: ${surfaceVoxelsAdded} surface voxels added from ${triangles.length} triangles`);
+  console.log(`  Total: ${chunks.size} chunks, ${colorMap.size} colored voxels`);
+
+  // Free texture decode cache
+  textureDecodeCache.clear();
 
   return {
     chunks,
@@ -274,9 +545,9 @@ function rayTriangleIntersectY(
   const e2z = tri.z2 - tri.z0;
 
   // h = cross(dir, e2) where dir = (0, -1, 0)
-  const hx = -e2z; // (-1) * e2z - 0 * e2y ... simplified for dir = (0,-1,0)
-  const hy = 0;     // 0 * e2x - 0 * e2z
-  const hz = e2x;   // 0 * e2y - (-1) * e2x
+  const hx = -e2z;
+  const hy = 0;
+  const hz = e2x;
 
   const a = e1x * hx + e1y * hy + e1z * hz;
   if (a > -1e-8 && a < 1e-8) return null; // Parallel
@@ -302,36 +573,6 @@ function rayTriangleIntersectY(
   if (t < 0) return null; // Behind ray origin
 
   return rayOriginY - t; // Intersection Y = origin - t (ray goes down)
-}
-
-// ---------------------------------------------------------------------------
-// Color sampling
-// ---------------------------------------------------------------------------
-
-function sampleTriangleColor(
-  scene: MergedScene,
-  tri: Triangle,
-  sampleX: number,
-  sampleZ: number,
-): RGB | null {
-  // Try vertex colors first (most common in Google 3D Tiles)
-  if (scene.vertexColors) {
-    const idx = scene.indices;
-    const i0 = idx[tri.originalIndex * 3];
-    const i1 = idx[tri.originalIndex * 3 + 1];
-    const i2 = idx[tri.originalIndex * 3 + 2];
-
-    const vc = scene.vertexColors;
-    // Average vertex colors for simplicity
-    const r = Math.round((vc[i0 * 3] + vc[i1 * 3] + vc[i2 * 3]) / 3);
-    const g = Math.round((vc[i0 * 3 + 1] + vc[i1 * 3 + 1] + vc[i2 * 3 + 1]) / 3);
-    const b = Math.round((vc[i0 * 3 + 2] + vc[i1 * 3 + 2] + vc[i2 * 3 + 2]) / 3);
-
-    return { r, g, b };
-  }
-
-  // Fallback to gray
-  return { r: 180, g: 180, b: 180 };
 }
 
 // ---------------------------------------------------------------------------

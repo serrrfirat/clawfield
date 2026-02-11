@@ -41,5 +41,25 @@ Thumbs.db
 # Geo-tiles cache
 tools/geo-tiles/cache/
 
+# VoxelEarth tool (Java repos, build artifacts, work dirs)
+tools/voxelearth/repos/
+tools/voxelearth/work/
+tools/voxelearth/jars/
+
 # Large vox asset collections
 assets/vox/mmmm-full/
+
+# Local tooling config
+.agents/
+.claude/
+.kilocode/
+skills/
+
+# Generated render exports
+assets/export/
+
+# Test/iteration map files
+assets/maps/ts-test*
+assets/maps/incursion-test*
+assets/maps/incursion-177*
+assets/maps/nyc-times-square*

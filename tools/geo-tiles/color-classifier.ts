@@ -62,31 +62,36 @@ const MATERIAL_PALETTE: Record<number, RGB> = {
 
 /**
  * Classify voxel colors into material IDs and build the palette.
+ *
+ * @param rawPalette  If true, skip semantic material rules and use pure k-means
+ *                    clustering across all 255 palette slots. Best for photogrammetry
+ *                    data where the actual RGB colors should be preserved.
  */
-export function classifyColors(voxelGrid: VoxelGrid): ClassifiedGrid {
-  console.log('Classifying colors...');
+export function classifyColors(voxelGrid: VoxelGrid, rawPalette = false): ClassifiedGrid {
+  console.log(`Classifying colors${rawPalette ? ' (raw palette mode)' : ''}...`);
 
-  // Build the palette
   const palette: RGB[] = new Array(PALETTE_SIZE).fill(null).map(() => ({ r: 0, g: 0, b: 0 }));
+  const classifiedChunks = new Map<string, Uint8Array>();
+
+  for (const [chunkKey, chunkData] of voxelGrid.chunks) {
+    classifiedChunks.set(chunkKey, new Uint8Array(chunkData.length));
+  }
+
+  if (rawPalette) {
+    // Pure k-means mode: use slots 1-255 for clustering, no semantic rules
+    return classifyRawPalette(voxelGrid, palette, classifiedChunks);
+  }
+
+  // --- Semantic + cluster mode (original behavior) ---
 
   // Fill terrain palette (1-20) with known material colors
   for (const [matId, color] of Object.entries(MATERIAL_PALETTE)) {
     palette[Number(matId)] = { ...color };
   }
 
-  // Collect all unique colors for clustering
   const uniqueColors: Map<string, { color: RGB; count: number }> = new Map();
   const unclassifiedVoxels: { key: string; wx: number; wy: number; wz: number; color: RGB }[] = [];
 
-  // First pass: classify by spatial context + color rules
-  const classifiedChunks = new Map<string, Uint8Array>();
-
-  // Copy chunk structure
-  for (const [chunkKey, chunkData] of voxelGrid.chunks) {
-    classifiedChunks.set(chunkKey, new Uint8Array(chunkData.length));
-  }
-
-  // Determine ground level (most common Y for surface voxels)
   const ySurface = findGroundLevel(voxelGrid);
   console.log(`  Estimated ground level: Y=${ySurface}`);
 
@@ -101,8 +106,7 @@ export function classifyColors(voxelGrid: VoxelGrid): ClassifiedGrid {
       setChunkVoxel(classifiedChunks, wx, wy, wz, matId);
       classifiedCount++;
     } else {
-      // Collect for clustering
-      const colorKey = `${color.r >> 3},${color.g >> 3},${color.b >> 3}`; // Quantize to 5-bit
+      const colorKey = `${color.r >> 3},${color.g >> 3},${color.b >> 3}`;
       const existing = uniqueColors.get(colorKey);
       if (existing) {
         existing.count++;
@@ -116,7 +120,6 @@ export function classifyColors(voxelGrid: VoxelGrid): ClassifiedGrid {
 
   console.log(`  Semantic pass: ${classifiedCount} classified, ${unclassifiedCount} remaining`);
 
-  // Second pass: k-means clustering for remaining colors
   if (unclassifiedVoxels.length > 0) {
     const maxClusters = PALETTE_SIZE - CLUSTER_PALETTE_START;
     const clusterCount = Math.min(maxClusters, uniqueColors.size, 200);
@@ -126,16 +129,13 @@ export function classifyColors(voxelGrid: VoxelGrid): ClassifiedGrid {
       clusterCount,
     );
 
-    // Assign cluster colors to palette
     for (let i = 0; i < clusterColors.length; i++) {
       palette[CLUSTER_PALETTE_START + i] = clusterColors[i];
     }
 
-    // Classify remaining voxels by nearest cluster
     for (const voxel of unclassifiedVoxels) {
       let bestIdx = CLUSTER_PALETTE_START;
       let bestDist = Infinity;
-
       for (let i = 0; i < clusterColors.length; i++) {
         const dist = colorDistance(voxel.color, clusterColors[i]);
         if (dist < bestDist) {
@@ -143,33 +143,112 @@ export function classifyColors(voxelGrid: VoxelGrid): ClassifiedGrid {
           bestIdx = CLUSTER_PALETTE_START + i;
         }
       }
-
       setChunkVoxel(classifiedChunks, voxel.wx, voxel.wy, voxel.wz, bestIdx);
     }
 
     console.log(`  Cluster pass: ${clusterColors.length} clusters for ${unclassifiedVoxels.length} voxels`);
   }
 
-  // Fill any remaining solid voxels that had no color (placeholder value 1 from voxelizer)
-  for (const [, chunkData] of classifiedChunks) {
-    for (let i = 0; i < chunkData.length; i++) {
-      if (chunkData[i] === 0) {
-        // Check original chunk for solid placeholder
-        // Actually, we should preserve uncolored solids as concrete
-      }
-    }
-  }
-
-  // Ensure voxels marked solid in original but not colored get a material
+  // Ensure uncolored solids get a material
   for (const [chunkKey, origData] of voxelGrid.chunks) {
     const classData = classifiedChunks.get(chunkKey);
     if (!classData) continue;
     for (let i = 0; i < origData.length; i++) {
       if (origData[i] > 0 && classData[i] === 0) {
-        classData[i] = MAT_CONCRETE; // Default uncolored solid → concrete
+        classData[i] = MAT_CONCRETE;
       }
     }
   }
+
+  return {
+    chunks: classifiedChunks,
+    palette,
+    bounds: voxelGrid.bounds,
+  };
+}
+
+/**
+ * Raw palette mode: skip semantic rules, use all 255 palette slots for k-means.
+ * Preserves actual photogrammetry colors from the source data.
+ */
+function classifyRawPalette(
+  voxelGrid: VoxelGrid,
+  palette: RGB[],
+  classifiedChunks: Map<string, Uint8Array>,
+): ClassifiedGrid {
+  // Collect all unique colors (quantized to 5-bit for clustering efficiency)
+  const uniqueColors: Map<string, { color: RGB; count: number }> = new Map();
+
+  for (const [, color] of voxelGrid.colorMap) {
+    const colorKey = `${color.r >> 3},${color.g >> 3},${color.b >> 3}`;
+    const existing = uniqueColors.get(colorKey);
+    if (existing) {
+      existing.count++;
+    } else {
+      uniqueColors.set(colorKey, { color: { ...color }, count: 1 });
+    }
+  }
+
+  console.log(`  Unique colors (quantized): ${uniqueColors.size}`);
+
+  // Use slots 1-255 for k-means (slot 0 = air)
+  const maxClusters = PALETTE_SIZE - 1;
+  const clusterCount = Math.min(maxClusters, uniqueColors.size, 255);
+
+  const clusterColors = kMeansClusters(
+    Array.from(uniqueColors.values()).map(v => v.color),
+    clusterCount,
+  );
+
+  // Write cluster colors into palette starting at slot 1
+  for (let i = 0; i < clusterColors.length; i++) {
+    palette[1 + i] = clusterColors[i];
+  }
+
+  console.log(`  k-means: ${clusterCount} clusters`);
+
+  // Assign every voxel to its nearest cluster
+  let assigned = 0;
+  for (const [posKey, color] of voxelGrid.colorMap) {
+    const [wx, wy, wz] = posKey.split(',').map(Number);
+
+    let bestIdx = 1;
+    let bestDist = Infinity;
+    for (let i = 0; i < clusterColors.length; i++) {
+      const dist = colorDistance(color, clusterColors[i]);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = 1 + i;
+      }
+    }
+
+    setChunkVoxel(classifiedChunks, wx, wy, wz, bestIdx);
+    assigned++;
+  }
+
+  // Fill uncolored solids with nearest gray cluster
+  const defaultGray: RGB = { r: 160, g: 160, b: 160 };
+  let defaultIdx = 1;
+  let defaultDist = Infinity;
+  for (let i = 0; i < clusterColors.length; i++) {
+    const dist = colorDistance(defaultGray, clusterColors[i]);
+    if (dist < defaultDist) {
+      defaultDist = dist;
+      defaultIdx = 1 + i;
+    }
+  }
+
+  for (const [chunkKey, origData] of voxelGrid.chunks) {
+    const classData = classifiedChunks.get(chunkKey);
+    if (!classData) continue;
+    for (let i = 0; i < origData.length; i++) {
+      if (origData[i] > 0 && classData[i] === 0) {
+        classData[i] = defaultIdx;
+      }
+    }
+  }
+
+  console.log(`  Assigned ${assigned} voxels to ${clusterCount} color clusters`);
 
   return {
     chunks: classifiedChunks,

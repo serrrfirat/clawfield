@@ -35,6 +35,7 @@ function parseArgs(argv: string[]): CLIOptions {
     dryRun: false,
     verbose: false,
     cacheOnly: false,
+    rawPalette: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -54,6 +55,7 @@ function parseArgs(argv: string[]): CLIOptions {
       case '--skip-meta':  opts.skipMeta = true; break;
       case '--dry-run':    opts.dryRun = true; break;
       case '--cache-only': opts.cacheOnly = true; break;
+      case '--raw-palette': opts.rawPalette = true; break;
       case '--verbose':
       case '-v':           opts.verbose = true; break;
       case '--help':
@@ -116,6 +118,7 @@ Optional:
   --radius <meters>    Radius around center to fetch (default: 250)
   --voxel-size <m>     Voxel size in meters (default: 1)
   --max-error <value>  Max geometric error for tile LOD (default: 2.0)
+  --raw-palette        Skip semantic material classification, use pure k-means colors
   --skip-interiors     Skip building interior generation
   --skip-meta          Skip spawn/capture point generation
   --cache-only         Regenerate from cached GLBs (no API key needed)
@@ -172,7 +175,7 @@ async function main(): Promise<void> {
 
   // Step 4: Classify colors
   const step4Start = performance.now();
-  const classifiedGrid = classifyColors(voxelGrid);
+  const classifiedGrid = classifyColors(voxelGrid, opts.rawPalette);
   console.log(`  Step 4 (classify): ${elapsed(step4Start)}\n`);
 
   // Step 5: Building detection + interiors
