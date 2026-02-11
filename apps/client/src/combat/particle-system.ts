@@ -258,11 +258,13 @@ export class ParticleSystem {
     if (this.aliveCount === 0) return;
 
     let alive = 0;
+    let checked = 0;
 
     for (let i = 0; i < MAX_PARTICLES; i++) {
       const p = this.particles[i];
       if (!p.alive) continue;
 
+      checked++;
       p.age += dt;
 
       if (p.age >= p.lifetime) {
@@ -270,6 +272,7 @@ export class ParticleSystem {
         this.alphas[i] = 0;
         this.sizes[i] = 0;
         this.positions[i * 3 + 1] = -1000;
+        if (checked >= this.aliveCount) break;
         continue;
       }
 
@@ -287,6 +290,8 @@ export class ParticleSystem {
       // Fade alpha over lifetime
       const progress = p.age / p.lifetime;
       this.alphas[i] = 1.0 - progress;
+
+      if (checked >= this.aliveCount) break;
     }
 
     this.aliveCount = alive;

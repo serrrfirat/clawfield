@@ -282,6 +282,7 @@ export function quadsToGeometryData(quads: MeshQuad[], paletteOverride?: number[
   colors: Float32Array;
   uvs: Float32Array;
   ao: Float32Array;
+  materialIds: Float32Array;
   indices: Uint32Array;
 } {
   const vertexCount = quads.length * 4; // 4 unique vertices per quad
@@ -291,6 +292,7 @@ export function quadsToGeometryData(quads: MeshQuad[], paletteOverride?: number[
   const colors = new Float32Array(vertexCount * 3);
   const uvs = new Float32Array(vertexCount * 2);
   const ao = new Float32Array(vertexCount);
+  const materialIds = new Float32Array(vertexCount);
   const indices = new Uint32Array(indexCount);
 
   let vi = 0; // vertex index
@@ -380,6 +382,7 @@ export function quadsToGeometryData(quads: MeshQuad[], paletteOverride?: number[
       uvs[vi * 2] = vertUvs[i][0];
       uvs[vi * 2 + 1] = vertUvs[i][1];
       ao[vi] = vertAO[i];
+      materialIds[vi] = quad.material;
       vi++;
     }
 
@@ -428,5 +431,5 @@ export function quadsToGeometryData(quads: MeshQuad[], paletteOverride?: number[
     }
   }
 
-  return { positions, normals, colors, uvs, ao, indices };
+  return { positions, normals, colors, uvs, ao, materialIds, indices };
 }

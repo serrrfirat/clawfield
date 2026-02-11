@@ -18,10 +18,10 @@ const GodRaysShader = {
     sunScreenPos: { value: new THREE.Vector2(0.5, 0.5) },
     sunVisible: { value: 1.0 },
     density: { value: 0.96 },
-    weight: { value: 0.15 },
+    weight: { value: 0.10 },
     decay: { value: 0.93 },
-    exposure: { value: 0.06 },
-    numSamples: { value: 60 },
+    exposure: { value: 0.03 },
+    numSamples: { value: 30 },
     sunColor: { value: new THREE.Vector3(1.0, 0.95, 0.85) },
   },
   vertexShader: /* glsl */ `
@@ -45,6 +45,14 @@ const GodRaysShader = {
     varying vec2 vUv;
 
     void main() {
+      vec4 sceneColor = texture2D(tDiffuse, vUv);
+
+      // Skip expensive sampling when sun is off-screen (uniform branch — free)
+      if (sunVisible < 0.5) {
+        gl_FragColor = sceneColor;
+        return;
+      }
+
       // Direction from pixel to sun in screen space
       vec2 deltaTexCoord = vUv - sunScreenPos;
       deltaTexCoord *= density / float(numSamples);
@@ -53,22 +61,21 @@ const GodRaysShader = {
       float illuminationDecay = 1.0;
       vec3 godRayColor = vec3(0.0);
 
-      for (int i = 0; i < 60; i++) {
+      for (int i = 0; i < 30; i++) {
         if (i >= numSamples) break;
         texCoord -= deltaTexCoord;
         vec3 sampleColor = texture2D(tDiffuse, texCoord).rgb;
         // Use luminance to determine bright areas (sky vs geometry)
         float lum = dot(sampleColor, vec3(0.299, 0.587, 0.114));
-        // Only scatter from bright pixels (sky, not geometry)
-        float brightMask = smoothstep(0.7, 1.0, lum);
+        // Only scatter from truly bright pixels (sky), not fogged geometry
+        float brightMask = smoothstep(0.9, 1.0, lum);
         sampleColor *= brightMask * illuminationDecay * weight;
         godRayColor += sampleColor;
         illuminationDecay *= decay;
       }
 
-      vec4 sceneColor = texture2D(tDiffuse, vUv);
       // Tint god rays with sun color and blend additively
-      vec3 rays = godRayColor * exposure * sunColor * sunVisible;
+      vec3 rays = godRayColor * exposure * sunColor;
       gl_FragColor = vec4(sceneColor.rgb + rays, sceneColor.a);
     }
   `,

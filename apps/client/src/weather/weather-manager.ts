@@ -25,10 +25,8 @@ interface WeatherPreset {
   /** Wind speed (cloud drift) */
   windX: number;
   windZ: number;
-  /** Fog near distance */
-  fogNear: number;
-  /** Fog far distance */
-  fogFar: number;
+  /** Exponential² fog density (higher = thicker fog) */
+  fogDensity: number;
   /** Fog color */
   fogColor: THREE.Color;
   /** Height fog density */
@@ -62,8 +60,7 @@ const PRESETS: Record<WeatherState, WeatherPreset> = {
     cloudDarkColor: new THREE.Color(0.7, 0.72, 0.75),
     windX: 0.008,
     windZ: 0.004,
-    fogNear: 250,
-    fogFar: 600,
+    fogDensity: 0.00038,
     fogColor: new THREE.Color(0xa9c2d0),
     fogHeightDensity: 0.005,
     skyColor: new THREE.Color(0x7ec8e3),
@@ -84,8 +81,7 @@ const PRESETS: Record<WeatherState, WeatherPreset> = {
     cloudDarkColor: new THREE.Color(0.6, 0.62, 0.65),
     windX: 0.012,
     windZ: 0.006,
-    fogNear: 100,
-    fogFar: 280,
+    fogDensity: 0.00054,
     fogColor: new THREE.Color(0x9ab0bd),
     fogHeightDensity: 0.02,
     skyColor: new THREE.Color(0x6baed0),
@@ -106,8 +102,7 @@ const PRESETS: Record<WeatherState, WeatherPreset> = {
     cloudDarkColor: new THREE.Color(0.5, 0.52, 0.55),
     windX: 0.015,
     windZ: 0.008,
-    fogNear: 70,
-    fogFar: 220,
+    fogDensity: 0.00072,
     fogColor: new THREE.Color(0x8a9eaa),
     fogHeightDensity: 0.03,
     skyColor: new THREE.Color(0x5a8aaa),
@@ -128,8 +123,7 @@ const PRESETS: Record<WeatherState, WeatherPreset> = {
     cloudDarkColor: new THREE.Color(0.55, 0.55, 0.58),
     windX: 0.005,
     windZ: 0.003,
-    fogNear: 5,
-    fogFar: 45,
+    fogDensity: 0.0017,
     fogColor: new THREE.Color(0x9a9a9a),
     fogHeightDensity: 0.12,
     skyColor: new THREE.Color(0x8a8a8a),
@@ -150,8 +144,7 @@ const PRESETS: Record<WeatherState, WeatherPreset> = {
     cloudDarkColor: new THREE.Color(0.4, 0.42, 0.45),
     windX: 0.02,
     windZ: 0.01,
-    fogNear: 40,
-    fogFar: 160,
+    fogDensity: 0.00096,
     fogColor: new THREE.Color(0x728a96),
     fogHeightDensity: 0.04,
     skyColor: new THREE.Color(0x4a7a94),
@@ -172,8 +165,7 @@ const PRESETS: Record<WeatherState, WeatherPreset> = {
     cloudDarkColor: new THREE.Color(0.6, 0.6, 0.65),
     windX: 0.01,
     windZ: 0.008,
-    fogNear: 50,
-    fogFar: 180,
+    fogDensity: 0.00087,
     fogColor: new THREE.Color(0xb0bec5),
     fogHeightDensity: 0.025,
     skyColor: new THREE.Color(0x8aa8b8),
@@ -194,8 +186,7 @@ const PRESETS: Record<WeatherState, WeatherPreset> = {
     cloudDarkColor: new THREE.Color(0.25, 0.27, 0.3),
     windX: 0.04,
     windZ: 0.02,
-    fogNear: 5,
-    fogFar: 40,
+    fogDensity: 0.0022,
     fogColor: new THREE.Color(0x556068),
     fogHeightDensity: 0.15,
     skyColor: new THREE.Color(0x3a5a6a),
@@ -327,10 +318,13 @@ export class WeatherManager {
       this.smokeSystem.updateStormFog(isStorm && !this.underwater, cameraPos, dt);
     }
 
-    // Update sun direction on the cloud dome and sky shader
+    // Update sun direction on the cloud dome, sky shader, and fog inscattering
     const sunDir = this.sunLight.position.clone().sub(this.sunLight.target.position).normalize();
     this.cloudDome.setSunDirection(sunDir);
     this.sky.material.uniforms.sunPosition.value.copy(sunDir);
+    if (!this.underwater) {
+      setFogUniforms({ sunDirection: sunDir });
+    }
   }
 
   /** Interpolate between current and target presets and apply */
@@ -350,8 +344,7 @@ export class WeatherManager {
     this.current.cloudDarkColor.lerpColors(from.cloudDarkColor, to.cloudDarkColor, t);
     this.current.windX = lerp(from.windX, to.windX, t);
     this.current.windZ = lerp(from.windZ, to.windZ, t);
-    this.current.fogNear = lerp(from.fogNear, to.fogNear, t);
-    this.current.fogFar = lerp(from.fogFar, to.fogFar, t);
+    this.current.fogDensity = lerp(from.fogDensity, to.fogDensity, t);
     this.current.fogColor.lerpColors(from.fogColor, to.fogColor, t);
     this.current.fogHeightDensity = lerp(from.fogHeightDensity, to.fogHeightDensity, t);
     this.current.skyColor.lerpColors(from.skyColor, to.skyColor, t);
@@ -389,8 +382,7 @@ export class WeatherManager {
     if (!this.underwater) {
       setFogUniforms({
         color: p.fogColor,
-        near: p.fogNear,
-        far: p.fogFar,
+        density: p.fogDensity,
         heightDensity: p.fogHeightDensity,
       });
     }

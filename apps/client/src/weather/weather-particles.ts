@@ -66,7 +66,7 @@ const PRESETS: Record<'rain' | 'snow' | 'storm', WeatherPreset> = {
     alpha: 0.5,
   },
   storm: {
-    emitRate: 10000,
+    emitRate: 2000,
     spawnRadius: 100,
     spawnHeight: 80,
     fallSpeedMin: -45,
@@ -260,16 +260,20 @@ export class WeatherParticles {
     if (this.aliveCount === 0) return;
 
     let alive = 0;
+    let checked = 0;
     for (let i = 0; i < MAX_WEATHER_PARTICLES; i++) {
       const p = this.particles[i];
       if (!p.alive) continue;
 
+      checked++;
       p.age += dt;
       if (p.age >= p.lifetime) {
         p.alive = false;
         this.alphas[i] = 0;
         this.sizes[i] = 0;
         this.positions[i * 3 + 1] = -1000;
+        // Don't break — need to upload the kill to GPU
+        if (checked >= this.aliveCount) break;
         continue;
       }
 
@@ -284,6 +288,8 @@ export class WeatherParticles {
       if (progress > 0.8) {
         this.alphas[i] *= 1.0 - (progress - 0.8) / 0.2 * dt * 3;
       }
+
+      if (checked >= this.aliveCount) break;
     }
 
     this.aliveCount = alive;
