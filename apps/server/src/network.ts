@@ -86,12 +86,18 @@ export class NetworkServer {
       this.onConnect(client);
 
       ws.on('message', (data) => {
+        let msg: ClientMessage;
         try {
           // Client → server messages are always plain JSON strings
-          const msg: ClientMessage = JSON.parse(data.toString());
-          this.onMessage(client, msg);
+          msg = JSON.parse(data.toString());
         } catch {
           console.warn(`Invalid message from ${id}`);
+          return;
+        }
+        try {
+          this.onMessage(client, msg);
+        } catch (err) {
+          console.error(`Error handling message '${msg.type}' from ${id}:`, err);
         }
       });
 

@@ -1,4 +1,4 @@
-import type { KillEntry, GameMode } from '@clawfield/shared';
+import type { DirectorEvent, KillEntry, GameMode, DynamicObjective } from '@clawfield/shared';
 import { injectHUDStyles } from './styles.js';
 
 // ── Public interfaces ──────────────────────────────────────────────
@@ -26,6 +26,8 @@ export interface HUDState {
   weaponName: string;
   /** Player yaw in radians for compass (0 = north / -Z) */
   playerYaw: number;
+  /** Incursion match timer (-1 = not applicable) */
+  matchTimeRemaining: number;
 }
 
 // ── Internal helpers ───────────────────────────────────────────────
@@ -89,6 +91,12 @@ export class HUD {
   private killfeedContainer: HTMLDivElement;
   private killfeedTimers: number[] = [];
 
+  // Director banner
+  private directorBanner: HTMLDivElement;
+  private directorBannerTitle: HTMLDivElement;
+  private directorBannerBody: HTMLDivElement;
+  private directorBannerTimer: number | null = null;
+
   // Hit marker
   private hitmarker: HTMLDivElement;
   private hitmarkerTimer: number | null = null;
@@ -117,6 +125,9 @@ export class HUD {
   private gadgetName: HTMLDivElement;
   private gadgetCdFill: HTMLDivElement;
   private gadgetKey: HTMLDivElement;
+
+  // Incursion objective panel
+  private objectivePanel: HTMLDivElement;
 
   // Compass
   private compassStrip: HTMLDivElement;
@@ -216,6 +227,18 @@ export class HUD {
     this.killfeedContainer = this.el('div', 'hud-killfeed');
     this.root.appendChild(this.killfeedContainer);
 
+    // ── Incursion objective panel (top-left, below tickets) ──
+    this.objectivePanel = this.el('div', 'hud-objective-panel');
+    this.root.appendChild(this.objectivePanel);
+
+    // ── Director announcement banner (top-center) ──
+    this.directorBanner = this.el('div', 'hud-director-banner');
+    this.directorBannerTitle = this.el('div', 'hud-director-banner-title');
+    this.directorBannerBody = this.el('div', 'hud-director-banner-body');
+    this.directorBanner.appendChild(this.directorBannerTitle);
+    this.directorBanner.appendChild(this.directorBannerBody);
+    this.root.appendChild(this.directorBanner);
+
     // ── Hit marker (center) ──
     this.hitmarker = this.el('div', 'hud-hitmarker');
     this.root.appendChild(this.hitmarker);
@@ -305,8 +328,9 @@ export class HUD {
 
     // Score display — BattleBit style (mode-aware)
     const isConquest = state.gameMode === 'conquest';
-    const alphaScore = isConquest ? state.conquestScoreAlpha : state.ticketsAlpha;
-    const bravoScore = isConquest ? state.conquestScoreBravo : state.ticketsBravo;
+    const isIncursion = state.gameMode === 'incursion';
+    const alphaScore = (isConquest || isIncursion) ? state.conquestScoreAlpha : state.ticketsAlpha;
+    const bravoScore = (isConquest || isIncursion) ? state.conquestScoreBravo : state.ticketsBravo;
 
     this.ticketsAlphaScore.textContent = `${alphaScore}`;
     this.ticketsBravoScore.textContent = `${bravoScore}`;
@@ -325,12 +349,26 @@ export class HUD {
     this.ticketsBravoProgressFill.style.width = `${bravoPct}%`;
 
     // Timer
-    if (this.matchStartTime > 0) {
+    if (isIncursion && state.matchTimeRemaining >= 0) {
+      // Incursion: countdown from server
+      const remaining = Math.max(0, Math.ceil(state.matchTimeRemaining));
+      const mins = Math.floor(remaining / 60);
+      const secs = remaining % 60;
+      this.ticketsTimer.textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      // Flash red under 60s
+      if (remaining <= 60) {
+        this.ticketsTimer.classList.add('urgent');
+      } else {
+        this.ticketsTimer.classList.remove('urgent');
+      }
+    } else if (this.matchStartTime > 0) {
       const elapsed = Math.floor((performance.now() - this.matchStartTime) / 1000);
       const mins = Math.floor(elapsed / 60);
       const secs = elapsed % 60;
       this.ticketsTimer.textContent =
         `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      this.ticketsTimer.classList.remove('urgent');
     }
 
     // Winning/Losing status
@@ -567,6 +605,70 @@ export class HUD {
     this.gameoverOverlay.classList.add('visible');
   }
 
+  /** Show a temporary AI Game Master announcement banner. */
+  showDirectorEvent(event: DirectorEvent): void {
+    this.directorBannerTitle.textContent = event.title;
+    this.directorBannerBody.textContent = event.description;
+    this.directorBanner.className = `hud-director-banner ${event.kind}`;
+    this.directorBanner.classList.add('visible');
+
+    if (this.directorBannerTimer !== null) {
+      window.clearTimeout(this.directorBannerTimer);
+      this.directorBannerTimer = null;
+    }
+
+    const durationMs = Math.max(1800, Math.round((event.durationSeconds ?? 4) * 1000));
+    this.directorBannerTimer = window.setTimeout(() => {
+      this.directorBanner.classList.remove('visible');
+      this.directorBannerTimer = null;
+    }, durationMs);
+  }
+
+  /** Update the dynamic objectives panel (Incursion mode). */
+  updateDynamicObjectives(objectives: DynamicObjective[]): void {
+    if (objectives.length === 0) {
+      this.objectivePanel.classList.remove('visible');
+      return;
+    }
+
+    this.objectivePanel.classList.add('visible');
+    this.objectivePanel.innerHTML = '';
+
+    for (const obj of objectives) {
+      const entry = document.createElement('div');
+      entry.className = 'hud-objective-entry';
+
+      const remaining = Math.max(0, Math.ceil(obj.timeRemaining));
+      const mins = Math.floor(remaining / 60);
+      const secs = remaining % 60;
+      const timerClass = remaining <= 15 ? 'hud-objective-timer urgent' : 'hud-objective-timer';
+
+      entry.innerHTML =
+        `<div class="hud-objective-task">${this.esc(obj.task.toUpperCase())}</div>` +
+        `<div class="hud-objective-zone">Point ${this.esc(obj.zone)}</div>` +
+        `<div class="${timerClass}">${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}</div>` +
+        `<div class="hud-objective-bonus">+${obj.bonusScore} pts</div>`;
+
+      this.objectivePanel.appendChild(entry);
+    }
+  }
+
+  /** Brief flash when an objective is completed. */
+  showObjectiveCompleted(objectiveId: string, team: number, bonus: number): void {
+    const teamName = team === 0 ? 'Alpha' : 'Bravo';
+    this.directorBannerTitle.textContent = 'OBJECTIVE COMPLETE';
+    this.directorBannerBody.textContent = `${teamName} earns +${bonus} bonus points!`;
+    this.directorBanner.className = 'hud-director-banner dynamic_objective visible';
+
+    if (this.directorBannerTimer !== null) {
+      window.clearTimeout(this.directorBannerTimer);
+    }
+    this.directorBannerTimer = window.setTimeout(() => {
+      this.directorBanner.classList.remove('visible');
+      this.directorBannerTimer = null;
+    }, 3000);
+  }
+
   /** Hide the game-over screen (when returning to lobby). */
   hideGameOver(): void {
     this.gameoverOverlay.classList.remove('visible');
@@ -587,6 +689,11 @@ export class HUD {
       window.clearTimeout(t);
     }
     this.killfeedTimers.length = 0;
+
+    if (this.directorBannerTimer !== null) {
+      window.clearTimeout(this.directorBannerTimer);
+      this.directorBannerTimer = null;
+    }
 
     this.root.remove();
   }

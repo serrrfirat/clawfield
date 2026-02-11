@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId, REVIVE_RADIUS, SMOKE_GRENADE_FUSE_TIME } from '@clawfield/shared';
+import { getVoxel, setVoxel as setVoxelShared, worldToChunk, PLAYER_HEIGHT, loadPalette, setWaterIndices, STREAM_RADIUS, STREAM_ALL_CHUNKS, LOD_UPDATE_INTERVAL, CLASSES, GADGET_COOLDOWNS, GADGET_COOLDOWN, ClassId, GadgetId, REVIVE_RADIUS, SMOKE_GRENADE_FUSE_TIME } from '@clawfield/shared';
 import type { ServerMessage, PlayerState, KillEntry, GameMode, ClassDef, DestructionEvent, WeaponLoadout } from '@clawfield/shared';
 import { Renderer } from './renderer';
 import { WorldRenderer, setFogUniforms } from './voxel/world-renderer';
@@ -65,12 +65,15 @@ export const gameState = {
   selectedGadgetIndex: 0,
   selectedGrenadeIndex: 0,
   selectedLoadout: {} as WeaponLoadout,
+  matchTimeRemaining: -1,
+  dynamicObjectives: [] as import('@clawfield/shared').DynamicObjective[],
 };
 
 // --- State ---
 let chunks = new Map<string, Uint8Array>();
 let localPlayer: LocalPlayer | null = null;
 const remotePlayers = new Map<string, RemotePlayer>();
+let currentMapBounds: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } | null = null;
 
 /** Map weapon display name → SoundId for remote gunshot audio */
 const REMOTE_WEAPON_SOUND: Record<string, SoundId> = {
@@ -176,6 +179,9 @@ function handleServerMessage(msg: ServerMessage): void {
       if (msg.palette) {
         loadPalette(msg.palette);
       }
+      if (msg.weather) {
+        weatherManager.setWeather(msg.weather, 0.6);
+      }
       // Set water material indices for physics and rendering
       if (msg.waterIndices) {
         setWaterIndices(msg.waterIndices);
@@ -186,6 +192,7 @@ function handleServerMessage(msg: ServerMessage): void {
       worldRenderer.loadAll(chunks);
 
       gameState.mapName = msg.mapName ?? 'Unknown';
+      currentMapBounds = msg.mapBounds ?? null;
       gameState.mapObjectives = msg.objectives ?? [];
       if (msg.mapName) {
         console.log(
@@ -196,17 +203,34 @@ function handleServerMessage(msg: ServerMessage): void {
       // Map-specific edge haze: fake an infinite horizon while preserving hard limits.
       const oldQuarter = (msg.mapName ?? '').toLowerCase().includes('old quarter');
       if (oldQuarter && msg.mapBounds) {
+        const cx = (msg.mapBounds.minX + msg.mapBounds.maxX) * 0.5;
+        const cy = msg.mapBounds.minY + 14;
+        const cz = (msg.mapBounds.minZ + msg.mapBounds.maxZ) * 0.5;
         setFogUniforms({
           edgeMin: { x: msg.mapBounds.minX, z: msg.mapBounds.minZ },
           edgeMax: { x: msg.mapBounds.maxX, z: msg.mapBounds.maxZ },
           edgeFadeDistance: 42,
           edgeStrength: 0.82,
+          fogLights: [{
+            position: { x: cx, y: cy, z: cz },
+            color: new THREE.Color(0xffc98a),
+            range: 128,
+          }],
+        });
+      } else if (msg.mapBounds) {
+        // Enable edge haze on all maps with bounds to hide hard world cutoff.
+        setFogUniforms({
+          edgeMin: { x: msg.mapBounds.minX, z: msg.mapBounds.minZ },
+          edgeMax: { x: msg.mapBounds.maxX, z: msg.mapBounds.maxZ },
+          edgeFadeDistance: 60,
+          edgeStrength: 0.9,
+          fogLights: [],
         });
       } else {
-        // Disable edge haze on other maps unless explicitly configured.
         setFogUniforms({
           edgeFadeDistance: 0,
           edgeStrength: 0,
+          fogLights: [],
         });
       }
 
@@ -590,6 +614,31 @@ function handleServerMessage(msg: ServerMessage): void {
       break;
     }
 
+    case 'director_event': {
+      hud.showDirectorEvent(msg.event);
+      if (msg.event.kind === 'weather_shift' && msg.event.weather) {
+        weatherManager.setWeather(msg.event.weather, 4.5);
+      }
+      break;
+    }
+
+    case 'match_timer': {
+      gameState.matchTimeRemaining = msg.timeRemaining;
+      break;
+    }
+
+    case 'dynamic_objectives': {
+      gameState.dynamicObjectives = msg.objectives;
+      hud.updateDynamicObjectives(msg.objectives);
+      break;
+    }
+
+    case 'objective_completed': {
+      hud.showObjectiveCompleted(msg.objectiveId, msg.team, msg.bonusScore);
+      soundManager.play(SoundId.UiGadgetReady); // reuse ready chime
+      break;
+    }
+
     case 'enemy_spotted': {
       // Minimap removed — spotted enemies are a no-op for now
       break;
@@ -891,6 +940,16 @@ function addScreenShake(eventPos: { x: number; y: number; z: number }, maxIntens
 }
 
 const network = new NetworkClient(handleServerMessage);
+
+// --- FPS Counter ---
+const fpsEl = document.createElement('div');
+fpsEl.style.cssText =
+  'position:fixed;top:8px;right:8px;color:#0f0;font:bold 14px monospace;' +
+  'background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:3px;z-index:9999;pointer-events:none';
+document.body.appendChild(fpsEl);
+let fpsAccum = 0;
+let fpsFrames = 0;
+let fpsLast = performance.now();
 
 // --- Game Loop ---
 let lastTime = performance.now();
@@ -1223,6 +1282,7 @@ function gameLoop(): void {
     gadgetReady,
     weaponName,
     playerYaw,
+    matchTimeRemaining: gameState.matchTimeRemaining,
   });
 
   // Update damage indicators
@@ -1243,7 +1303,7 @@ function gameLoop(): void {
   }
 
   // Prune distant chunks every ~60 frames (~1 second at 60fps)
-  if (localPlayer && frameCount % 60 === 0) {
+  if (!STREAM_ALL_CHUNKS && localPlayer && frameCount % 60 === 0) {
     const cam = renderer.camera;
     const removed = worldRenderer.pruneDistant(
       { x: cam.position.x, y: cam.position.y, z: cam.position.z },
@@ -1266,10 +1326,33 @@ function gameLoop(): void {
   if (gameState.inWater) {
     weatherManager.sky.visible = false;
     renderer.scene.background = underwaterColor;
-    setFogUniforms({ color: underwaterColor, near: 5, far: 60, heightDensity: 0.0, heightOrigin: 0 });
+    setFogUniforms({
+      color: underwaterColor,
+      density: 0.029,
+      heightDensity: 0.0,
+      heightOrigin: 0,
+      fogLights: [],
+    });
   } else {
     weatherManager.sky.visible = true;
     renderer.scene.background = null;
+
+    const oldQuarter = gameState.mapName.toLowerCase().includes('old quarter');
+    if (oldQuarter && currentMapBounds) {
+      setFogUniforms({
+        fogLights: [{
+          position: {
+            x: (currentMapBounds.minX + currentMapBounds.maxX) * 0.5,
+            y: currentMapBounds.minY + 14,
+            z: (currentMapBounds.minZ + currentMapBounds.maxZ) * 0.5,
+          },
+          color: new THREE.Color(0xffc98a),
+          range: 128,
+        }],
+      });
+    } else {
+      setFogUniforms({ fogLights: [] });
+    }
   }
 
   // Sort water faces back-to-front for correct transparency
@@ -1288,6 +1371,16 @@ function gameLoop(): void {
 
   // Render
   renderer.render();
+
+  // FPS counter (update every 500ms)
+  fpsFrames++;
+  fpsAccum += dt;
+  if (performance.now() - fpsLast >= 500) {
+    fpsEl.textContent = `${Math.round(fpsFrames / fpsAccum)} FPS`;
+    fpsFrames = 0;
+    fpsAccum = 0;
+    fpsLast = performance.now();
+  }
 
   // Update spatial audio listener position
   if (localPlayer) {
@@ -1391,6 +1484,8 @@ function resetClientGameState(): void {
   gameState.capturePoints = [];
   gameState.conquestScoreAlpha = 0;
   gameState.conquestScoreBravo = 0;
+  gameState.matchTimeRemaining = -1;
+  gameState.dynamicObjectives = [];
 
   console.log('Client game state reset');
 }

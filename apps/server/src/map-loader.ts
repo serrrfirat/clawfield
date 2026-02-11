@@ -90,15 +90,29 @@ export function parseMapMetadata(value: unknown): MapMetadata | null {
     return null;
   }
 
-  const rawSpawnPoints =
+  // Support both standard format (spawnPoints.alpha/bravo) and WFC format (gameplay.spawns.team1/team2)
+  let rawSpawnPoints =
     (raw.spawn_points as Record<string, unknown> | undefined) ??
     (raw.spawnPoints as Record<string, unknown> | undefined);
-  if (!rawSpawnPoints || typeof rawSpawnPoints !== 'object') {
-    return null;
+
+  let rawAlpha: unknown[] | undefined;
+  let rawBravo: unknown[] | undefined;
+
+  if (rawSpawnPoints && typeof rawSpawnPoints === 'object') {
+    rawAlpha = rawSpawnPoints.alpha as unknown[] | undefined;
+    rawBravo = rawSpawnPoints.bravo as unknown[] | undefined;
   }
 
-  const rawAlpha = rawSpawnPoints.alpha;
-  const rawBravo = rawSpawnPoints.bravo;
+  // WFC format: gameplay.spawns.team1/team2
+  if ((!rawAlpha || !rawBravo) && raw.gameplay && typeof raw.gameplay === 'object') {
+    const gameplay = raw.gameplay as Record<string, unknown>;
+    const spawns = gameplay.spawns as Record<string, unknown> | undefined;
+    if (spawns && typeof spawns === 'object') {
+      rawAlpha = rawAlpha ?? spawns.team1 as unknown[] | undefined;
+      rawBravo = rawBravo ?? spawns.team2 as unknown[] | undefined;
+    }
+  }
+
   if (!Array.isArray(rawAlpha) || !Array.isArray(rawBravo)) {
     return null;
   }
@@ -107,28 +121,47 @@ export function parseMapMetadata(value: unknown): MapMetadata | null {
     return null;
   }
 
-  const rawCapturePoints =
+  // Support both standard capturePoints and WFC captureZones format
+  let rawCapturePoints =
     (raw.capture_points as unknown[] | undefined) ??
-    (raw.capturePoints as unknown[] | undefined) ??
-    [];
+    (raw.capturePoints as unknown[] | undefined);
+
+  // WFC format: gameplay.captureZones (flat x/y/z instead of nested position)
+  if (!rawCapturePoints && raw.gameplay && typeof raw.gameplay === 'object') {
+    const gameplay = raw.gameplay as Record<string, unknown>;
+    rawCapturePoints = gameplay.captureZones as unknown[] | undefined;
+  }
 
   if (!Array.isArray(rawCapturePoints)) {
-    return null;
+    rawCapturePoints = [];
   }
 
   const capturePoints: MapCapturePointMetadata[] = [];
   for (const cp of rawCapturePoints) {
     if (!cp || typeof cp !== 'object') return null;
     const entry = cp as Record<string, unknown>;
-    if (typeof entry.id !== 'string' || !isVec3(entry.position)) return null;
-    if (typeof entry.initialOwner !== 'number' || !Number.isFinite(entry.initialOwner)) {
+    if (typeof entry.id !== 'string') return null;
+
+    // Standard format: { id, position: {x,y,z}, initialOwner }
+    if (isVec3(entry.position)) {
+      if (typeof entry.initialOwner !== 'number' || !Number.isFinite(entry.initialOwner)) {
+        return null;
+      }
+      capturePoints.push({
+        id: entry.id,
+        position: { ...entry.position },
+        initialOwner: Math.trunc(entry.initialOwner),
+      });
+    } else if (isVec3(entry)) {
+      // WFC format: { id, x, y, z, radius } — flat coords, neutral by default
+      capturePoints.push({
+        id: entry.id,
+        position: { x: (entry as any).x, y: (entry as any).y, z: (entry as any).z },
+        initialOwner: -1,
+      });
+    } else {
       return null;
     }
-    capturePoints.push({
-      id: entry.id,
-      position: { ...entry.position },
-      initialOwner: Math.trunc(entry.initialOwner),
-    });
   }
 
   const rawObjectives =
@@ -199,6 +232,55 @@ export function parseMapMetadata(value: unknown): MapMetadata | null {
     objects,
     groundIndices,
   };
+}
+
+/**
+ * Scan the assets/maps/ directory for all available .map files.
+ * Returns a sorted array of { id, name } where name comes from .meta.json if available.
+ */
+export function listAvailableMaps(): { id: string; name: string }[] {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const mapsDir = path.resolve(__dirname, '..', '..', '..', 'assets', 'maps');
+
+  if (!fs.existsSync(mapsDir)) {
+    return [];
+  }
+
+  const entries = fs.readdirSync(mapsDir);
+  const maps: { id: string; name: string }[] = [];
+
+  for (const entry of entries) {
+    if (!entry.endsWith('.map')) continue;
+    const id = entry.slice(0, -4); // strip .map
+
+    // Try to read display name from .meta.json
+    let displayName: string | undefined;
+    const metaPath = path.join(mapsDir, `${id}.meta.json`);
+    if (fs.existsSync(metaPath)) {
+      try {
+        const raw = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+        if (typeof raw.name === 'string' && raw.name.trim().length > 0) {
+          displayName = raw.name;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+
+    // Fall back to title-cased filename
+    if (!displayName) {
+      displayName = id
+        .split(/[-_]/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+    }
+
+    maps.push({ id, name: displayName });
+  }
+
+  maps.sort((a, b) => a.name.localeCompare(b.name));
+  return maps;
 }
 
 /**

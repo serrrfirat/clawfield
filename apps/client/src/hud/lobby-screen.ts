@@ -3,6 +3,7 @@ import type { GameMode, LobbyPlayer } from '@clawfield/shared';
 export interface LobbyCallbacks {
   onSetTeam: (team: number) => void;
   onSetMode: (mode: GameMode) => void;
+  onSetMap: (mapName: string) => void;
   onStartGame: () => void;
   onLeave: () => void;
 }
@@ -19,6 +20,8 @@ export class LobbyScreen {
   private joinAlphaBtn: HTMLButtonElement;
   private joinBravoBtn: HTMLButtonElement;
   private modeSelect: HTMLSelectElement;
+  private mapSelect: HTMLSelectElement;
+  private mapSection: HTMLDivElement;
   private startBtn: HTMLButtonElement;
   private leaveBtn: HTMLButtonElement;
   private modeSection: HTMLDivElement;
@@ -56,11 +59,18 @@ export class LobbyScreen {
             </div>
           </div>
 
+          <div class="lobby-mode-section lobby-map-section">
+            <label class="lobby-label">MAP</label>
+            <select class="lobby-map-select">
+            </select>
+          </div>
+
           <div class="lobby-mode-section">
             <label class="lobby-label">GAME MODE</label>
             <select class="lobby-mode-select">
               <option value="tdm">TEAM DEATHMATCH</option>
               <option value="conquest">CONQUEST</option>
+              <option value="incursion">INCURSION</option>
             </select>
           </div>
 
@@ -79,7 +89,9 @@ export class LobbyScreen {
     this.joinAlphaBtn = this.root.querySelector('.lobby-join-team-btn.alpha')!;
     this.joinBravoBtn = this.root.querySelector('.lobby-join-team-btn.bravo')!;
     this.modeSelect = this.root.querySelector('.lobby-mode-select')!;
-    this.modeSection = this.root.querySelector('.lobby-mode-section')!;
+    this.modeSection = this.root.querySelector('.lobby-mode-section:not(.lobby-map-section)')!;
+    this.mapSelect = this.root.querySelector('.lobby-map-select')!;
+    this.mapSection = this.root.querySelector('.lobby-map-section')!;
     this.startBtn = this.root.querySelector('.lobby-start-btn')!;
     this.leaveBtn = this.root.querySelector('.lobby-leave-btn')!;
 
@@ -92,6 +104,9 @@ export class LobbyScreen {
 
     this.joinAlphaBtn.addEventListener('click', () => this.callbacks?.onSetTeam(0));
     this.joinBravoBtn.addEventListener('click', () => this.callbacks?.onSetTeam(1));
+    this.mapSelect.addEventListener('change', () => {
+      this.callbacks?.onSetMap(this.mapSelect.value);
+    });
     this.modeSelect.addEventListener('change', () => {
       this.callbacks?.onSetMode(this.modeSelect.value as GameMode);
     });
@@ -118,7 +133,14 @@ export class LobbyScreen {
     return this.visible;
   }
 
-  update(players: LobbyPlayer[], gameMode: GameMode, hostId: string, roomCode: string): void {
+  update(
+    players: LobbyPlayer[],
+    gameMode: GameMode,
+    hostId: string,
+    roomCode: string,
+    mapName?: string,
+    availableMaps?: { id: string; name: string }[]
+  ): void {
     this.isHost = this.myId === hostId;
     this.codeEl.textContent = roomCode;
 
@@ -133,6 +155,23 @@ export class LobbyScreen {
     this.bravoList.innerHTML = bravoPlayers.map(p =>
       `<div class="lobby-player${p.id === this.myId ? ' me' : ''}${p.isHost ? ' host' : ''}">${p.name}${p.isHost ? ' <span class="lobby-host-badge">HOST</span>' : ''}</div>`
     ).join('');
+
+    // Update map selector
+    if (availableMaps && availableMaps.length > 0) {
+      // Rebuild options only if the list changed (avoids flicker)
+      const optionIds = Array.from(this.mapSelect.options).map(o => o.value).join(',');
+      const newIds = availableMaps.map(m => m.id).join(',');
+      if (optionIds !== newIds) {
+        this.mapSelect.innerHTML = availableMaps
+          .map(m => `<option value="${m.id}">${m.name}</option>`)
+          .join('');
+      }
+    }
+    if (mapName) {
+      this.mapSelect.value = mapName;
+    }
+    this.mapSelect.disabled = !this.isHost;
+    this.mapSection.style.opacity = this.isHost ? '1' : '0.5';
 
     // Update mode selector
     this.modeSelect.value = gameMode;
@@ -299,7 +338,8 @@ export class LobbyScreen {
         letter-spacing: 2px;
         color: #888;
       }
-      .lobby-mode-select {
+      .lobby-mode-select,
+      .lobby-map-select {
         padding: 10px 14px;
         background: rgba(255,255,255,0.06);
         border: 1px solid rgba(255,255,255,0.15);
@@ -310,7 +350,8 @@ export class LobbyScreen {
         outline: none;
         cursor: pointer;
       }
-      .lobby-mode-select option {
+      .lobby-mode-select option,
+      .lobby-map-select option {
         background: #1a2a1a;
         color: #fff;
       }

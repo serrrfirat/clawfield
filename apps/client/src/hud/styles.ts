@@ -370,6 +370,58 @@ const CSS = /* css */ `
   color: #e74c3c;
 }
 
+/* ───────────────── Director banner (top-center) ───────────────── */
+
+.hud-director-banner {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-6px);
+  min-width: 360px;
+  max-width: 620px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  z-index: 140;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.hud-director-banner.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.hud-director-banner-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #ffd166;
+  margin-bottom: 2px;
+}
+
+.hud-director-banner-body {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.2px;
+}
+
+.hud-director-banner.weather_shift .hud-director-banner-title {
+  color: #86c5ff;
+}
+
+.hud-director-banner.reinforcement_wave .hud-director-banner-title {
+  color: #7ef2a6;
+}
+
+.hud-director-banner.artillery_warning .hud-director-banner-title {
+  color: #ff9b6b;
+}
+
 /* ───────────────── Hit marker (center) ───────────────── */
 
 .hud-hitmarker {
@@ -582,6 +634,73 @@ const CSS = /* css */ `
   font-size: 10px;
   opacity: 0.5;
   letter-spacing: 1px;
+}
+
+/* ───────────────── Incursion objective panel (top-right) ───────────────── */
+
+.hud-objective-panel {
+  position: fixed;
+  top: 48px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 110;
+  max-width: 280px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.hud-objective-panel.visible {
+  opacity: 1;
+}
+
+.hud-objective-entry {
+  background: rgba(0, 0, 0, 0.65);
+  border-left: 3px solid #f6c343;
+  padding: 6px 10px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-objective-task {
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #f6c343;
+  font-size: 11px;
+}
+
+.hud-objective-zone {
+  color: #fff;
+  font-size: 12px;
+}
+
+.hud-objective-timer {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-objective-timer.urgent {
+  color: #e74c3c;
+  animation: hud-blink 0.6s infinite;
+}
+
+.hud-objective-bonus {
+  font-size: 10px;
+  color: #2ecc71;
+  font-weight: 600;
+}
+
+/* ───────────────── Match timer flash (Incursion) ───────────────── */
+
+.hud-tickets-timer.urgent {
+  color: #e74c3c;
+  animation: hud-blink 0.8s infinite;
 }
 `;
 

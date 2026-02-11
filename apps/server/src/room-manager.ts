@@ -2,6 +2,7 @@ import type { ClientMessage, GameMode, ServerPhase, LobbyPlayer } from '@clawfie
 import { Team } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
 import { GameLoop, type LobbyPlayerInfo } from './game-loop.js';
+import { getConfiguredMapName, listAvailableMaps } from './map-loader.js';
 
 /** Maximum players per room */
 const MAX_PLAYERS = 10;
@@ -33,6 +34,8 @@ export class RoomManager {
   private hostId = '';
   private roomPlayers = new Map<string, RoomPlayer>();
   private gameMode: GameMode = 'tdm';
+  private selectedMap: string = getConfiguredMapName();
+  private availableMaps: { id: string; name: string }[] = listAvailableMaps();
   private gameLoop: GameLoop | null = null;
   private postGameTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -204,6 +207,17 @@ export class RoomManager {
         break;
       }
 
+      case 'lobby_set_map': {
+        if (this.phase !== 'lobby') return;
+        if (client.id !== this.hostId) return; // Only host can change map
+        // Validate map exists in available maps
+        if (!this.availableMaps.some((m) => m.id === msg.mapName)) return;
+        this.selectedMap = msg.mapName;
+        this.broadcastLobbyState();
+        console.log(`Map set to ${this.selectedMap}`);
+        break;
+      }
+
       case 'start_game': {
         if (this.phase !== 'lobby') return;
         if (client.id !== this.hostId) return; // Only host can start
@@ -261,6 +275,8 @@ export class RoomManager {
       hostId: this.hostId,
       roomCode: this.roomCode,
       phase: this.phase,
+      mapName: this.selectedMap,
+      availableMaps: this.availableMaps,
     });
   }
 
@@ -282,13 +298,20 @@ export class RoomManager {
     // Broadcast game starting (clients can show a brief countdown)
     this.network.broadcast({ type: 'game_starting', countdown: 0 });
 
-    // Create game loop with current players
-    this.gameLoop = new GameLoop(
-      this.network,
-      lobbyPlayers,
-      this.gameMode,
-      (winner) => this.onGameOver(winner)
-    );
+    // Create game loop with current players and selected map
+    try {
+      this.gameLoop = new GameLoop(
+        this.network,
+        lobbyPlayers,
+        this.gameMode,
+        (winner) => this.onGameOver(winner),
+        this.selectedMap
+      );
+    } catch (err) {
+      console.error('[RoomManager] Failed to start game:', err);
+      this.network.broadcast({ type: 'room_closed' });
+      this.resetToIdle();
+    }
   }
 
   private onGameOver(winner: number): void {
@@ -331,6 +354,7 @@ export class RoomManager {
     this.hostId = '';
     this.roomPlayers.clear();
     this.gameMode = 'tdm';
+    this.selectedMap = getConfiguredMapName();
     console.log('RoomManager reset to idle');
   }
 }

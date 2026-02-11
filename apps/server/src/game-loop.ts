@@ -1,5 +1,6 @@
 import {
   TICK_INTERVAL,
+  TICK_RATE,
   CHUNK_SIZE,
   MAT_GRASS,
   MAT_WALL,
@@ -23,6 +24,7 @@ import {
   GADGET_COOLDOWN,
   GADGET_COOLDOWNS,
   STREAM_RADIUS,
+  STREAM_ALL_CHUNKS,
   STREAM_CHECK_INTERVAL,
   CONQUEST_VICTORY_POINTS,
   setWaterIndices,
@@ -37,8 +39,16 @@ import {
   REVIVE_HEALTH_MEDIC,
   GadgetId,
   WeaponId,
+  INCURSION_TIME_LIMIT,
+  INCURSION_SCORE_THRESHOLD,
+  INCURSION_DIRECTOR_INTERVAL,
+  INCURSION_RUBBERBAND_THRESHOLD,
+  INCURSION_OBJECTIVE_BONUS,
+  INCURSION_OBJECTIVE_DURATION,
+  INCURSION_WFC_WIDTH,
+  INCURSION_WFC_DEPTH,
 } from '@clawfield/shared';
-import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode } from '@clawfield/shared';
+import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode, DirectorEvent, WeatherState, DynamicObjective } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
 import { PlayerSim } from './player-sim.js';
 import { DummyBot } from './bot.js';
@@ -79,6 +89,7 @@ import {
   stampObjectsIntoChunks,
 } from './map-loader.js';
 import { randomUUID } from 'node:crypto';
+import { generateIncursionMap } from './wfc-map-generator.js';
 
 /** Eye offset from player feet position */
 const EYE_OFFSET = PLAYER_HEIGHT - 0.1; // 1.7
@@ -91,6 +102,8 @@ const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 /** How often to check for stale sessions (in ticks) */
 const SESSION_CLEANUP_INTERVAL = 20 * 30; // every 30 seconds
+const OUT_OF_BOUNDS_MARGIN = 8;
+const OUT_OF_BOUNDS_FALL_DEPTH = 24;
 
 /** Lobby player info passed to GameLoop at start */
 export interface LobbyPlayerInfo {
@@ -140,6 +153,9 @@ export class GameLoop {
   private mapDisplayName = 'Test';
   private waterIndices: number[] | undefined;
   private objectPlacements: import('@clawfield/shared').MapObjectPlacement[] = [];
+  private worldBounds:
+    | { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }
+    | null = null;
 
   // --- Team & ticket tracking ---
   private ticketsAlpha = TDM_TICKETS;
@@ -161,6 +177,15 @@ export class GameLoop {
 
   /** Optional map override from lobby selection */
   private mapOverride: string | undefined;
+
+  // --- AI Director (deterministic fallback) ---
+  private directorCurrentWeather: WeatherState = 'clear';
+  private directorNextCheckAt = 0;
+
+  // --- Incursion mode state ---
+  private incursionTimeRemaining = 0;
+  private dynamicObjectives: DynamicObjective[] = [];
+  private nextObjectiveId = 0;
 
   constructor(
     network: NetworkServer,
@@ -191,6 +216,14 @@ export class GameLoop {
       }
     }
 
+    // Initialize Incursion timer
+    if (this.gameMode === 'incursion') {
+      this.incursionTimeRemaining = INCURSION_TIME_LIMIT;
+      this.directorNextCheckAt = Date.now() + 15_000; // faster first check for Incursion
+    } else {
+      this.directorNextCheckAt = Date.now() + 20_000;
+    }
+
     // Start the game loop
     this.tickTimer = setInterval(() => this.update(), TICK_INTERVAL);
     console.log(`Game loop started at ${1000 / TICK_INTERVAL}Hz (mode: ${gameMode})`);
@@ -211,7 +244,9 @@ export class GameLoop {
     const spawnCx = Math.floor(tempPos.x / CHUNK_SIZE);
     const spawnCy = Math.floor(tempPos.y / CHUNK_SIZE);
     const spawnCz = Math.floor(tempPos.z / CHUNK_SIZE);
-    const nearbyKeys = getChunksInRadius(spawnCx, spawnCy, spawnCz, STREAM_RADIUS);
+    const nearbyKeys = STREAM_ALL_CHUNKS
+      ? Array.from(this.chunks.keys())
+      : getChunksInRadius(spawnCx, spawnCy, spawnCz, STREAM_RADIUS);
 
     const mapData: ChunkData[] = [];
     const clientSent = new Set<string>();
@@ -231,8 +266,10 @@ export class GameLoop {
       id: client.id,
       team,
       mapData,
+      weather: this.directorCurrentWeather,
       palette: this.palette.length > 0 ? this.palette : undefined,
       waterIndices: this.waterIndices,
+      mapBounds: this.worldBounds ?? undefined,
       mapName: this.mapDisplayName,
       objectives: this.mapObjectives,
       objectPlacements: this.objectPlacements.length > 0 ? this.objectPlacements : undefined,
@@ -284,6 +321,22 @@ export class GameLoop {
       bravo: scores.bravo,
     });
 
+    // Send Incursion state to joining players
+    if (this.gameMode === 'incursion') {
+      this.network.send(client, {
+        type: 'match_timer',
+        timeRemaining: this.incursionTimeRemaining,
+        timeLimit: INCURSION_TIME_LIMIT,
+      });
+      const active = this.dynamicObjectives.filter(o => !o.completed && o.timeRemaining > 0);
+      if (active.length > 0) {
+        this.network.send(client, {
+          type: 'dynamic_objectives',
+          objectives: active,
+        });
+      }
+    }
+
     console.log(`Player joined game: ${client.name} (${client.id}) - Team ${team === Team.Alpha ? 'Alpha' : 'Bravo'}`);
   }
 
@@ -306,6 +359,17 @@ export class GameLoop {
 
   /** Attempt to load a configured binary map; fall back to Oasis, then test map if missing */
   private loadMap(): void {
+    // Incursion: try WFC-generated map first
+    if (this.gameMode === 'incursion') {
+      const seed = Date.now();
+      const mapName = generateIncursionMap(seed, INCURSION_WFC_WIDTH, INCURSION_WFC_DEPTH);
+      if (mapName && this.tryLoadMap(mapName)) {
+        console.log(`[Incursion] WFC map "${mapName}" loaded`);
+        return;
+      }
+      console.warn('[Incursion] WFC failed, falling back to selected map');
+    }
+
     const configuredMap = this.mapOverride ?? getConfiguredMapName();
 
     if (this.tryLoadMap(configuredMap)) {
@@ -323,6 +387,7 @@ export class GameLoop {
       `WARNING: Binary map not found for "${configuredMap}" (and Oasis fallback unavailable), using test map`
     );
     this.generateTestMap();
+    this.worldBounds = this.getChunkWorldBounds();
     void this.initializeDebrisPhysics();
     this.mapCapturePoints = DEFAULT_CAPTURE_POINTS.map((cp) => ({
       ...cp,
@@ -472,7 +537,51 @@ export class GameLoop {
     }
 
     console.log(`${this.mapName} map loaded: ${this.chunks.size} chunks`);
+    this.worldBounds = this.getChunkWorldBounds();
     return true;
+  }
+
+  private processOutOfBounds(): void {
+    if (!this.worldBounds) return;
+
+    for (const sim of this.players.values()) {
+      if (!sim.alive) continue;
+
+      const outOfX = sim.position.x < this.worldBounds.minX - OUT_OF_BOUNDS_MARGIN
+        || sim.position.x > this.worldBounds.maxX + OUT_OF_BOUNDS_MARGIN;
+      const outOfZ = sim.position.z < this.worldBounds.minZ - OUT_OF_BOUNDS_MARGIN
+        || sim.position.z > this.worldBounds.maxZ + OUT_OF_BOUNDS_MARGIN;
+      const belowWorld = sim.position.y < this.worldBounds.minY - OUT_OF_BOUNDS_FALL_DEPTH;
+
+      if (!outOfX && !outOfZ && !belowWorld) continue;
+
+      sim.alive = false;
+      sim.downed = false;
+      sim.health = 0;
+      sim.deathTime = Date.now();
+      sim.deaths++;
+
+      this.network.broadcast({
+        type: 'kill',
+        entry: {
+          killerId: sim.id,
+          killerName: sim.name,
+          victimId: sim.id,
+          victimName: sim.name,
+          weapon: 'Out of Bounds',
+        },
+      });
+
+      const victimClient = this.network.getClients().get(sim.id);
+      if (victimClient) {
+        this.network.send(victimClient, {
+          type: 'death',
+          killerId: '',
+          respawnTime: RESPAWN_DELAY,
+          killerPos: { ...sim.position },
+        });
+      }
+    }
   }
 
   /**
@@ -914,7 +1023,9 @@ export class GameLoop {
     const spawnCx = Math.floor(pos.x / CHUNK_SIZE);
     const spawnCy = Math.floor(pos.y / CHUNK_SIZE);
     const spawnCz = Math.floor(pos.z / CHUNK_SIZE);
-    const nearbyKeys = getChunksInRadius(spawnCx, spawnCy, spawnCz, STREAM_RADIUS);
+    const nearbyKeys = STREAM_ALL_CHUNKS
+      ? Array.from(this.chunks.keys())
+      : getChunksInRadius(spawnCx, spawnCy, spawnCz, STREAM_RADIUS);
 
     const mapData: ChunkData[] = [];
     const clientSent = new Set<string>();
@@ -935,6 +1046,7 @@ export class GameLoop {
       team: sim.team,
       sessionToken: sim.sessionToken,
       mapData,
+      weather: this.directorCurrentWeather,
       palette: this.palette.length > 0 ? this.palette : undefined,
       waterIndices: this.waterIndices,
       mapName: this.mapDisplayName,
@@ -987,6 +1099,22 @@ export class GameLoop {
       alpha: scores.alpha,
       bravo: scores.bravo,
     });
+
+    // Send Incursion state on rejoin
+    if (this.gameMode === 'incursion') {
+      this.network.send(client, {
+        type: 'match_timer',
+        timeRemaining: this.incursionTimeRemaining,
+        timeLimit: INCURSION_TIME_LIMIT,
+      });
+      const active = this.dynamicObjectives.filter(o => !o.completed && o.timeRemaining > 0);
+      if (active.length > 0) {
+        this.network.send(client, {
+          type: 'dynamic_objectives',
+          objectives: active,
+        });
+      }
+    }
   }
 
   // --- Main update loop ---
@@ -1019,6 +1147,9 @@ export class GameLoop {
     for (const sim of this.players.values()) {
       sim.tick(voxelGetter, this.debrisPhysicsManager ?? undefined);
     }
+
+    // Kill players who leave the loaded world bounds or fall into the void.
+    this.processOutOfBounds();
 
     // Reset per-tick firing flag (used for remote gunshot sounds)
     for (const sim of this.players.values()) {
@@ -1289,6 +1420,23 @@ export class GameLoop {
     // Check game over
     this.checkGameOver();
 
+    // AI director cadence (deterministic fallback loop)
+    this.runDirector(now);
+
+    // Incursion: tick timer and dynamic objectives
+    if (this.gameMode === 'incursion') {
+      this.incursionTimeRemaining -= TICK_INTERVAL / 1000;
+      this.updateDynamicObjectives(TICK_INTERVAL / 1000);
+      // Broadcast timer every second
+      if (this.tickCount % TICK_RATE === 0) {
+        this.network.broadcast({
+          type: 'match_timer',
+          timeRemaining: Math.max(0, this.incursionTimeRemaining),
+          timeLimit: INCURSION_TIME_LIMIT,
+        });
+      }
+    }
+
     // Clean up stale disconnected sessions periodically
     if (this.tickCount % SESSION_CLEANUP_INTERVAL === 0) {
       this.cleanupStaleSessions(now);
@@ -1421,7 +1569,9 @@ export class GameLoop {
       const cy = Math.floor(sim.position.y / CHUNK_SIZE);
       const cz = Math.floor(sim.position.z / CHUNK_SIZE);
 
-      const nearbyKeys = getChunksInRadius(cx, cy, cz, STREAM_RADIUS);
+      const nearbyKeys = STREAM_ALL_CHUNKS
+        ? Array.from(this.chunks.keys())
+        : getChunksInRadius(cx, cy, cz, STREAM_RADIUS);
 
       const newChunks: ChunkData[] = [];
       for (const key of nearbyKeys) {
@@ -1460,6 +1610,290 @@ export class GameLoop {
     }
   }
 
+  // --- AI Director (deterministic fallback loop) ---
+
+  private runDirector(now: number): void {
+    if (now < this.directorNextCheckAt || this.gameOver) {
+      return;
+    }
+    const interval = this.gameMode === 'incursion'
+      ? INCURSION_DIRECTOR_INTERVAL * 1000
+      : 60_000;
+    this.directorNextCheckAt = now + interval;
+
+    // Incursion has its own enhanced director
+    if (this.gameMode === 'incursion') {
+      this.runIncursionDirector(now);
+      return;
+    }
+
+    const event = this.pickDirectorEvent(now);
+    if (!event) return;
+
+    // Apply gameplay effects for selected event types.
+    if (event.kind === 'reinforcement_wave' && event.team !== undefined) {
+      const bonusTickets = 8;
+      if (event.team === Team.Alpha) {
+        this.ticketsAlpha += bonusTickets;
+      } else {
+        this.ticketsBravo += bonusTickets;
+      }
+      this.network.broadcast({
+        type: 'tickets',
+        alpha: this.ticketsAlpha,
+        bravo: this.ticketsBravo,
+      });
+      event.description += ` (+${bonusTickets} tickets)`;
+    }
+
+    if (event.kind === 'weather_shift' && event.weather) {
+      this.directorCurrentWeather = event.weather;
+    }
+
+    this.network.broadcast({ type: 'director_event', event });
+    console.log(`[Director] ${event.title} :: ${event.description}`);
+  }
+
+  private pickDirectorEvent(now: number): DirectorEvent | null {
+    const seed = this.tickCount + Math.floor(now / 1000);
+    const roll = this.directorRand(seed);
+    const zone = this.pickDirectorZone(seed + 7);
+
+    const alphaLead = this.ticketsAlpha - this.ticketsBravo;
+    const losingTeam = alphaLead === 0 ? undefined : alphaLead > 0 ? Team.Bravo : Team.Alpha;
+
+    if (Math.abs(alphaLead) >= 20 && losingTeam !== undefined && roll < 0.62) {
+      return {
+        id: `dir-${now}-reinforce`,
+        kind: 'reinforcement_wave',
+        title: 'Reinforcement Wave',
+        description: `${losingTeam === Team.Alpha ? 'Alpha' : 'Bravo'} receives emergency reinforcements`,
+        team: losingTeam,
+        durationSeconds: 1,
+      };
+    }
+
+    // 40% chance to shift weather for pacing and atmosphere.
+    if (roll < 0.40) {
+      const weather = this.pickNextWeather(seed + 13);
+      return {
+        id: `dir-${now}-weather`,
+        kind: 'weather_shift',
+        title: 'Weather Shift',
+        description: `${weather.toUpperCase()} fronts are moving over the battlefield`,
+        weather,
+        durationSeconds: 45,
+      };
+    }
+
+    if (roll < 0.72) {
+      return {
+        id: `dir-${now}-artillery`,
+        kind: 'artillery_warning',
+        title: 'Artillery Warning',
+        description: `Incoming fire expected near point ${zone}`,
+        zone,
+        durationSeconds: 15,
+      };
+    }
+
+    if (roll < 0.90) {
+      return {
+        id: `dir-${now}-supply`,
+        kind: 'supply_drop',
+        title: 'Supply Drop',
+        description: `High-value supply crate reported near point ${zone}`,
+        zone,
+        durationSeconds: 60,
+      };
+    }
+
+    return {
+      id: `dir-${now}-objective`,
+      kind: 'objective_shift',
+      title: 'Objective Shift',
+      description: `Command priority changed: pressure point ${zone}`,
+      zone,
+      durationSeconds: 40,
+    };
+  }
+
+  private pickDirectorZone(seed: number): string {
+    const points = this.capturePointManager.getStates();
+    if (points.length === 0) return 'MID';
+    const idx = Math.floor(this.directorRand(seed) * points.length);
+    return points[Math.max(0, Math.min(points.length - 1, idx))]!.id;
+  }
+
+  private pickNextWeather(seed: number): WeatherState {
+    const weatherPool: WeatherState[] = ['clear', 'cloudy', 'overcast', 'fog', 'rain', 'snow', 'storm'];
+    const filtered = weatherPool.filter((w) => w !== this.directorCurrentWeather);
+    const idx = Math.floor(this.directorRand(seed) * filtered.length);
+    return filtered[Math.max(0, Math.min(filtered.length - 1, idx))] ?? 'clear';
+  }
+
+  private directorRand(seed: number): number {
+    const n = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  // --- Incursion director & dynamic objectives ---
+
+  private runIncursionDirector(now: number): void {
+    const scores = this.capturePointManager.getScores();
+    const gap = scores.alpha - scores.bravo;
+    const losingTeam = gap === 0 ? -1 : gap > 0 ? Team.Bravo : Team.Alpha;
+
+    // Rubber-band: if losing team is far behind, give them a reinforcement event
+    if (Math.abs(gap) >= INCURSION_RUBBERBAND_THRESHOLD && losingTeam >= 0) {
+      const event: DirectorEvent = {
+        id: `dir-${now}-reinforce`,
+        kind: 'reinforcement_wave',
+        title: 'Emergency Reinforcements',
+        description: `${losingTeam === Team.Alpha ? 'Alpha' : 'Bravo'} receives emergency reinforcements (+8 tickets)`,
+        team: losingTeam,
+        durationSeconds: 1,
+      };
+      if (losingTeam === Team.Alpha) {
+        this.ticketsAlpha += 8;
+      } else {
+        this.ticketsBravo += 8;
+      }
+      this.network.broadcast({
+        type: 'tickets',
+        alpha: this.ticketsAlpha,
+        bravo: this.ticketsBravo,
+      });
+      this.network.broadcast({ type: 'director_event', event });
+      console.log(`[Incursion Director] Rubber-band: reinforcements for ${losingTeam === Team.Alpha ? 'Alpha' : 'Bravo'}`);
+    }
+
+    // Spawn dynamic objectives if fewer than 2 active
+    const activeObjectives = this.dynamicObjectives.filter(o => !o.completed && o.timeRemaining > 0);
+    if (activeObjectives.length < 2) {
+      this.spawnDynamicObjective(losingTeam, now);
+    }
+
+    // Otherwise pick a standard event (weather, artillery, supply drop)
+    const seed = this.tickCount + Math.floor(now / 1000);
+    const roll = this.directorRand(seed + 37);
+    if (roll < 0.3) {
+      const weather = this.pickNextWeather(seed + 51);
+      const event: DirectorEvent = {
+        id: `dir-${now}-weather`,
+        kind: 'weather_shift',
+        title: 'Weather Shift',
+        description: `${weather.toUpperCase()} fronts are moving over the battlefield`,
+        weather,
+        durationSeconds: 45,
+      };
+      this.directorCurrentWeather = weather;
+      this.network.broadcast({ type: 'director_event', event });
+      console.log(`[Incursion Director] Weather: ${weather}`);
+    } else if (roll < 0.5) {
+      const zone = this.pickDirectorZone(seed + 61);
+      const event: DirectorEvent = {
+        id: `dir-${now}-artillery`,
+        kind: 'artillery_warning',
+        title: 'Artillery Warning',
+        description: `Incoming fire expected near point ${zone}`,
+        zone,
+        durationSeconds: 15,
+      };
+      this.network.broadcast({ type: 'director_event', event });
+      console.log(`[Incursion Director] Artillery near ${zone}`);
+    }
+  }
+
+  private spawnDynamicObjective(losingTeam: number, now: number): void {
+    const seed = this.tickCount + Math.floor(now / 1000);
+    const zone = this.pickDirectorZone(seed + 19);
+    const id = `obj-${this.nextObjectiveId++}`;
+
+    const objective: DynamicObjective = {
+      id,
+      task: 'capture',
+      zone,
+      timeLimit: INCURSION_OBJECTIVE_DURATION,
+      timeRemaining: INCURSION_OBJECTIVE_DURATION,
+      bonusScore: INCURSION_OBJECTIVE_BONUS,
+      targetTeam: losingTeam, // favor losing team, or -1 for either
+      completed: false,
+    };
+
+    this.dynamicObjectives.push(objective);
+
+    const teamLabel = losingTeam === Team.Alpha ? 'Alpha'
+      : losingTeam === Team.Bravo ? 'Bravo'
+      : 'Either team';
+
+    const event: DirectorEvent = {
+      id: `dir-${now}-dynobj`,
+      kind: 'dynamic_objective',
+      title: 'Dynamic Objective',
+      description: `${teamLabel}: Capture point ${zone} for +${INCURSION_OBJECTIVE_BONUS} bonus points!`,
+      zone,
+      durationSeconds: INCURSION_OBJECTIVE_DURATION,
+      objective,
+    };
+
+    this.network.broadcast({ type: 'director_event', event });
+    this.network.broadcast({
+      type: 'dynamic_objectives',
+      objectives: this.dynamicObjectives.filter(o => !o.completed && o.timeRemaining > 0),
+    });
+
+    console.log(`[Incursion] Spawned objective ${id}: capture ${zone} (${teamLabel})`);
+  }
+
+  private updateDynamicObjectives(dt: number): void {
+    let changed = false;
+
+    for (const obj of this.dynamicObjectives) {
+      if (obj.completed || obj.timeRemaining <= 0) continue;
+
+      obj.timeRemaining -= dt;
+
+      // Check if target zone is captured by target team
+      const cpStates = this.capturePointManager.getStates();
+      const zoneState = cpStates.find(cp => cp.id === obj.zone);
+      if (zoneState) {
+        const captured = obj.targetTeam === -1
+          ? zoneState.owner >= 0 // any team
+          : zoneState.owner === obj.targetTeam;
+
+        if (captured) {
+          obj.completed = true;
+          const team = zoneState.owner;
+          this.capturePointManager.addBonus(team, obj.bonusScore);
+          this.network.broadcast({
+            type: 'objective_completed',
+            objectiveId: obj.id,
+            team,
+            bonusScore: obj.bonusScore,
+          });
+          console.log(`[Incursion] Objective ${obj.id} completed by ${team === Team.Alpha ? 'Alpha' : 'Bravo'} (+${obj.bonusScore})`);
+          changed = true;
+        }
+      }
+
+      // Remove expired objectives
+      if (obj.timeRemaining <= 0 && !obj.completed) {
+        console.log(`[Incursion] Objective ${obj.id} expired`);
+        changed = true;
+      }
+    }
+
+    // Broadcast updated objectives periodically (every second) or on change
+    if (changed || this.tickCount % TICK_RATE === 0) {
+      const active = this.dynamicObjectives.filter(o => !o.completed && o.timeRemaining > 0);
+      this.network.broadcast({
+        type: 'dynamic_objectives',
+        objectives: active,
+      });
+    }
+  }
+
   // --- Combat processing ---
 
   private processShooting(now: number): void {
@@ -1467,44 +1901,53 @@ export class GameLoop {
       // Dead or downed players can't shoot
       if (!shooter.alive || shooter.downed) continue;
 
-      // Check if the player is holding fire
       const input = shooter.latestInput;
-      if (!input || !input.shoot) continue;
+      const shotIntents = shooter.consumeShotIntents();
+      const isHoldingFire = !!input?.shoot;
+      if (!isHoldingFire && shotIntents <= 0) continue;
 
-      // Check fire rate / ammo
-      if (!shooter.tryFire(now)) continue;
+      // Single-shot weapons use trigger intents; automatic weapons can sustain on hold.
+      const shotsToAttempt = isHoldingFire
+        ? Math.max(1, shotIntents)
+        : shotIntents;
 
-      // Eye position: player pos (feet) + eye offset (adjusted for crouch)
-      const eyeHeight = shooter.crouching ? CROUCH_HEIGHT - 0.1 : EYE_OFFSET;
-      const eyePos: Vec3 = {
-        x: shooter.position.x,
-        y: shooter.position.y + eyeHeight,
-        z: shooter.position.z,
-      };
+      for (let shotIndex = 0; shotIndex < shotsToAttempt; shotIndex++) {
+        // Check fire rate / ammo
+        if (!shooter.tryFire(now)) break;
 
-      // Base aim direction from yaw/pitch
-      const baseDir = aimDirection(shooter.yaw, shooter.pitch);
+        // Eye position: player pos (feet) + eye offset (adjusted for crouch)
+        const eyeHeight = shooter.crouching ? CROUCH_HEIGHT - 0.1 : EYE_OFFSET;
+        const eyePos: Vec3 = {
+          x: shooter.position.x,
+          y: shooter.position.y + eyeHeight,
+          z: shooter.position.z,
+        };
 
-      const weapon = shooter.activeWeapon;
+        // Base aim direction from yaw/pitch
+        const baseDir = aimDirection(shooter.yaw, shooter.pitch);
 
-      // Rocket launcher: spawn rocket instead of hitscan projectile
-      if (weapon.id === WeaponId.RocketLauncher) {
-        this.rocketManager.spawn(shooter.id, shooter.team, eyePos, baseDir);
-        continue;
-      }
+        const weapon = shooter.activeWeapon;
+        const effectiveSpread = shooter.getEffectiveSpread();
 
-      // Spawn a projectile for each pellet
-      for (let p = 0; p < weapon.pellets; p++) {
-        // Apply spread: random offset within the spread cone
-        const dir = this.applySpread(baseDir, weapon.spread);
+        // Rocket launcher: spawn rocket instead of hitscan projectile
+        if (weapon.id === WeaponId.RocketLauncher) {
+          this.rocketManager.spawn(shooter.id, shooter.team, eyePos, baseDir);
+          continue;
+        }
 
-        this.projectileManager.spawn(
-          shooter.id,
-          shooter.team,
-          eyePos,
-          dir,
-          weapon
-        );
+        // Spawn a projectile for each pellet
+        for (let p = 0; p < weapon.pellets; p++) {
+          // Apply spread: random offset within the spread cone
+          const dir = this.applySpread(baseDir, effectiveSpread);
+
+          this.projectileManager.spawn(
+            shooter.id,
+            shooter.team,
+            eyePos,
+            dir,
+            weapon
+          );
+        }
       }
     }
   }
@@ -1878,6 +2321,15 @@ export class GameLoop {
         winner = Team.Alpha;
       } else if (diff <= -CONQUEST_VICTORY_POINTS) {
         winner = Team.Bravo;
+      }
+    } else if (this.gameMode === 'incursion') {
+      const scores = this.capturePointManager.getScores();
+      if (scores.alpha >= INCURSION_SCORE_THRESHOLD) {
+        winner = Team.Alpha;
+      } else if (scores.bravo >= INCURSION_SCORE_THRESHOLD) {
+        winner = Team.Bravo;
+      } else if (this.incursionTimeRemaining <= 0) {
+        winner = scores.alpha >= scores.bravo ? Team.Alpha : Team.Bravo;
       }
     }
 

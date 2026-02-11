@@ -145,6 +145,12 @@ export class CapturePointManager {
     return null;
   }
 
+  /** Add bonus score to a team (e.g. from dynamic objectives) */
+  addBonus(team: number, amount: number): void {
+    if (team === Team.Alpha) this.scoreAlpha += amount;
+    else if (team === Team.Bravo) this.scoreBravo += amount;
+  }
+
   /**
    * Get spawn points for a team: the positions of all capture points
    * that team currently owns. Used so players can spawn at captured flags.
