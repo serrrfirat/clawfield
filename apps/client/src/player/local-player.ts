@@ -2,10 +2,16 @@ import type { Vec3, InputState, PlayerState, DebrisState } from '@clawfield/shar
 import {
   movePlayer,
   clampPitch,
-  SPRINT_FIRE_DELAY,
   MAT_STONE,
   MAT_WALL,
   MAT_ROOF,
+  MAT_ROAD,
+  MAT_CONCRETE,
+  MAT_CONCRETE_DARK,
+  MAT_WOOD,
+  MAT_WOOD_DARK,
+  MAT_METAL,
+  isWater,
   PLAYER_WIDTH,
   PLAYER_HEIGHT,
   CROUCH_HEIGHT,
@@ -104,7 +110,7 @@ export class LocalPlayer {
     // Track sprint-to-fire delay: when sprint is released, start a cooldown
     const isSprinting = inputState.sprint && (inputState.forward || inputState.back || inputState.left || inputState.right);
     if (isSprinting) {
-      this.sprintFireTimer = SPRINT_FIRE_DELAY;
+      this.sprintFireTimer = this.weaponCtrl.activeWeapon.sprintToFireTime;
     } else if (this.sprintFireTimer > 0) {
       this.sprintFireTimer -= dt;
     }
@@ -119,7 +125,13 @@ export class LocalPlayer {
     this.weaponCtrl.setFiring(inputState.shoot && canFire);
     if (inputState.shoot && canFire && this.weaponCtrl.canFire()) {
       this.weaponCtrl.onFire(this.input);
+      // Recoil mutates InputCapture yaw/pitch; keep packet + camera in sync this frame.
+      inputState.yaw = this.input.yaw;
+      inputState.pitch = this.input.pitch;
     } else {
+      if (inputState.shoot && canFire) {
+        this.weaponCtrl.playDryFireIfEmpty();
+      }
       inputState.shoot = false;
     }
 
@@ -146,7 +158,7 @@ export class LocalPlayer {
       if (speed > 1) {
         this.footstepTimer -= dt;
         if (this.footstepTimer <= 0) {
-          const interval = isSprinting ? 0.3 : 0.45;
+          const interval = isSprinting ? 0.24 : 0.4;
           this.footstepTimer = interval;
           // Check material under feet for sound type
           const matBelow = this.getVoxel(
@@ -154,11 +166,33 @@ export class LocalPlayer {
             Math.floor(this.position.y - 0.1),
             Math.floor(this.position.z),
           );
-          const footstepSound =
-            matBelow === MAT_STONE || matBelow === MAT_WALL || matBelow === MAT_ROOF
-              ? SoundId.FootstepStone
-              : SoundId.FootstepGrass;
-          soundManager.play(footstepSound);
+          let footstepSound: SoundId;
+          if (isWater(matBelow)) {
+            footstepSound = SoundId.FootstepWater;
+          } else if (matBelow === MAT_METAL) {
+            footstepSound = SoundId.FootstepMetal;
+          } else if (matBelow === MAT_WOOD || matBelow === MAT_WOOD_DARK) {
+            footstepSound = SoundId.FootstepWood;
+          } else if (matBelow === MAT_ROAD || matBelow === MAT_CONCRETE || matBelow === MAT_CONCRETE_DARK) {
+            footstepSound = SoundId.FootstepConcrete;
+          } else if (matBelow === MAT_STONE || matBelow === MAT_WALL || matBelow === MAT_ROOF) {
+            footstepSound = SoundId.FootstepStone;
+          } else {
+            footstepSound = SoundId.FootstepGrass;
+          }
+
+          if (isSprinting) {
+            soundManager.play3D(SoundId.FootstepSprint, this.position, {
+              volume: 0.16,
+              pitch: 0.95 + Math.random() * 0.12,
+              refDistance: 4,
+            });
+          }
+          soundManager.play3D(footstepSound, this.position, {
+            volume: isSprinting ? 0.28 : 0.22,
+            pitch: 0.94 + Math.random() * 0.14,
+            refDistance: 4,
+          });
         }
       } else {
         this.footstepTimer = 0;
@@ -167,10 +201,10 @@ export class LocalPlayer {
 
     // --- Jump / land sounds ---
     if (!this.wasGrounded && this.grounded) {
-      soundManager.play(SoundId.Land);
+      soundManager.play3D(SoundId.Land, this.position, { volume: 0.3, pitch: 0.95 + Math.random() * 0.1 });
     }
     if (this.wasGrounded && !this.grounded && inputState.jump) {
-      soundManager.play(SoundId.Jump);
+      soundManager.play3D(SoundId.Jump, this.position, { volume: 0.24, pitch: 0.95 + Math.random() * 0.1 });
     }
     this.wasGrounded = this.grounded;
 

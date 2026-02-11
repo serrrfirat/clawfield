@@ -9,7 +9,6 @@ import {
   WEAPONS,
   WeaponId,
   fireInterval,
-  SPRINT_FIRE_DELAY,
   CROUCH_HEIGHT,
   PLAYER_HEIGHT,
   GRENADE_MAX_COUNT,
@@ -79,6 +78,12 @@ export class PlayerSim {
 
   /** Time remaining before firing is allowed after sprint (seconds) */
   sprintFireTimer: number = 0;
+  /** Current spread bloom accumulation (radians above base spread) */
+  currentBloom: number = 0;
+  /** Rising-edge trigger pulls captured from queued inputs */
+  private pendingShotIntents: number = 0;
+  /** Previous frame's trigger state for rising-edge detection */
+  private prevShootHeld: boolean = false;
   /** Whether the player is currently crouching (for eye offset) */
   crouching: boolean = false;
 
@@ -158,6 +163,10 @@ export class PlayerSim {
   tick(getVoxel: VoxelGetter, debrisPhysics?: DebrisPhysicsManager): void {
     this.latestInput = null;
 
+    if (this.inputQueue.length === 0) {
+      this.prevShootHeld = false;
+    }
+
     // Update reload timer regardless of alive status
     // (so reload finishes even between ticks)
     if (this.inputQueue.length > 0) {
@@ -168,6 +177,9 @@ export class PlayerSim {
       this.updateReload(totalDt);
       this.updateSecondaryReload(totalDt);
       this.updateSpecialReload(totalDt);
+      if (this.currentBloom > 0) {
+        this.currentBloom = Math.max(0, this.currentBloom - this.activeWeapon.spreadRecovery * totalDt);
+      }
       // Count down swap timer
       if (this.swapTimer > 0) {
         this.swapTimer = Math.max(0, this.swapTimer - totalDt);
@@ -254,10 +266,16 @@ export class PlayerSim {
         // Track sprint fire delay: sprinting resets the timer, otherwise count down
         const isSprinting = qi.input.sprint && (qi.input.forward || qi.input.back || qi.input.left || qi.input.right);
         if (isSprinting) {
-          this.sprintFireTimer = SPRINT_FIRE_DELAY;
+          this.sprintFireTimer = this.activeWeapon.sprintToFireTime;
         } else if (this.sprintFireTimer > 0) {
           this.sprintFireTimer -= qi.dt;
         }
+
+        const wantsShoot = qi.input.shoot;
+        if (wantsShoot && !this.prevShootHeld) {
+          this.pendingShotIntents++;
+        }
+        this.prevShootHeld = wantsShoot;
 
         // Track crouch state for eye offset calculation
         this.crouching = qi.input.crouch && !qi.input.sprint;
@@ -287,6 +305,27 @@ export class PlayerSim {
       }
     }
     this.inputQueue = [];
+  }
+
+  /** Consume queued trigger pulls captured since the previous server tick. */
+  consumeShotIntents(): number {
+    const count = this.pendingShotIntents;
+    this.pendingShotIntents = 0;
+    return count;
+  }
+
+  /** Effective spread for active weapon including bloom and ADS multiplier. */
+  getEffectiveSpread(): number {
+    const w = this.activeWeapon;
+    const hipSpread = w.spread + this.currentBloom;
+    const adsMultiplier = this.latestInput?.scope && !this.isCurrentWeaponReloading() ? w.adsSpreadMultiplier : 1;
+    return hipSpread * adsMultiplier;
+  }
+
+  private isCurrentWeaponReloading(): boolean {
+    if (this.currentWeaponSlot === 1) return this.secondaryReloading;
+    if (this.currentWeaponSlot === 2 && this.specialWeapon) return this.specialReloading;
+    return this.reloading;
   }
 
   /**
@@ -378,6 +417,7 @@ export class PlayerSim {
       if (this.secondaryAmmo <= 0) {
         this.startSecondaryReload();
       }
+      this.currentBloom += this.secondaryWeapon.spreadBloom;
       this.firedThisTick = true;
       return true;
     }
@@ -393,6 +433,7 @@ export class PlayerSim {
       if (this.specialAmmo <= 0) {
         this.startSpecialReload();
       }
+      this.currentBloom += this.specialWeapon.spreadBloom;
       this.firedThisTick = true;
       return true;
     }
@@ -411,6 +452,7 @@ export class PlayerSim {
     if (this.ammo <= 0) {
       this.startReload();
     }
+    this.currentBloom += this.weapon.spreadBloom;
     this.firedThisTick = true;
 
     return true;
@@ -491,6 +533,9 @@ export class PlayerSim {
     this.lastFireTime = 0;
     this.sprintFireTimer = 0;
     this.crouching = false;
+    this.currentBloom = 0;
+    this.pendingShotIntents = 0;
+    this.prevShootHeld = false;
     this.grenadeCount = GRENADE_MAX_COUNT;
     this.lastGrenadeTime = 0;
     this.lastGadgetTime = 0;

@@ -60,6 +60,7 @@ export class WeaponController {
   ammo: number;
   maxAmmo: number;
   reloading = false;
+  private wasReloading = false;
 
   /** Minimum time between shots (seconds) */
   private fireCooldown = 0;
@@ -309,10 +310,7 @@ export class WeaponController {
     this.viewmodel.setAdsAmount(this.adsAmount);
 
     // Show crosshair dot only when ADS without a sight overlay
-    if (this.crosshairEl) {
-      const showCrosshair = this.adsAmount > 0.5 && !this.scoped && !hasSightOverlay;
-      this.crosshairEl.style.display = showCrosshair ? 'block' : 'none';
-    }
+    this.updateCrosshairVisual(hasSightOverlay);
   }
 
   /** Update fire cooldown, tracers, bloom, sway, bob, recoil recovery, and viewmodel each frame */
@@ -390,9 +388,25 @@ export class WeaponController {
 
     // Apply sway + bob to viewmodel position
     this.applyWeaponMotion(dt, isMoving, isSprinting);
+    this.updateCrosshairVisual(this.sightOverlay !== null);
 
     // Update viewmodel recoil animation
     this.viewmodel.update(dt);
+  }
+
+  /** Keep crosshair visibility/size aligned with real effective spread. */
+  private updateCrosshairVisual(hasSightOverlay: boolean): void {
+    if (!this.crosshairEl) return;
+    const showCrosshair = !this.scoped && !hasSightOverlay;
+    this.crosshairEl.style.display = showCrosshair ? 'block' : 'none';
+    if (!showCrosshair) return;
+
+    const spread = this.getEffectiveSpread();
+    const spreadPx = Math.min(26, Math.max(3, spread * 550));
+    const size = 4 + spreadPx;
+    this.crosshairEl.style.width = `${size}px`;
+    this.crosshairEl.style.height = `${size}px`;
+    this.crosshairEl.style.opacity = `${Math.max(0.28, 0.75 - this.adsAmount * 0.3)}`;
   }
 
   /** Mark whether the player is actively holding the fire button */
@@ -447,6 +461,18 @@ export class WeaponController {
     return true;
   }
 
+  /** Play dry-fire click if trigger is pulled on empty mag. */
+  playDryFireIfEmpty(): void {
+    if (!this.canFire()) {
+      const emptyPrimary = this.currentSlot === 0 && !this.reloading && this.ammo <= 0;
+      const emptySecondary = this.currentSlot === 1 && !this.secondaryReloading && this.secondaryAmmo <= 0;
+      const emptySpecial = this.currentSlot === 2 && this.specialWeapon !== null && this.specialAmmo <= 0;
+      if (emptyPrimary || emptySecondary || emptySpecial) {
+        soundManager.play(SoundId.DryFire);
+      }
+    }
+  }
+
   /** Map from weapon display name to weapon sound ID */
   private static readonly WEAPON_SOUND_MAP: Record<string, SoundId> = {
     'Assault Rifle': SoundId.ShootRifle,
@@ -492,9 +518,14 @@ export class WeaponController {
     // Play layered weapon fire sounds (main shot + bass thump + reverb tail)
     const weaponSound = WeaponController.WEAPON_SOUND_MAP[active.name] ?? SoundId.ShootRifle;
     soundManager.play(weaponSound);
+    soundManager.play(SoundId.ShootMechanical);
     soundManager.play(SoundId.ShootBass);
     // Play tail reverb less frequently to avoid sound overload
     if (this.shotCounter % 3 === 1) {
+      soundManager.play(SoundId.ShootTailNear);
+    } else if (this.shotCounter % 5 === 0) {
+      soundManager.play(SoundId.ShootTailFar);
+    } else if (this.shotCounter % 2 === 0) {
       soundManager.play(SoundId.ShootTail);
     }
 
@@ -569,7 +600,12 @@ export class WeaponController {
   syncFromServer(ammo: number, maxAmmo: number, reloading: boolean): void {
     this.ammo = ammo;
     this.maxAmmo = maxAmmo;
+    const finishedReload = this.wasReloading && !reloading;
     this.reloading = reloading;
+    this.wasReloading = reloading;
+    if (finishedReload) {
+      soundManager.play(SoundId.ReloadDone);
+    }
   }
 
   /** Create the scope overlay element (dark vignette with crosshair) */

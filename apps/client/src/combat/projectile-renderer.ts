@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { ProjectileState, Vec3 } from '@clawfield/shared';
-import { GRAVITY } from '@clawfield/shared';
+import { GRAVITY, MAT_METAL, MAT_WOOD, MAT_WOOD_DARK, MAT_CONCRETE, MAT_CONCRETE_DARK, MAT_ROAD } from '@clawfield/shared';
 import type { ParticleSystem } from './particle-system';
+import { soundManager, SoundId } from '../audio/sound-manager';
 
 /** Maximum number of point lights attached to projectiles (performance cap) */
 const MAX_PROJECTILE_LIGHTS = 5;
@@ -11,6 +12,8 @@ interface TrackedProjectile {
   mesh: THREE.Mesh;
   light: THREE.PointLight | null;
   velocity: Vec3;
+  ownerId?: string;
+  nearMissUntil?: number;
   lastUpdate: number;
   /** Max range — local projectiles are cleaned up when they exceed this */
   maxRange?: number;
@@ -37,6 +40,7 @@ export class ProjectileRenderer {
   private scene: THREE.Scene;
   private projectiles = new Map<number, TrackedProjectile>();
   private particles: ParticleSystem | null = null;
+  private voxelGetter: ((wx: number, wy: number, wz: number) => number) | null = null;
 
   /** Local player ID — used to skip own projectiles from server data */
   private localPlayerId: string | null = null;
@@ -62,6 +66,10 @@ export class ProjectileRenderer {
   /** Set the particle system used for bullet impact effects */
   setParticleSystem(ps: ParticleSystem): void {
     this.particles = ps;
+  }
+
+  setVoxelGetter(getter: (wx: number, wy: number, wz: number) => number): void {
+    this.voxelGetter = getter;
   }
 
   /** Set the local player ID so we can skip our own server-side projectiles */
@@ -98,6 +106,8 @@ export class ProjectileRenderer {
       mesh,
       light,
       velocity,
+      ownerId: this.localPlayerId ?? undefined,
+      nearMissUntil: 0,
       lastUpdate: performance.now(),
       maxRange,
       distanceTraveled: 0,
@@ -124,6 +134,7 @@ export class ProjectileRenderer {
         // Update existing projectile position and velocity
         existing.mesh.position.set(sp.position.x, sp.position.y, sp.position.z);
         existing.velocity = { ...sp.velocity };
+        existing.ownerId = sp.ownerId;
         existing.lastUpdate = performance.now();
 
         // Orient the mesh along the velocity direction
@@ -150,11 +161,17 @@ export class ProjectileRenderer {
 
   /**
    * Interpolate projectile positions between server updates.
-   * Called every frame to smooth movement at 60fps between 20Hz server ticks.
+   * Called every frame to smooth movement at 60fps between server ticks.
    * Also cleans up local predicted projectiles that exceed max range.
    */
-  update(dt: number): void {
+  update(dt: number, listenerPos?: Vec3, onNearMiss?: (intensity: number) => void): void {
     for (const [id, tracked] of this.projectiles) {
+      const prevPos = {
+        x: tracked.mesh.position.x,
+        y: tracked.mesh.position.y,
+        z: tracked.mesh.position.z,
+      };
+
       // Apply gravity to velocity (matches server-side arc)
       tracked.velocity.y += GRAVITY * dt;
 
@@ -168,6 +185,32 @@ export class ProjectileRenderer {
       tracked.mesh.position.x += tracked.velocity.x * dt;
       tracked.mesh.position.y += tracked.velocity.y * dt;
       tracked.mesh.position.z += tracked.velocity.z * dt;
+
+      if (listenerPos && id > 0 && tracked.ownerId !== this.localPlayerId && speed > 60) {
+        const now = performance.now();
+        if (!tracked.nearMissUntil || now >= tracked.nearMissUntil) {
+          const closest = this.closestPointOnSegment(listenerPos, prevPos, {
+            x: tracked.mesh.position.x,
+            y: tracked.mesh.position.y,
+            z: tracked.mesh.position.z,
+          });
+          const dx = closest.x - listenerPos.x;
+          const dy = closest.y - listenerPos.y;
+          const dz = closest.z - listenerPos.z;
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+          if (dist < 1.6) {
+            const intensity = Math.max(0.15, 1 - dist / 1.6);
+            soundManager.play3D(SoundId.BulletCrack, closest, {
+              volume: 0.2 + intensity * 0.4,
+              pitch: 0.9 + Math.random() * 0.2,
+              refDistance: 3,
+            });
+            onNearMiss?.(0.2 + intensity * 0.5);
+            tracked.nearMissUntil = now + 220;
+          }
+        }
+      }
 
       // Re-orient the mesh to follow the (gravity-curved) trajectory
       this.orientMesh(tracked.mesh, tracked.velocity);
@@ -216,15 +259,35 @@ export class ProjectileRenderer {
       mesh,
       light,
       velocity: { ...sp.velocity },
+      ownerId: sp.ownerId,
+      nearMissUntil: 0,
       lastUpdate: performance.now(),
     });
   }
 
+  private closestPointOnSegment(p: Vec3, a: Vec3, b: Vec3): Vec3 {
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const abz = b.z - a.z;
+    const apx = p.x - a.x;
+    const apy = p.y - a.y;
+    const apz = p.z - a.z;
+    const abLenSq = abx * abx + aby * aby + abz * abz;
+    if (abLenSq < 1e-8) return { ...a };
+    const t = Math.max(0, Math.min(1, (apx * abx + apy * aby + apz * abz) / abLenSq));
+    return {
+      x: a.x + abx * t,
+      y: a.y + aby * t,
+      z: a.z + abz * t,
+    };
+  }
+
   /** Remove a projectile from the scene and clean up its resources */
   private removeProjectile(id: number, tracked: TrackedProjectile): void {
+    const pos = tracked.mesh.position;
+
     // Spawn impact sparks at the projectile's last position
     if (this.particles) {
-      const pos = tracked.mesh.position;
       this.particles.emit({
         position: { x: pos.x, y: pos.y, z: pos.z },
         count: 10,
@@ -238,6 +301,32 @@ export class ProjectileRenderer {
         colors: IMPACT_COLORS,
         gravityScale: 0.5,
       });
+    }
+
+    if (id > 0) {
+      const wx = Math.floor(pos.x);
+      const wy = Math.floor(pos.y);
+      const wz = Math.floor(pos.z);
+      const mat = this.voxelGetter ? this.voxelGetter(wx, wy, wz) : 0;
+
+      let impactSound = SoundId.ImpactDirt;
+      if (mat === MAT_METAL) impactSound = SoundId.ImpactMetal;
+      else if (mat === MAT_WOOD || mat === MAT_WOOD_DARK) impactSound = SoundId.ImpactWood;
+      else if (mat === MAT_CONCRETE || mat === MAT_CONCRETE_DARK || mat === MAT_ROAD) impactSound = SoundId.ImpactConcrete;
+
+      soundManager.play3D(impactSound, { x: pos.x, y: pos.y, z: pos.z }, {
+        volume: 0.2 + Math.random() * 0.12,
+        pitch: 0.9 + Math.random() * 0.2,
+        refDistance: 6,
+      });
+
+      if ((impactSound === SoundId.ImpactConcrete || impactSound === SoundId.ImpactMetal) && Math.random() < 0.35) {
+        soundManager.play3D(SoundId.Ricochet, { x: pos.x, y: pos.y, z: pos.z }, {
+          volume: 0.16 + Math.random() * 0.1,
+          pitch: 0.95 + Math.random() * 0.15,
+          refDistance: 9,
+        });
+      }
     }
 
     this.scene.remove(tracked.mesh);
