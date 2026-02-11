@@ -29,12 +29,21 @@ class SoundManager {
   private ctx: AudioContext | null = null;
   private activeCounts = new Map<SoundId, number>();
   private masterGain: GainNode | null = null;
+  private weaponsGain: GainNode | null = null;
+  private uiGain: GainNode | null = null;
+  private ambienceGain: GainNode | null = null;
+  private sfxGain: GainNode | null = null;
+  private ambienceBaseGain = 0.8;
+  private ambienceDuckUntil = 0;
 
   /** File-based audio buffers loaded from a sound pack */
   private packBuffers = new Map<SoundId, AudioBuffer>();
 
   /** Name of the currently loaded sound pack, if any */
   private packName: string | null = null;
+
+  /** Looping sources (ambient beds, low-health loop, downed loop, etc.) */
+  private loops = new Map<SoundId, { source: AudioBufferSourceNode; gainNode: GainNode }>();
 
   /** Create the AudioContext. Must be called after a user gesture (click/key). */
   init(): void {
@@ -43,6 +52,22 @@ class SoundManager {
       this.ctx = new AudioContext();
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.value = 1.0;
+
+      this.weaponsGain = this.ctx.createGain();
+      this.uiGain = this.ctx.createGain();
+      this.ambienceGain = this.ctx.createGain();
+      this.sfxGain = this.ctx.createGain();
+
+      this.weaponsGain.gain.value = 1.0;
+      this.uiGain.gain.value = 0.95;
+      this.ambienceGain.gain.value = this.ambienceBaseGain;
+      this.sfxGain.gain.value = 1.0;
+
+      this.weaponsGain.connect(this.masterGain);
+      this.uiGain.connect(this.masterGain);
+      this.ambienceGain.connect(this.masterGain);
+      this.sfxGain.connect(this.masterGain);
+
       this.masterGain.connect(this.ctx.destination);
     } catch (e) {
       console.warn('SoundManager: Failed to create AudioContext', e);
@@ -102,7 +127,11 @@ class SoundManager {
 
     const { source, gainNode, duration } = nodes;
     gainNode.gain.value = config.volume;
-    gainNode.connect(this.masterGain);
+    gainNode.connect(this.getBusGain(soundId));
+
+    if (soundId === SoundId.Explosion || soundId === SoundId.ShootShotgun || soundId === SoundId.ShootSniper) {
+      this.duckAmbience(0.25);
+    }
 
     source.start();
     if (!config.loop) {
@@ -144,14 +173,18 @@ class SoundManager {
     panner.panningModel = 'HRTF';
     panner.distanceModel = 'inverse';
     panner.refDistance = options?.refDistance ?? 5;
-    panner.maxDistance = 200;
+    panner.maxDistance = 260;
     panner.rolloffFactor = 0.8;
     panner.positionX.setValueAtTime(position.x, this.ctx.currentTime);
     panner.positionY.setValueAtTime(position.y, this.ctx.currentTime);
     panner.positionZ.setValueAtTime(position.z, this.ctx.currentTime);
 
     gainNode.connect(panner);
-    panner.connect(this.masterGain);
+    panner.connect(this.getBusGain(soundId));
+
+    if (soundId === SoundId.Explosion || soundId === SoundId.ShootShotgun || soundId === SoundId.ShootSniper) {
+      this.duckAmbience(0.25);
+    }
 
     source.start();
     if (!config.loop) {
@@ -182,9 +215,80 @@ class SoundManager {
       listener.setPosition(position.x, position.y, position.z);
       listener.setOrientation(forward.x, forward.y, forward.z, up.x, up.y, up.z);
     }
+
+    this.updateDuck();
+  }
+
+  /** Set mix bus volumes (0-1). Omitted keys keep current values. */
+  setMix(values: { master?: number; weapons?: number; ui?: number; ambience?: number; sfx?: number }): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (values.master !== undefined && this.masterGain) this.masterGain.gain.setValueAtTime(values.master, t);
+    if (values.weapons !== undefined && this.weaponsGain) this.weaponsGain.gain.setValueAtTime(values.weapons, t);
+    if (values.ui !== undefined && this.uiGain) this.uiGain.gain.setValueAtTime(values.ui, t);
+    if (values.ambience !== undefined && this.ambienceGain) {
+      this.ambienceBaseGain = values.ambience;
+      this.ambienceGain.gain.setValueAtTime(values.ambience, t);
+    }
+    if (values.sfx !== undefined && this.sfxGain) this.sfxGain.gain.setValueAtTime(values.sfx, t);
+  }
+
+  /** Start a loop if not already active. */
+  startLoop(soundId: SoundId, options?: { volume?: number }): void {
+    if (!this.ctx) return;
+    if (this.loops.has(soundId)) return;
+    const config = SOUND_CONFIGS[soundId];
+    if (!config?.loop) return;
+
+    const nodes = this.createSource(soundId);
+    if (!nodes) return;
+    const { source, gainNode } = nodes;
+    gainNode.gain.value = options?.volume ?? config.volume;
+
+    const busGain = this.getBusGain(soundId);
+    gainNode.connect(busGain);
+    source.start();
+    this.loops.set(soundId, { source, gainNode });
+  }
+
+  /** Stop a loop if active. */
+  stopLoop(soundId: SoundId): void {
+    const loop = this.loops.get(soundId);
+    if (!loop) return;
+    try {
+      loop.source.stop();
+    } catch {
+      // ignored
+    }
+    this.loops.delete(soundId);
+  }
+
+  /** Trigger temporary ambience ducking under loud events. */
+  duckAmbience(seconds = 0.22): void {
+    if (!this.ctx || !this.ambienceGain) return;
+    const now = this.ctx.currentTime;
+    this.ambienceDuckUntil = Math.max(this.ambienceDuckUntil, now + seconds);
+    this.ambienceGain.gain.cancelScheduledValues(now);
+    this.ambienceGain.gain.setTargetAtTime(Math.max(0.25, this.ambienceBaseGain * 0.45), now, 0.02);
   }
 
   // ── Private helpers ─────────────────────────────────────────────
+
+  private getBusGain(soundId: SoundId): GainNode {
+    const bus = SOUND_CONFIGS[soundId]?.bus ?? 'sfx';
+    if (bus === 'weapons') return this.weaponsGain ?? this.masterGain!;
+    if (bus === 'ui') return this.uiGain ?? this.masterGain!;
+    if (bus === 'ambience') return this.ambienceGain ?? this.masterGain!;
+    return this.sfxGain ?? this.masterGain!;
+  }
+
+  private updateDuck(): void {
+    if (!this.ctx || !this.ambienceGain) return;
+    const now = this.ctx.currentTime;
+    if (now > this.ambienceDuckUntil) {
+      this.ambienceGain.gain.setTargetAtTime(this.ambienceBaseGain, now, 0.18);
+    }
+  }
 
   /**
    * Create a source node for a sound. If the sound pack has a buffer for this
@@ -273,8 +377,14 @@ class SoundManager {
         return this.makeLayeredShot(0.14, 200, 600, 3.0);
       case SoundId.ShootSniper:
         return this.makeLayeredShot(0.12, 800, 3500, 3.5);
+      case SoundId.ShootMechanical:
+        return this.makeNoiseBurst(0.018, 2600, 'bandpass', 1.4);
       case SoundId.ShootTail:
         return this.makeNoiseBurst(0.3, 300, 'lowpass', 0.4);
+      case SoundId.ShootTailNear:
+        return this.makeNoiseBurst(0.36, 450, 'lowpass', 0.42);
+      case SoundId.ShootTailFar:
+        return this.makeNoiseBurst(0.5, 260, 'lowpass', 0.35);
       case SoundId.ShootBass:
         return this.makeBassThump(0.08);
       case SoundId.RocketFire:
@@ -283,22 +393,62 @@ class SoundManager {
         return this.makeBulletCrack();
       case SoundId.Reload:
         return this.makeNoiseBurst(0.05, 1500, 'bandpass', 0.6);
+      case SoundId.ReloadDone:
+        return this.makeSineTone(900, 0.06);
+      case SoundId.DryFire:
+        return this.makeNoiseBurst(0.02, 2200, 'bandpass', 1.1);
       case SoundId.FootstepGrass:
         return this.makeNoiseBurst(0.02, 600, 'lowpass', 0.5);
       case SoundId.FootstepStone:
         return this.makeNoiseBurst(0.02, 1200, 'lowpass', 0.6);
+      case SoundId.FootstepConcrete:
+        return this.makeNoiseBurst(0.02, 1400, 'bandpass', 0.75);
+      case SoundId.FootstepWood:
+        return this.makeNoiseBurst(0.024, 900, 'bandpass', 0.7);
+      case SoundId.FootstepMetal:
+        return this.makeNoiseBurst(0.016, 2200, 'bandpass', 0.95);
+      case SoundId.FootstepWater:
+        return this.makeNoiseBurst(0.03, 500, 'lowpass', 0.55);
+      case SoundId.FootstepSprint:
+        return this.makeNoiseBurst(0.018, 1100, 'bandpass', 0.85);
       case SoundId.Jump:
         return this.makeNoiseBurst(0.03, 800, 'lowpass', 0.5);
       case SoundId.Land:
         return this.makeNoiseBurst(0.04, 500, 'lowpass', 0.7);
       case SoundId.Explosion:
         return this.makeExplosion();
+      case SoundId.ImpactDirt:
+        return this.makeNoiseBurst(0.022, 700, 'lowpass', 0.7);
+      case SoundId.ImpactConcrete:
+        return this.makeNoiseBurst(0.022, 1800, 'bandpass', 0.85);
+      case SoundId.ImpactWood:
+        return this.makeNoiseBurst(0.024, 1000, 'bandpass', 0.75);
+      case SoundId.ImpactMetal:
+        return this.makeNoiseBurst(0.02, 2600, 'bandpass', 0.9);
+      case SoundId.Ricochet:
+        return this.makeBulletCrack();
       case SoundId.HitConfirmDing:
         return this.makeHitDing();
       case SoundId.GrenadeBounce:
         return this.makeNoiseBurst(0.03, 2000, 'bandpass', 0.5);
       case SoundId.AmbientWind:
         return this.makeAmbientWind();
+      case SoundId.AmbientBattle:
+        return this.makeAmbientBattle();
+      case SoundId.AmbientSiren:
+        return this.makeAmbientSiren();
+      case SoundId.UiLowHealthLoop:
+        return this.makeLowHealthLoop();
+      case SoundId.UiDownedLoop:
+        return this.makeDownedLoop();
+      case SoundId.UiReviveStart:
+        return this.makeSineTone(560, 0.1);
+      case SoundId.UiReviveTick:
+        return this.makeSineTone(760, 0.07);
+      case SoundId.UiReviveComplete:
+        return this.makeSineTone(1050, 0.14);
+      case SoundId.UiGadgetReady:
+        return this.makeSineTone(820, 0.08);
       case SoundId.CaptureTick:
         return this.makeSineTone(800, 0.08);
       case SoundId.GadgetMedkit:
@@ -710,6 +860,128 @@ class SoundManager {
     source.connect(filter);
     filter.connect(gainNode);
 
+    return { source, gainNode, duration };
+  }
+
+  private makeAmbientBattle(): {
+    source: AudioBufferSourceNode;
+    gainNode: GainNode;
+    duration: number;
+  } {
+    const ctx = this.ctx!;
+    const duration = 3.0;
+    const sampleRate = ctx.sampleRate;
+    const length = Math.ceil(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const base = (Math.random() * 2 - 1) * 0.18;
+      const rumble = Math.sin(2 * Math.PI * (38 + 8 * Math.sin(t * 0.7)) * t) * 0.08;
+      const pulse = Math.sin(2 * Math.PI * 0.25 * t) * 0.03;
+      data[i] = (base + rumble + pulse) * 0.8;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const low = ctx.createBiquadFilter();
+    low.type = 'lowpass';
+    low.frequency.value = 380;
+
+    const gainNode = ctx.createGain();
+    source.connect(low);
+    low.connect(gainNode);
+
+    return { source, gainNode, duration };
+  }
+
+  private makeAmbientSiren(): {
+    source: AudioBufferSourceNode;
+    gainNode: GainNode;
+    duration: number;
+  } {
+    const ctx = this.ctx!;
+    const duration = 4.0;
+    const sampleRate = ctx.sampleRate;
+    const length = Math.ceil(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const lfo = 0.5 + 0.5 * Math.sin(2 * Math.PI * 0.28 * t);
+      const freq = 550 + lfo * 250;
+      const env = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 0.13 * t));
+      data[i] = Math.sin(2 * Math.PI * freq * t) * env * 0.25;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 950;
+    band.Q.value = 0.8;
+
+    const gainNode = ctx.createGain();
+    source.connect(band);
+    band.connect(gainNode);
+
+    return { source, gainNode, duration };
+  }
+
+  private makeLowHealthLoop(): {
+    source: AudioBufferSourceNode;
+    gainNode: GainNode;
+    duration: number;
+  } {
+    const ctx = this.ctx!;
+    const duration = 1.2;
+    const sampleRate = ctx.sampleRate;
+    const length = Math.ceil(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const beat = Math.max(0, Math.sin(2 * Math.PI * 1.3 * t));
+      const tone = Math.sin(2 * Math.PI * 78 * t) * beat;
+      const air = (Math.random() * 2 - 1) * 0.03;
+      data[i] = tone * 0.25 + air;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const gainNode = ctx.createGain();
+    source.connect(gainNode);
+    return { source, gainNode, duration };
+  }
+
+  private makeDownedLoop(): {
+    source: AudioBufferSourceNode;
+    gainNode: GainNode;
+    duration: number;
+  } {
+    const ctx = this.ctx!;
+    const duration = 1.6;
+    const sampleRate = ctx.sampleRate;
+    const length = Math.ceil(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) {
+      const t = i / sampleRate;
+      const pulse = Math.max(0, Math.sin(2 * Math.PI * 0.9 * t));
+      const tone = Math.sin(2 * Math.PI * 62 * t) * pulse;
+      data[i] = tone * 0.33 + (Math.random() * 2 - 1) * 0.02;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const gainNode = ctx.createGain();
+    source.connect(gainNode);
     return { source, gainNode, duration };
   }
 }
