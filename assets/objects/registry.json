@@ -98,6 +98,16 @@
     { "id": "small_tree", "path": "vegetation/obj_tree1.vobj.json", "category": "vegetation" },
     { "id": "medium_tree", "path": "vegetation/obj_tree2.vobj.json", "category": "vegetation" },
     { "id": "pine_tree", "path": "vegetation/obj_tree3.vobj.json", "category": "vegetation" },
-    { "id": "palm_tree", "path": "vegetation/obj_tree4.vobj.json", "category": "vegetation" }
+    { "id": "palm_tree", "path": "vegetation/obj_tree4.vobj.json", "category": "vegetation" },
+
+    { "id": "karkand_gas_station", "path": "../vox/karkand-gas-station.vox", "category": "landmark" },
+    { "id": "karkand_hotel", "path": "../vox/karkand-hotel.vox", "category": "landmark" },
+    { "id": "karkand_square", "path": "../vox/karkand-square.vox", "category": "landmark" },
+    { "id": "karkand_suburb", "path": "../vox/karkand-suburb.vox", "category": "landmark" },
+    { "id": "karkand_trainwreck", "path": "../vox/karkand-trainwreck.vox", "category": "landmark" },
+    { "id": "karkand_gatehouse", "path": "../vox/karkand-gatehouse.vox", "category": "landmark" },
+    { "id": "karkand_cement_factory", "path": "../vox/karkand-cement-factory.vox", "category": "landmark" },
+    { "id": "karkand_warehouse", "path": "../vox/karkand-warehouse.vox", "category": "landmark" },
+    { "id": "karkand_factory", "path": "../vox/karkand-factory.vox", "category": "landmark" }
   ]
 }

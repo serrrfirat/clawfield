@@ -1,0 +1,81 @@
+{
+  "name": "Strike at Karkand",
+  "bounds": { "xMin": -500, "xMax": 500, "yMin": -4, "yMax": 50, "zMin": -500, "zMax": 500 },
+  "terrain": { "generator": "heightmap", "waterLevel": 1, "seed": 42 },
+  "terrainPalette": {
+    "GRASS": { "index": 1, "r": 142, "g": 137, "b": 97 },
+    "DIRT": { "index": 2, "r": 194, "g": 168, "b": 128 },
+    "STONE": { "index": 3, "r": 210, "g": 195, "b": 170 },
+    "WATER": { "index": 6, "r": 35, "g": 137, "b": 218 },
+    "SAND_LIGHT": { "index": 7, "r": 220, "g": 200, "b": 160 },
+    "SAND_DARK": { "index": 8, "r": 185, "g": 160, "b": 120 },
+    "CONCRETE": { "index": 11, "r": 195, "g": 180, "b": 155 },
+    "WOOD": { "index": 13, "r": 120, "g": 85, "b": 45 },
+    "BRICK": { "index": 15, "r": 165, "g": 95, "b": 55 },
+    "ROOF_TILE": { "index": 16, "r": 175, "g": 100, "b": 50 },
+    "WATER_DEEP": { "index": 17, "r": 20, "g": 80, "b": 160 },
+    "ROAD": { "index": 18, "r": 105, "g": 95, "b": 85 },
+    "WINDOW": { "index": 19, "r": 160, "g": 185, "b": 195 },
+    "METAL": { "index": 20, "r": 140, "g": 115, "b": 90 },
+    "RAIL_STEEL": { "index": 21, "r": 100, "g": 100, "b": 105 },
+    "RAIL_GRAVEL": { "index": 22, "r": 130, "g": 120, "b": 110 },
+    "AWNING": { "index": 23, "r": 180, "g": 60, "b": 40 },
+    "AWNING_ALT": { "index": 24, "r": 50, "g": 100, "b": 140 },
+    "STUCCO": { "index": 25, "r": 215, "g": 200, "b": 175 },
+    "STUCCO_DARK": { "index": 26, "r": 190, "g": 175, "b": 150 },
+    "MARKET_FABRIC": { "index": 27, "r": 160, "g": 50, "b": 30 },
+    "MINARET_WHITE": { "index": 28, "r": 235, "g": 230, "b": 220 }
+  },
+  "placements": [
+    { "componentId": "karkand_gas_station", "position": { "x": -33, "y": 3, "z": -417 }, "rotation": 0, "terrainCarve": true, "downsample": 2 },
+    { "componentId": "karkand_hotel", "position": { "x": -100, "y": 3, "z": -167 }, "rotation": 0, "terrainCarve": true, "downsample": 2 },
+    { "componentId": "karkand_square", "position": { "x": -133, "y": 3, "z": 33 }, "rotation": 0, "terrainCarve": true, "downsample": 2 },
+    { "componentId": "karkand_suburb", "position": { "x": 50, "y": 7, "z": 100 }, "rotation": 0, "terrainCarve": true, "downsample": 2 },
+    { "componentId": "karkand_trainwreck", "position": { "x": 133, "y": 3, "z": 150 }, "rotation": 0, "terrainCarve": true, "downsample": 2 },
+    { "componentId": "karkand_gatehouse", "position": { "x": 233, "y": 3, "z": 217 }, "rotation": 0, "terrainCarve": true, "downsample": 2 },
+    { "componentId": "karkand_cement_factory", "position": { "x": 283, "y": 3, "z": 300 }, "rotation": 0, "terrainCarve": true, "downsample": 2 },
+    { "componentId": "karkand_warehouse", "position": { "x": 100, "y": 3, "z": 367 }, "rotation": 0, "terrainCarve": true, "downsample": 2 },
+    { "componentId": "karkand_factory", "position": { "x": 167, "y": 3, "z": 420 }, "rotation": 0, "terrainCarve": true, "downsample": 2 }
+  ],
+  "metadata": {
+    "spawnPoints": {
+      "alpha": [
+        { "x": -33, "y": 4, "z": -417 },
+        { "x": -28, "y": 4, "z": -412 },
+        { "x": -38, "y": 4, "z": -422 },
+        { "x": -30, "y": 4, "z": -410 },
+        { "x": -36, "y": 4, "z": -424 }
+      ],
+      "bravo": [
+        { "x": 167, "y": 4, "z": 420 },
+        { "x": 172, "y": 4, "z": 415 },
+        { "x": 162, "y": 4, "z": 425 },
+        { "x": 169, "y": 4, "z": 413 },
+        { "x": 165, "y": 4, "z": 423 }
+      ]
+    },
+    "capturePoints": [
+      { "id": "A", "position": { "x": -100, "y": 4, "z": -167 }, "initialOwner": -1 },
+      { "id": "B", "position": { "x": -133, "y": 4, "z": 33 }, "initialOwner": -1 },
+      { "id": "C", "position": { "x": 50, "y": 8, "z": 100 }, "initialOwner": -1 },
+      { "id": "D", "position": { "x": 133, "y": 4, "z": 150 }, "initialOwner": -1 },
+      { "id": "E", "position": { "x": 233, "y": 4, "z": 217 }, "initialOwner": -1 },
+      { "id": "F", "position": { "x": 283, "y": 4, "z": 300 }, "initialOwner": -1 },
+      { "id": "G", "position": { "x": 100, "y": 4, "z": 367 }, "initialOwner": -1 }
+    ],
+    "objectives": [
+      { "id": "gas_station", "type": "spawn", "position": { "x": -33, "y": 4, "z": -417 } },
+      { "id": "hotel", "type": "flag", "position": { "x": -100, "y": 4, "z": -167 } },
+      { "id": "square", "type": "flag", "position": { "x": -133, "y": 4, "z": 33 } },
+      { "id": "suburb", "type": "flag", "position": { "x": 50, "y": 8, "z": 100 } },
+      { "id": "train_wreck", "type": "flag", "position": { "x": 133, "y": 4, "z": 150 } },
+      { "id": "gatehouse", "type": "flag", "position": { "x": 233, "y": 4, "z": 217 } },
+      { "id": "cement_factory", "type": "flag", "position": { "x": 283, "y": 4, "z": 300 } },
+      { "id": "warehouse", "type": "flag", "position": { "x": 100, "y": 4, "z": 367 } },
+      { "id": "factory", "type": "spawn", "position": { "x": 167, "y": 4, "z": 420 } },
+      { "id": "main_road", "type": "route", "position": { "x": -67, "y": 5, "z": -100 } },
+      { "id": "eastern_approach", "type": "route", "position": { "x": 67, "y": 5, "z": 117 } },
+      { "id": "northern_industrial", "type": "route", "position": { "x": 233, "y": 5, "z": 333 } }
+    ]
+  }
+}

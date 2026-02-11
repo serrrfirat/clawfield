@@ -1,0 +1,156 @@
+{
+  "name": "Crossroads",
+  "description": "Generated from Crossroads mapdef",
+  "waterIndices": [
+    6,
+    17
+  ],
+  "spawn_points": {
+    "alpha": [
+      {
+        "x": -105,
+        "y": 41,
+        "z": -45
+      },
+      {
+        "x": -105,
+        "y": 41,
+        "z": 45
+      },
+      {
+        "x": -94,
+        "y": 3,
+        "z": 0
+      }
+    ],
+    "bravo": [
+      {
+        "x": 105,
+        "y": 4,
+        "z": -45
+      },
+      {
+        "x": 105,
+        "y": 27,
+        "z": 45
+      },
+      {
+        "x": 95,
+        "y": 26,
+        "z": 0
+      }
+    ]
+  },
+  "capture_points": [
+    {
+      "id": "A",
+      "position": {
+        "x": -57,
+        "y": 4,
+        "z": 14
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "B",
+      "position": {
+        "x": -40,
+        "y": 4,
+        "z": -34
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "C",
+      "position": {
+        "x": 0,
+        "y": 26,
+        "z": 0
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "D",
+      "position": {
+        "x": 22,
+        "y": 25,
+        "z": -9
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "E",
+      "position": {
+        "x": 54,
+        "y": 27,
+        "z": -45
+      },
+      "initialOwner": -1
+    }
+  ],
+  "objectives": [
+    {
+      "id": "overpass",
+      "type": "control",
+      "position": {
+        "x": -57,
+        "y": 4,
+        "z": 14
+      }
+    },
+    {
+      "id": "parking",
+      "type": "control",
+      "position": {
+        "x": -40,
+        "y": 4,
+        "z": -34
+      }
+    },
+    {
+      "id": "plaza",
+      "type": "control",
+      "position": {
+        "x": 0,
+        "y": 26,
+        "z": 0
+      }
+    },
+    {
+      "id": "depot",
+      "type": "control",
+      "position": {
+        "x": 22,
+        "y": 25,
+        "z": -9
+      }
+    },
+    {
+      "id": "park",
+      "type": "control",
+      "position": {
+        "x": 54,
+        "y": 27,
+        "z": -45
+      }
+    },
+    {
+      "id": "courtyard",
+      "type": "route",
+      "position": {
+        "x": 82,
+        "y": 29,
+        "z": -108
+      }
+    },
+    {
+      "id": "market",
+      "type": "flank",
+      "position": {
+        "x": -40,
+        "y": 41,
+        "z": 100
+      }
+    }
+  ]
+}

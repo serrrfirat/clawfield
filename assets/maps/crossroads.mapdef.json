@@ -1,0 +1,1576 @@
+{
+  "name": "Crossroads",
+  "bounds": {
+    "xMin": -150,
+    "xMax": 150,
+    "yMin": -4,
+    "yMax": 40,
+    "zMin": -150,
+    "zMax": 150
+  },
+  "terrain": {
+    "generator": "heightmap",
+    "waterLevel": -10,
+    "seed": 42
+  },
+  "terrainPalette": {
+    "GRASS": {
+      "index": 1,
+      "r": 68,
+      "g": 135,
+      "b": 55
+    },
+    "DIRT": {
+      "index": 2,
+      "r": 115,
+      "g": 88,
+      "b": 52
+    },
+    "STONE": {
+      "index": 3,
+      "r": 145,
+      "g": 145,
+      "b": 145
+    },
+    "WATER": {
+      "index": 6,
+      "r": 35,
+      "g": 137,
+      "b": 218
+    },
+    "SAND_LIGHT": {
+      "index": 7,
+      "r": 212,
+      "g": 184,
+      "b": 150
+    },
+    "SAND_DARK": {
+      "index": 8,
+      "r": 196,
+      "g": 166,
+      "b": 122
+    },
+    "GRASS_DARK": {
+      "index": 9,
+      "r": 48,
+      "g": 105,
+      "b": 38
+    },
+    "STONE_DARK": {
+      "index": 10,
+      "r": 110,
+      "g": 110,
+      "b": 110
+    },
+    "CONCRETE": {
+      "index": 11,
+      "r": 180,
+      "g": 180,
+      "b": 180
+    },
+    "CONCRETE_DARK": {
+      "index": 12,
+      "r": 145,
+      "g": 145,
+      "b": 145
+    },
+    "WOOD": {
+      "index": 13,
+      "r": 135,
+      "g": 100,
+      "b": 22
+    },
+    "WOOD_DARK": {
+      "index": 14,
+      "r": 100,
+      "g": 74,
+      "b": 18
+    },
+    "BRICK": {
+      "index": 15,
+      "r": 155,
+      "g": 78,
+      "b": 38
+    },
+    "ROOF_TILE": {
+      "index": 16,
+      "r": 135,
+      "g": 65,
+      "b": 22
+    },
+    "WATER_DEEP": {
+      "index": 17,
+      "r": 26,
+      "g": 76,
+      "b": 128
+    },
+    "ROAD": {
+      "index": 18,
+      "r": 60,
+      "g": 60,
+      "b": 60
+    },
+    "WINDOW": {
+      "index": 19,
+      "r": 130,
+      "g": 200,
+      "b": 230
+    },
+    "METAL": {
+      "index": 20,
+      "r": 105,
+      "g": 120,
+      "b": 138
+    },
+    "SIDEWALK": {
+      "index": 21,
+      "r": 190,
+      "g": 185,
+      "b": 175
+    },
+    "CURB": {
+      "index": 22,
+      "r": 165,
+      "g": 160,
+      "b": 150
+    },
+    "ROAD_MARKING": {
+      "index": 23,
+      "r": 220,
+      "g": 220,
+      "b": 200
+    }
+  },
+  "placements": [
+    {
+      "componentId": "bookstore",
+      "position": {
+        "x": 92,
+        "y": 3,
+        "z": 18
+      },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "office_building_1",
+      "position": {
+        "x": 88,
+        "y": 5,
+        "z": 125
+      },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "pizza_place",
+      "position": {
+        "x": 58,
+        "y": 3,
+        "z": 128
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "craftsman_home",
+      "position": {
+        "x": 25,
+        "y": 3,
+        "z": 127
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "market",
+      "position": {
+        "x": 92,
+        "y": 5,
+        "z": 89
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "laundromat",
+      "position": {
+        "x": 21,
+        "y": 3,
+        "z": 52
+      },
+      "rotation": 90,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "apartment_block_2",
+      "position": {
+        "x": -127,
+        "y": 5,
+        "z": 91
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "modern_house",
+      "position": {
+        "x": -58,
+        "y": 4,
+        "z": 92
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "diner",
+      "position": {
+        "x": -91,
+        "y": 5,
+        "z": 92
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "spanish_villa",
+      "position": {
+        "x": -125,
+        "y": 3,
+        "z": 20
+      },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "townhouse",
+      "position": {
+        "x": -125,
+        "y": 5,
+        "z": 126
+      },
+      "rotation": 270,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "suburban_house",
+      "position": {
+        "x": -21,
+        "y": 3,
+        "z": 89
+      },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "compact_home",
+      "position": {
+        "x": -89,
+        "y": 5,
+        "z": -94
+      },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "modern_house",
+      "position": {
+        "x": -126,
+        "y": 3,
+        "z": -56
+      },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "corner_store",
+      "position": {
+        "x": -123,
+        "y": 5,
+        "z": -126
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "townhouse",
+      "position": {
+        "x": -21,
+        "y": 3,
+        "z": -91
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "bookstore",
+      "position": {
+        "x": -92,
+        "y": 5,
+        "z": -124
+      },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "watchtower",
+      "position": {
+        "x": -90,
+        "y": 3,
+        "z": -22
+      },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "deli",
+      "position": {
+        "x": 54,
+        "y": 3,
+        "z": -58
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "diner",
+      "position": {
+        "x": 94,
+        "y": 5,
+        "z": -126
+      },
+      "rotation": 90,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "hardware_store",
+      "position": {
+        "x": 126,
+        "y": 5,
+        "z": -124
+      },
+      "rotation": 270,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "office_building_1",
+      "position": {
+        "x": 128,
+        "y": 5,
+        "z": -93
+      },
+      "rotation": 0,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "market",
+      "position": {
+        "x": 58,
+        "y": 3,
+        "z": -125
+      },
+      "rotation": 270,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "bookstore",
+      "position": {
+        "x": 22,
+        "y": 3,
+        "z": -21
+      },
+      "rotation": 180,
+      "terrainCarve": true
+    },
+    {
+      "componentId": "suv_2",
+      "position": {
+        "x": 5,
+        "y": 3,
+        "z": 19
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "suv_1",
+      "position": {
+        "x": 68,
+        "y": 2,
+        "z": 1
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "suv_1",
+      "position": {
+        "x": -5,
+        "y": 3,
+        "z": 36
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "truck",
+      "position": {
+        "x": 102,
+        "y": 3,
+        "z": -5
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "police_car",
+      "position": {
+        "x": 9,
+        "y": 3,
+        "z": 8
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "delivery_truck",
+      "position": {
+        "x": -9,
+        "y": 3,
+        "z": -58
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "suv_1",
+      "position": {
+        "x": 35,
+        "y": 3,
+        "z": 7
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "taxi",
+      "position": {
+        "x": -1,
+        "y": 2,
+        "z": -116
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "police_car",
+      "position": {
+        "x": -2,
+        "y": 2,
+        "z": -16
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "sedan_2",
+      "position": {
+        "x": -11,
+        "y": 3,
+        "z": -90
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "suv_1",
+      "position": {
+        "x": 89,
+        "y": 3,
+        "z": 8
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "sedan_4",
+      "position": {
+        "x": -62,
+        "y": 3,
+        "z": 5
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "sedan_5",
+      "position": {
+        "x": 10,
+        "y": 3,
+        "z": 105
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "sedan_4",
+      "position": {
+        "x": -7,
+        "y": 3,
+        "z": -5
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "police_car",
+      "position": {
+        "x": 0,
+        "y": 2,
+        "z": -3
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "sedan_2",
+      "position": {
+        "x": 5,
+        "y": 3,
+        "z": 113
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "sedan_3",
+      "position": {
+        "x": -43,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": -130,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_3",
+      "position": {
+        "x": -130,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_1",
+      "position": {
+        "x": -116,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_3",
+      "position": {
+        "x": -116,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": -95,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_1",
+      "position": {
+        "x": -95,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_2",
+      "position": {
+        "x": -78,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": -78,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_2",
+      "position": {
+        "x": -63,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": -63,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_2",
+      "position": {
+        "x": -43,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": -43,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_2",
+      "position": {
+        "x": -25,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": -25,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_2",
+      "position": {
+        "x": -11,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_2",
+      "position": {
+        "x": -11,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": 5,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_2",
+      "position": {
+        "x": 5,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_2",
+      "position": {
+        "x": 23,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": 23,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_1",
+      "position": {
+        "x": 44,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_2",
+      "position": {
+        "x": 44,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": 62,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": 62,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_2",
+      "position": {
+        "x": 77,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_3",
+      "position": {
+        "x": 77,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_1",
+      "position": {
+        "x": 95,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": 95,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_1",
+      "position": {
+        "x": 113,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_3",
+      "position": {
+        "x": 113,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": 129,
+        "y": 3,
+        "z": -6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": 129,
+        "y": 3,
+        "z": 6
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_1",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": -130
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_1",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": -130
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": -111
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": -111
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": -93
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": -93
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_2",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": -73
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_1",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": -73
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": -57
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": -57
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": -38
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": -38
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_1",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": -23
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_2",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": -23
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_1",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": -5
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": 9
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": 29
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_1",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": 29
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_2",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": 51
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_1",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": 51
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_2",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": 72
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_2",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": 72
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_2",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": 90
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_sign_1",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": 90
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": 111
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": 111
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_3",
+      "position": {
+        "x": -6,
+        "y": 3,
+        "z": 126
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "street_light_1",
+      "position": {
+        "x": 6,
+        "y": 3,
+        "z": 126
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": 7,
+        "y": 3,
+        "z": 7
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": -7,
+        "y": 3,
+        "z": 7
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_1",
+      "position": {
+        "x": -7,
+        "y": 3,
+        "z": -7
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "traffic_light_2",
+      "position": {
+        "x": 7,
+        "y": 3,
+        "z": -7
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": -64,
+        "y": 3,
+        "z": 24
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "medium_tree",
+      "position": {
+        "x": 34,
+        "y": 3,
+        "z": -48
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "medium_tree",
+      "position": {
+        "x": 25,
+        "y": 3,
+        "z": -111
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": -17,
+        "y": 3,
+        "z": 25
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": 23,
+        "y": 3,
+        "z": -86
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "medium_tree",
+      "position": {
+        "x": 47,
+        "y": 3,
+        "z": 54
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": 34,
+        "y": 3,
+        "z": 103
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": -115,
+        "y": 5,
+        "z": -106
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "medium_tree",
+      "position": {
+        "x": -116,
+        "y": 4,
+        "z": 64
+      },
+      "rotation": 0,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": -40,
+        "y": 3,
+        "z": -79
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "medium_tree",
+      "position": {
+        "x": -117,
+        "y": 3,
+        "z": 33
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": -95,
+        "y": 3,
+        "z": 54
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "medium_tree",
+      "position": {
+        "x": 110,
+        "y": 5,
+        "z": 116
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": -42,
+        "y": 3,
+        "z": 43
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": 50,
+        "y": 3,
+        "z": -41
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "small_tree",
+      "position": {
+        "x": 109,
+        "y": 4,
+        "z": -70
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": 40,
+        "y": 3,
+        "z": 27
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": 121,
+        "y": 4,
+        "z": -72
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "pine_tree",
+      "position": {
+        "x": -74,
+        "y": 3,
+        "z": -55
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "small_tree",
+      "position": {
+        "x": -35,
+        "y": 3,
+        "z": -14
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "medium_tree",
+      "position": {
+        "x": 104,
+        "y": 3,
+        "z": 42
+      },
+      "rotation": 270,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "medium_tree",
+      "position": {
+        "x": 23,
+        "y": 3,
+        "z": 92
+      },
+      "rotation": 180,
+      "terrainCarve": false
+    },
+    {
+      "componentId": "medium_tree",
+      "position": {
+        "x": -129,
+        "y": 3,
+        "z": 55
+      },
+      "rotation": 90,
+      "terrainCarve": false
+    }
+  ],
+  "metadata": {
+    "spawnPoints": {
+      "alpha": [
+        {
+          "x": -105,
+          "y": 3,
+          "z": -45
+        },
+        {
+          "x": -105,
+          "y": 3,
+          "z": 45
+        },
+        {
+          "x": -94,
+          "y": 3,
+          "z": 0
+        }
+      ],
+      "bravo": [
+        {
+          "x": 105,
+          "y": 2,
+          "z": -45
+        },
+        {
+          "x": 105,
+          "y": 2,
+          "z": 45
+        },
+        {
+          "x": 95,
+          "y": 2,
+          "z": 0
+        }
+      ]
+    },
+    "capturePoints": [
+      {
+        "id": "A",
+        "position": {
+          "x": -57,
+          "y": 1,
+          "z": 14
+        },
+        "initialOwner": -1
+      },
+      {
+        "id": "B",
+        "position": {
+          "x": -40,
+          "y": 3,
+          "z": -34
+        },
+        "initialOwner": -1
+      },
+      {
+        "id": "C",
+        "position": {
+          "x": 0,
+          "y": 4,
+          "z": 0
+        },
+        "initialOwner": -1
+      },
+      {
+        "id": "D",
+        "position": {
+          "x": 22,
+          "y": 4,
+          "z": -9
+        },
+        "initialOwner": -1
+      },
+      {
+        "id": "E",
+        "position": {
+          "x": 54,
+          "y": 3,
+          "z": -45
+        },
+        "initialOwner": -1
+      }
+    ],
+    "objectives": [
+      {
+        "id": "overpass",
+        "type": "control",
+        "position": {
+          "x": -57,
+          "y": 1,
+          "z": 14
+        }
+      },
+      {
+        "id": "parking",
+        "type": "control",
+        "position": {
+          "x": -40,
+          "y": 3,
+          "z": -34
+        }
+      },
+      {
+        "id": "plaza",
+        "type": "control",
+        "position": {
+          "x": 0,
+          "y": 4,
+          "z": 0
+        }
+      },
+      {
+        "id": "depot",
+        "type": "control",
+        "position": {
+          "x": 22,
+          "y": 4,
+          "z": -9
+        }
+      },
+      {
+        "id": "park",
+        "type": "control",
+        "position": {
+          "x": 54,
+          "y": 3,
+          "z": -45
+        }
+      },
+      {
+        "id": "courtyard",
+        "type": "route",
+        "position": {
+          "x": 82,
+          "y": 2,
+          "z": -108
+        }
+      },
+      {
+        "id": "market",
+        "type": "flank",
+        "position": {
+          "x": -40,
+          "y": 3,
+          "z": 100
+        }
+      }
+    ]
+  }
+}

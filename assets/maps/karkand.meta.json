@@ -1,0 +1,239 @@
+{
+  "name": "Strike at Karkand",
+  "description": "Generated from Strike at Karkand mapdef",
+  "waterIndices": [
+    6,
+    17
+  ],
+  "spawn_points": {
+    "alpha": [
+      {
+        "x": -33,
+        "y": 17,
+        "z": -417
+      },
+      {
+        "x": -28,
+        "y": 4,
+        "z": -412
+      },
+      {
+        "x": -38,
+        "y": 17,
+        "z": -422
+      },
+      {
+        "x": -30,
+        "y": 4,
+        "z": -410
+      },
+      {
+        "x": -36,
+        "y": 17,
+        "z": -424
+      }
+    ],
+    "bravo": [
+      {
+        "x": 167,
+        "y": 25,
+        "z": 420
+      },
+      {
+        "x": 172,
+        "y": 26,
+        "z": 415
+      },
+      {
+        "x": 162,
+        "y": 24,
+        "z": 425
+      },
+      {
+        "x": 169,
+        "y": 26,
+        "z": 413
+      },
+      {
+        "x": 165,
+        "y": 24,
+        "z": 423
+      }
+    ]
+  },
+  "capture_points": [
+    {
+      "id": "A",
+      "position": {
+        "x": -100,
+        "y": 35,
+        "z": -167
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "B",
+      "position": {
+        "x": -133,
+        "y": 11,
+        "z": 33
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "C",
+      "position": {
+        "x": 50,
+        "y": 8,
+        "z": 100
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "D",
+      "position": {
+        "x": 133,
+        "y": 10,
+        "z": 150
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "E",
+      "position": {
+        "x": 233,
+        "y": 20,
+        "z": 217
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "F",
+      "position": {
+        "x": 283,
+        "y": 4,
+        "z": 300
+      },
+      "initialOwner": -1
+    },
+    {
+      "id": "G",
+      "position": {
+        "x": 100,
+        "y": 24,
+        "z": 367
+      },
+      "initialOwner": -1
+    }
+  ],
+  "objectives": [
+    {
+      "id": "gas_station",
+      "type": "spawn",
+      "position": {
+        "x": -33,
+        "y": 17,
+        "z": -417
+      }
+    },
+    {
+      "id": "hotel",
+      "type": "flag",
+      "position": {
+        "x": -100,
+        "y": 35,
+        "z": -167
+      }
+    },
+    {
+      "id": "square",
+      "type": "flag",
+      "position": {
+        "x": -133,
+        "y": 11,
+        "z": 33
+      }
+    },
+    {
+      "id": "suburb",
+      "type": "flag",
+      "position": {
+        "x": 50,
+        "y": 8,
+        "z": 100
+      }
+    },
+    {
+      "id": "train_wreck",
+      "type": "flag",
+      "position": {
+        "x": 133,
+        "y": 10,
+        "z": 150
+      }
+    },
+    {
+      "id": "gatehouse",
+      "type": "flag",
+      "position": {
+        "x": 233,
+        "y": 20,
+        "z": 217
+      }
+    },
+    {
+      "id": "cement_factory",
+      "type": "flag",
+      "position": {
+        "x": 283,
+        "y": 4,
+        "z": 300
+      }
+    },
+    {
+      "id": "warehouse",
+      "type": "flag",
+      "position": {
+        "x": 100,
+        "y": 24,
+        "z": 367
+      }
+    },
+    {
+      "id": "factory",
+      "type": "spawn",
+      "position": {
+        "x": 167,
+        "y": 25,
+        "z": 420
+      }
+    },
+    {
+      "id": "main_road",
+      "type": "route",
+      "position": {
+        "x": -67,
+        "y": 4,
+        "z": -100
+      }
+    },
+    {
+      "id": "eastern_approach",
+      "type": "route",
+      "position": {
+        "x": 67,
+        "y": 8,
+        "z": 117
+      }
+    },
+    {
+      "id": "northern_industrial",
+      "type": "route",
+      "position": {
+        "x": 233,
+        "y": 7,
+        "z": 333
+      }
+    }
+  ]
+}

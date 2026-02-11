@@ -1,0 +1,56 @@
+{
+  "name": "Old Quarter Siege",
+  "bounds": { "xMin": -150, "xMax": 150, "yMin": -4, "yMax": 36, "zMin": -130, "zMax": 130 },
+  "terrain": { "generator": "heightmap", "waterLevel": -1, "seed": 17 },
+  "terrainPalette": {
+    "GRASS": { "index": 1, "r": 120, "g": 126, "b": 78 },
+    "DIRT": { "index": 2, "r": 122, "g": 92, "b": 58 },
+    "STONE": { "index": 3, "r": 136, "g": 136, "b": 136 },
+    "WATER": { "index": 6, "r": 35, "g": 137, "b": 218 },
+    "SAND_LIGHT": { "index": 7, "r": 205, "g": 178, "b": 132 },
+    "SAND_DARK": { "index": 8, "r": 175, "g": 145, "b": 107 },
+    "GRASS_DARK": { "index": 9, "r": 95, "g": 99, "b": 62 },
+    "STONE_DARK": { "index": 10, "r": 102, "g": 102, "b": 102 },
+    "CONCRETE": { "index": 11, "r": 160, "g": 160, "b": 160 },
+    "CONCRETE_DARK": { "index": 12, "r": 128, "g": 128, "b": 128 },
+    "WOOD": { "index": 13, "r": 139, "g": 105, "b": 20 },
+    "WOOD_DARK": { "index": 14, "r": 107, "g": 79, "b": 16 },
+    "BRICK": { "index": 15, "r": 160, "g": 82, "b": 40 },
+    "ROOF_TILE": { "index": 16, "r": 139, "g": 69, "b": 19 },
+    "WATER_DEEP": { "index": 17, "r": 26, "g": 76, "b": 128 },
+    "ROAD": { "index": 18, "r": 85, "g": 85, "b": 85 },
+    "WINDOW": { "index": 19, "r": 135, "g": 206, "b": 235 },
+    "METAL": { "index": 20, "r": 112, "g": 128, "b": 144 }
+  },
+  "placements": [],
+  "metadata": {
+    "spawnPoints": {
+      "alpha": [
+        { "x": -138, "y": 5, "z": -90 },
+        { "x": -138, "y": 5, "z": -30 },
+        { "x": -138, "y": 5, "z": 30 },
+        { "x": -138, "y": 5, "z": 90 },
+        { "x": -126, "y": 5, "z": 0 }
+      ],
+      "bravo": [
+        { "x": 138, "y": 8, "z": -90 },
+        { "x": 138, "y": 8, "z": -30 },
+        { "x": 138, "y": 8, "z": 30 },
+        { "x": 138, "y": 8, "z": 90 },
+        { "x": 126, "y": 8, "z": 0 }
+      ]
+    },
+    "capturePoints": [
+      { "id": "A", "position": { "x": -100, "y": 5, "z": 0 }, "initialOwner": 0 },
+      { "id": "B", "position": { "x": 20, "y": 6, "z": 0 }, "initialOwner": -1 },
+      { "id": "C", "position": { "x": 100, "y": 7, "z": 40 }, "initialOwner": 1 }
+    ],
+    "objectives": [
+      { "id": "west_old_quarter", "type": "district", "position": { "x": -118, "y": 5, "z": -40 } },
+      { "id": "center_boulevard", "type": "chokepoint", "position": { "x": 20, "y": 6, "z": 0 } },
+      { "id": "east_market", "type": "district", "position": { "x": 110, "y": 7, "z": 60 } },
+      { "id": "south_flank", "type": "route", "position": { "x": 60, "y": 6, "z": -80 } },
+      { "id": "north_flank", "type": "route", "position": { "x": -20, "y": 6, "z": 80 } }
+    ]
+  }
+}
