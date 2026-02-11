@@ -5,7 +5,7 @@ export const CHUNK_SIZE = 16;
 export const VOXEL_SIZE = 0.5;
 
 /** Server tick rate in Hz */
-export const TICK_RATE = 20;
+export const TICK_RATE = 30;
 
 /** Server tick interval in ms */
 export const TICK_INTERVAL = 1000 / TICK_RATE;
@@ -33,7 +33,7 @@ export const PLAYER_HEIGHT = 1.8;
 export const CROUCH_HEIGHT = 1.0;
 
 /** Time in seconds after releasing sprint before firing is allowed */
-export const SPRINT_FIRE_DELAY = 0.2;
+export const SPRINT_FIRE_DELAY = 0.12;
 
 /** Wall climb speed when scrambling up walls (m/s) — slower than jump */
 export const CLIMB_SPEED = 4;
@@ -219,8 +219,8 @@ export const LOD_LEVELS = 3;
 
 /** Chunk distance thresholds for each LOD level (in chunk units, squared for fast comparison) */
 export const LOD_DISTANCE_SQ = [
-  7 * 7,   // LOD 0 → LOD 1 at 7 chunks
-  12 * 12, // LOD 1 → LOD 2 at 12 chunks
+  4 * 4,   // LOD 0 → LOD 1 at 4 chunks (~32m)
+  8 * 8,   // LOD 1 → LOD 2 at 8 chunks (~64m)
 ] as const;
 
 /** Downsample factor per LOD level: LOD 0 = 1×, LOD 1 = 2×, LOD 2 = 4× */
@@ -232,6 +232,9 @@ export const LOD_UPDATE_INTERVAL = 30;
 /** Chunk streaming radius in chunks (how many chunks around the player to load) */
 export const STREAM_RADIUS = 14;
 
+/** If true, stream and keep all map chunks loaded client-side */
+export const STREAM_ALL_CHUNKS = true;
+
 // --- Object LOD constants ---
 
 /** Distance thresholds for voxel object LOD in world units (meters), squared for fast comparison */
@@ -241,13 +244,13 @@ export const OBJECT_LOD_DISTANCE_SQ = [
 ] as const;
 
 /** How often (in ticks) the server checks for new chunks to stream to players */
-export const STREAM_CHECK_INTERVAL = 10; // every 0.5s at 20Hz
+export const STREAM_CHECK_INTERVAL = 10; // every ~0.33s at 30Hz
 
 /** WebSocket server port */
 export const SERVER_PORT = 3000;
 
 /** Interpolation buffer time in ms */
-export const INTERPOLATION_DELAY = 100;
+export const INTERPOLATION_DELAY = 85;
 
 // --- Capture Point constants (ported from Ravenfield) ---
 
@@ -435,3 +438,29 @@ export const REVIVE_HEALTH_MEDIC = 75;
 
 /** Movement speed multiplier for downed players (crawling) */
 export const DOWNED_SPEED_MULT = 0.15;
+
+// --- Incursion mode constants ---
+
+/** Incursion match time limit in seconds (15 minutes) */
+export const INCURSION_TIME_LIMIT = 15 * 60;
+
+/** Incursion win-by-score threshold */
+export const INCURSION_SCORE_THRESHOLD = 500;
+
+/** Seconds between Incursion director checks */
+export const INCURSION_DIRECTOR_INTERVAL = 30;
+
+/** Score gap that triggers rubber-banding events */
+export const INCURSION_RUBBERBAND_THRESHOLD = 50;
+
+/** Points awarded per completed dynamic objective */
+export const INCURSION_OBJECTIVE_BONUS = 30;
+
+/** Duration of each dynamic objective in seconds */
+export const INCURSION_OBJECTIVE_DURATION = 90;
+
+/** WFC grid width (tiles) for Incursion maps */
+export const INCURSION_WFC_WIDTH = 20;
+
+/** WFC grid depth (tiles) for Incursion maps */
+export const INCURSION_WFC_DEPTH = 20;

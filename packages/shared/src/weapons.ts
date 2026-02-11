@@ -332,7 +332,7 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
     falloffStart: 150,
     falloffEnd: 1,
     rpm: 15, // 60/4 — one shot per 4s reload
-    magSize: 1,
+    magSize: 2,
     reloadTime: 4,
     spread: 0,
     pellets: 1,

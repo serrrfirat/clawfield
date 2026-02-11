@@ -1,5 +1,5 @@
 /** Available game modes */
-export type GameMode = 'tdm' | 'conquest';
+export type GameMode = 'tdm' | 'conquest' | 'incursion';
 
 /** 3D vector */
 export interface Vec3 {
@@ -235,6 +235,39 @@ export interface SpawnPointOption {
   type: 'base' | 'flag';
 }
 
+/** Weather states used by runtime weather manager and AI director events */
+export type WeatherState = 'clear' | 'cloudy' | 'overcast' | 'fog' | 'rain' | 'snow' | 'storm';
+
+/** AI director event pushed to clients for announcements and world changes */
+export interface DirectorEvent {
+  id: string;
+  kind: 'weather_shift' | 'supply_drop' | 'reinforcement_wave' | 'objective_shift' | 'artillery_warning' | 'dynamic_objective';
+  title: string;
+  description: string;
+  /** Optional target team (0=Alpha, 1=Bravo) */
+  team?: number;
+  /** Optional map/capture zone label */
+  zone?: string;
+  /** Event duration hint for UI */
+  durationSeconds?: number;
+  /** For weather_shift events */
+  weather?: WeatherState;
+  /** For dynamic_objective events */
+  objective?: DynamicObjective;
+}
+
+export interface DynamicObjective {
+  id: string;
+  task: 'capture' | 'hold';
+  zone: string;
+  timeLimit: number;
+  timeRemaining: number;
+  bonusScore: number;
+  /** Target team: -1 = either team */
+  targetTeam: number;
+  completed: boolean;
+}
+
 export type ClientMessage =
   | { type: 'join'; name: string; classId: string; gameMode: GameMode }
   | { type: 'rejoin'; sessionToken: string }
@@ -258,7 +291,9 @@ export type ServerMessage =
       mapData: ChunkData[];
       palette?: number[];
       waterIndices?: number[];
+      mapBounds?: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
       mapName?: string;
+      weather?: WeatherState;
       objectives?: MapObjective[];
       objectPlacements?: import('./voxel-object.js').MapObjectPlacement[];
       gameMode: GameMode;
@@ -291,6 +326,10 @@ export type ServerMessage =
   | { type: 'chunks'; chunks: ChunkData[] }
   | { type: 'smoke_grenades'; grenades: SmokeGrenadeState[] }
   | { type: 'smoke_deploy'; event: SmokeDeployEvent }
+  | { type: 'director_event'; event: DirectorEvent }
+  | { type: 'match_timer'; timeRemaining: number; timeLimit: number }
+  | { type: 'dynamic_objectives'; objectives: DynamicObjective[] }
+  | { type: 'objective_completed'; objectiveId: string; team: number; bonusScore: number }
   | { type: 'room_created'; roomCode: string; playerId: string }
   | { type: 'room_joined'; roomCode: string; playerId: string; hostId: string }
   | { type: 'room_error'; message: string }
