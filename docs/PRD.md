@@ -11,6 +11,8 @@
 
 **Clawfield** is a browser-based voxel battlefield game for 24v24 players, inspired by Ravenfield's accessible, casual battlefield gameplay. What sets Clawfield apart is an **AI Game Master** powered by LLMs (OpenClaw/Claude) that reads the battle state and real-world context to dynamically generate world events during matches — airstrikes, weather shifts, supply drops, objective changes, and more.
 
+**Product focus reset (2026):** Clawfield is not trying to out-Battlefield Battlefield. The near-term product is a polished **AI-directed combat sandbox** where the Game Master creates memorable match turns. Shooter parity features are secondary to AI direction quality.
+
 ### Core Pillars
 
 1. **Accessible Warfare** — Casual Battlefield feel. Easy to pick up, satisfying to master. Not milsim, not twitch-arcade.
@@ -58,6 +60,8 @@ Four infantry classes at launch. Each has a primary weapon, secondary, gadget, a
 
 ### 3.3 Game Modes
 
+**MVP mode strategy:** Incursion is the flagship and primary MVP mode. TDM/Rush are support modes and can remain reduced-scope until the AI Game Master loop is excellent.
+
 #### 3.3.1 Team Deathmatch (TDM)
 - Two teams, ticket pool per team
 - Kills deplete enemy tickets
@@ -82,6 +86,13 @@ Four infantry classes at launch. Each has a primary weapon, secondary, gadget, a
   - Introduces real-world-flavored events (weather patterns inspired by actual local weather, time-of-day shifts)
 - First to score threshold or highest score when time expires wins
 - This mode is the flagship differentiator
+
+### 3.6 Scope Guardrails (Reset)
+
+- **Feature litmus test:** If a task does not improve AI decision quality, event execution quality, or player readability of events, it is post-MVP.
+- **Mode discipline:** No new mode launches before Incursion is clearly fun with 5+ meaningful AI interventions per match.
+- **Content discipline:** Add maps/assets only when they improve event readability and tactical variety for Incursion.
+- **Combat discipline:** Keep core gunplay stable; avoid large combat-system rewrites during AI GM vertical-slice work.
 
 ### 3.4 Map Design Philosophy
 
@@ -253,6 +264,59 @@ The AI Game Master must operate within strict bounds:
 - **Rate limiting:** 1 AI call per minute per match (30 calls max per 30-minute match). Cost-efficient by design.
 - **Match duration:** 30 minutes maximum. Time-limited to control AI costs and keep matches focused.
 
+### 4.6 Generative World Actions (Voxel Compiler)
+
+To support more dynamic AI interventions, the AI Game Master can emit **world action intents** that are compiled into safe voxel edits.
+
+**Key principle:** AI proposes intent; server compiler owns final voxel changes.
+
+```json
+{
+  "events": [
+    {
+      "type": "world_action",
+      "intent": "build_cover_line",
+      "target": { "zone": "zone_mid", "center": [128, 6, 220], "radius": 18 },
+      "params": {
+        "length": 24,
+        "height": 2,
+        "thickness": 1,
+        "material": "concrete",
+        "orientation": "perpendicular_to_enemy_flow"
+      },
+      "duration_seconds": 90,
+      "reason": "Team B is repeatedly wiped crossing open mid"
+    }
+  ]
+}
+```
+
+**Compiler pipeline:**
+
+1. Parse and schema-validate AI output
+2. Resolve target area to world coordinates
+3. Run safety checks (spawn protection, objective overlap, pathing constraints)
+4. Enforce per-event and per-minute voxel budgets
+5. Generate deterministic voxel diff (seeded)
+6. Dry-run validation on server snapshot
+7. Commit voxel diff + broadcast `voxel_update` + event warning
+
+**Safety constraints:**
+
+- AI cannot directly write arbitrary voxels
+- No edits inside protected spawn volumes
+- No full hard-lock of objective approach paths
+- Max voxel delta per action + per minute
+- Automatic rollback on failed validation
+
+**Initial intent set (MVP):**
+
+- `build_cover_line`
+- `open_breach`
+- `collapse_bridge_segment`
+- `raise_barricade_ring`
+- `crater_field`
+
 ---
 
 ## 5. Technical Architecture
@@ -386,14 +450,18 @@ Voxel destruction is live with the following capabilities:
 - **Bullet destruction:** Hitscan bullets destroy 1-3 voxels along the bullet direction if bullet damage >= material hardness
 - **Structural integrity (BFS):** After voxels are removed, a flood-fill connectivity check detects unsupported sections. Disconnected groups either crumble (small) or collapse as rigid bodies (large)
 - **Visual debris (Rapier):** Destroyed voxels become Rapier physics bodies that fly outward from explosions with mass-proportional impulses, then settle on terrain. Varied chunk sizes (1x1, 2x2, 3x3) for visual variety
-- **Network sync:** Server broadcasts `voxel_update` (chunk changes) and `destruction_event` (visual debris data) to all clients
+- **Server-authoritative debris sync:** Server broadcasts debris transform state to clients; client renders with interpolation/extrapolation smoothing
 - **DestructionManager:** Server-side manager handles all destruction logic, structural checks, pending drops, and crush zones
 
-**Known Limitation — Debris Player Collision:**
-Rapier debris is currently **visual-only**. Players walk through settled debris. The player movement system uses custom AABB collision against the voxel grid (Layer 1 physics), while debris uses Rapier (Layer 2). Bridging these two systems — placing settled Rapier debris back into the voxel grid as solid terrain — requires solving coordinate alignment and chunk remeshing timing issues. This is deferred to a future iteration. Potential approaches:
-- Server-authoritative rubble: server tracks where debris lands, sends voxel_update to place rubble
-- Client-side voxel snapping: when Rapier body settles, write material into chunk data and remesh
-- Hybrid Rapier-AABB: add AABB colliders for large settled debris chunks
+**Current Status — Debris Interaction:**
+Debris is now interactable via a hybrid model:
+- Server simulates debris bodies and resolves player-vs-debris collision authoritatively
+- Client predicts debris collision locally (for smoother movement) and renders server states with interpolation
+
+**Known limitations:**
+- Motion quality for debris still lower than pure client-side visual sim in edge cases
+- Debris terrain contact is simplified; advanced contact manifolds are deferred
+- Debris lifetime and budget tuning may be map-dependent
 
 ### 5.5 Physics Architecture (Hybrid)
 
@@ -666,7 +734,7 @@ CREATE TABLE match_players (
 - [x] Capture-point spawning (respawn at owned flags)
 
 ### Phase 2: Map & Polish (Weeks 9-12) 🔶 IN PROGRESS
-**Goal:** A real map that feels good to play on
+**Goal:** Reach baseline readability for one map while preserving velocity
 
 - [x] "Shoreline" map — full design with buildings, tunnels, bridges (MagicaVoxel → .vox → chunked .map pipeline)
 - [x] Audio system scaffolding (sound-manager.ts with spatial audio, sound packs)
@@ -674,7 +742,7 @@ CREATE TABLE match_players (
 - [ ] Voxel material system (different block types, textures)
 - [ ] Texture atlas for voxel rendering
 - [ ] Basic lighting (directional sun + ambient)
-- [ ] Chunk LOD for distant terrain
+- [x] Chunk LOD for distant terrain
 - [ ] Scoreboard overlay (Tab key — player list with KDA stats)
 - [ ] Player names above heads
 - [x] Class gadgets (medkit, ammo box, spotting scope, deploy cover)
@@ -682,26 +750,35 @@ CREATE TABLE match_players (
 - [ ] Damage indicators (directional damage arrows)
 - [ ] Death cam / killcam
 
-**Exit criteria:** The Shoreline map is playable and visually coherent.
+**Exit criteria:** One map is playable, readable, and stable enough to host AI-driven events.
 
-### Phase 3: AI Game Master (Weeks 13-16)
-**Goal:** The AI director is live and creating events
+### Phase 2.5: AI Vertical Slice Reset (Weeks 13-14) ⭐ PRIORITY
+**Goal:** Prove Clawfield's differentiator with a polished Incursion slice
 
-- [ ] State Aggregator service (collects match state every 15s)
-- [ ] AI Game Master API integration (Claude/OpenClaw)
-- [ ] System prompt engineering for the game master
-- [ ] Event executor (receives AI decisions, applies to game world)
-- [ ] Environmental events: fog, rain, dust storm
-- [ ] Tactical events: artillery barrage, supply drop
-- [ ] Event HUD notifications ("Warning: Artillery incoming in Zone B!")
-- [ ] Fallback deterministic event system
-- [ ] Incursion game mode
-- [ ] Real-world context feed (weather API integration)
+- [ ] Lock scope: Incursion only for slice
+- [ ] Implement Match State Aggregator (60s cadence)
+- [ ] Implement EventController (cooldowns, vetoes, pacing)
+- [ ] Implement deterministic fallback director
+- [ ] Ship 5 high-impact events (fog wall, artillery zone, supply drop, objective shift, reinforcement wave)
+- [ ] Event UI readability pass (warnings, countdown, map markers)
+- [ ] Post-match event timeline log (for tuning)
 
-**Exit criteria:** A match of Incursion where the AI creates 5+ distinct events that feel dramatic and fair.
+**Exit criteria:** 15-minute Incursion match with 5+ events that players call out as memorable and fair.
 
-### Phase 4: Scale & Ship (Weeks 17-20)
-**Goal:** 24v24, production-ready
+### Phase 3: Generative World Actions (Weeks 15-17)
+**Goal:** AI can safely modify battlefield geometry through constrained intents
+
+- [ ] Define `world_action` schema and validation
+- [ ] Build ActionCompiler (intent -> voxel diffs)
+- [ ] Add safety checks (spawn protection, pathing, budget)
+- [ ] Add rollback and server veto hooks
+- [ ] Ship 2 production intents (`build_cover_line`, `open_breach`)
+- [ ] Add replay/debug tools for world-action outcomes
+
+**Exit criteria:** AI-generated world edits run live without breaking fairness or server stability.
+
+### Phase 4: Scale & Ship (Weeks 18-20)
+**Goal:** Productionize the AI-directed experience
 
 - [ ] Scale testing: 48 simultaneous connections
 - [ ] Network optimization (delta compression, binary protocol)
@@ -709,16 +786,17 @@ CREATE TABLE match_players (
 - [ ] Lobby system (waiting room before match)
 - [ ] Authentication (Google/Discord OAuth)
 - [ ] Player profiles (stats, match history)
-- [ ] Rush game mode
+- [ ] Rush game mode (optional, if Incursion KPIs are met)
 - [ ] Anti-cheat basics (server-side validation, rate limiting)
 - [ ] Performance profiling and optimization pass
 - [ ] Cloud deployment (auto-scaling server instances)
 
-**Exit criteria:** 24v24 match runs smoothly for 15 minutes with AI events.
+**Exit criteria:** 24v24 Incursion match runs smoothly for 15 minutes with stable AI direction.
 
 ### Future Phases (Post-MVP)
+- TDM/Rush full parity and expansion
 - Vehicle system (tanks, helicopters, boats)
-- Destructible voxel terrain
+- Advanced generative world actions (compound structures, temporary POIs)
 - Construction system (Engineer class expansion)
 - More maps
 - Ranked matchmaking

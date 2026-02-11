@@ -1,6 +1,20 @@
 # Clawfield - Lessons Learned
 
+## VoxelEarth / Tile Assembly
+
+### Voxelizer ignores GLB scene graph transforms — must extract translations manually
+The VoxelEarth `java-cpu-voxelizer` reads vertex positions in "object coords (no node transforms)". Each tile's vertices are in a local frame (centered near 0), so independently voxelizing 465 tiles produces 465 copies of the same ~128³ grid → solid cube. **Fix:** After the decoder runs with `--rotate-flat --origin`, the root node has a translation-only transform in ENU meters. Parse each decoded GLB's JSON chunk to extract this translation, then apply `round(translation / voxelUnit)` as an offset when merging voxels. The `emitPosition()` method exists in the voxelizer source but is never called — don't rely on `_position.json` files.
+
+### Decoder --rotate-flat bakes rotation but NOT translation
+The decoder's `--rotate-flat` flag bakes `R·S` into vertex positions and sets the root node to "translation-only". This means vertices get Y-up orientation but remain in local space. The ECEF→ENU translation is preserved in the scene graph, not in vertex data. Any downstream tool that reads "object-space" vertices will miss the spatial positioning entirely.
+
 ## Rendering / Materials
+
+### Validate map silhouette in viewer before claiming "playable"
+Large imported `.vobj` building assets can have very different footprint/origin scales than expected, which can collapse a map into overlapping blocks even if placement coordinates look reasonable in JSON. For any new map pipeline output, always do a viewer silhouette sanity pass (top-down + low-angle) and check for overlap/readability before handing it off. If silhouette fails, fall back to procedural blockout first, then reintroduce imported assets gradually.
+
+### First-pass blockouts must hit a density benchmark
+When the goal is an urban battlefield, a sparse prototype with widely spaced boxes will feel "empty and wrong" even if lanes are technically playable. Before presenting, enforce a minimum density bar: multiple road hierarchies (major + minor), block subdivision, varied building heights, and intersection cover at most key nodes. In practice: generate district-level structure first, then add micro-detail passes (cover, rubble, lane blockers) in the same iteration.
 
 ### Greedy mesher water filter silently eats voxel object voxels
 The `greedyMesh()` function filters palette indices 6 and 17 via `isWater()` — designed for terrain chunks. Voxel objects (.vobj.json) use their own palettes where indices 6/17 are regular colors (e.g. khaki, dark gray). This caused the sandbag cover to lose 44% of its voxels, the wall segment 18%, and the watchtower 13%. Fix: added `skipWaterFilter` parameter to `greedyMesh()` — always pass `true` when meshing voxel objects. **Rule: any terrain-specific filter in shared mesher code must have an opt-out for voxel objects.**
@@ -11,6 +25,11 @@ Material indices 1-6 (MAT_GRASS through MAT_WATER) have hardcoded atlas tile tex
 const hasAtlasTile = MATERIAL_TILES[mat] !== undefined
   && MATERIAL_COLORS[mat] === EXPECTED_COLORS[mat];
 ```
+
+## Map Design
+
+### Standard map size: 1000×1000 voxels (bounds ±500)
+All maps should target 1000×1000 voxel bounds (`xMin: -500, xMax: 500, zMin: -500, zMax: 500`). This matches BF2 64-player scale (~1km²). When scaling up a smaller map, use the "scale the world, not the buildings" principle: landmark positions scale fully (3.33x for 300→1000), but individual building footprints only scale ~1.5x to stay human-readable. The extra space becomes courtyards, open terrain, and side streets. Karkand at this size: 33 MB output, 0.67s generation, 8429 chunks.
 
 ## Project Setup
 

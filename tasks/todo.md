@@ -1,10 +1,11 @@
 # Clawfield - Task Tracking
 
-## Completed: BattleBit-Style Visual Enhancement (4 Phases)
+## Completed: BattleBit-Style Visual Enhancement (5 Phases)
 - [x] Phase 1: Per-Vertex Ambient Occlusion (mesher.ts, chunk-mesh.ts, world-renderer.ts, viewer.ts, voxel-object-renderer.ts)
 - [x] Phase 2: Hi-Res Texture Atlas — 16→32px tiles, LinearFilter + mipmaps (texture-atlas.ts, build-atlas.ts)
 - [x] Phase 3: Normal Maps — Sobel-filter normal atlas generation + shader TBN perturbation (build-atlas.ts, world-renderer.ts, texture-atlas.ts)
 - [x] Phase 4: Detail Props — grass/rocks/rubble InstancedMesh system (detail-props.ts, world-renderer.ts, main.ts)
+- [x] Phase 5: Per-Material PBR & Edge Darkening — materialId vertex attribute, 256x1 PBR lookup texture (roughness/metalness/emissive/edgeDark per material), shader patches for per-material roughness+metalness+emissive, voxel edge darkening for chamfered look, post-processing tuning (bloom threshold 0.80, SSAO radius 2, exposure 0.85)
 
 ## Active Task: Scale Karkand Map to ~600m (1200 voxels)
 
