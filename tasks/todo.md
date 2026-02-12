@@ -7,6 +7,13 @@
 - [x] Phase 4: Detail Props — grass/rocks/rubble InstancedMesh system (detail-props.ts, world-renderer.ts, main.ts)
 - [x] Phase 5: Per-Material PBR & Edge Darkening — materialId vertex attribute, 256x1 PBR lookup texture (roughness/metalness/emissive/edgeDark per material), shader patches for per-material roughness+metalness+emissive, voxel edge darkening for chamfered look, post-processing tuning (bloom threshold 0.80, SSAO radius 2, exposure 0.85)
 
+## Completed: Astroneer-Style Low-Poly Visual Transition
+- [x] Phase 0: Playwright test harness (playwright.config.ts, tests/visual-check.spec.ts)
+- [x] Phase 1: Enhanced terrain with simplex noise micro-displacement + slope-based coloring (chunk-mesh.ts)
+- [x] Phase 2: Surface Nets mesher for buildings — Astroneer-style flat-shaded smooth geometry (surface-nets.ts, voxel-object-renderer.ts, world-renderer.ts)
+- [x] Phase 3: Section-based destruction swap — smooth→voxel on damage, 8x8x8 sections (building-section-manager.ts, main.ts)
+- [x] Phase 4: Polish — pastelized building palettes, stronger ambient fill, section rebuild cap (voxel-object-renderer.ts, renderer.ts)
+
 ## Active Task: Scale Karkand Map to ~600m (1200 voxels)
 
 ### Size Comparison

@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import type { VoxelObjectDef } from '@clawfield/shared';
 import { greedyMesh, quadsToGeometryData } from './mesher';
 
@@ -448,12 +449,20 @@ function displayGLB(buffer: ArrayBuffer, filename: string) {
         const mat = child.material as THREE.MeshStandardMaterial;
         const originalEmissive = mat?.emissive ? mat.emissive.clone() : new THREE.Color(0, 0, 0);
 
+        const autoType = autoClassifyMesh(child);
+        // Restore tagged type from GLB extras (userData) if present
+        const savedType = child.userData?.materialType as MaterialType | undefined;
+        const taggedType = savedType && savedType !== autoType ? savedType : null;
+        const effectiveType = taggedType ?? autoType;
+        // Always write effective type to userData for export
+        child.userData.materialType = effectiveType;
+
         meshRegistry.push({
           mesh: child,
           name: child.name || `mesh_${meshRegistry.length}`,
           materialName: mat?.name || '(none)',
-          autoType: autoClassifyMesh(child),
-          taggedType: null,
+          autoType,
+          taggedType,
           originalEmissive,
         });
       }
@@ -880,6 +889,9 @@ matTypeSelect.addEventListener('change', () => {
   // If setting back to auto-classified type, clear the override
   info.taggedType = newType === info.autoType ? null : newType;
 
+  // Write to mesh userData so GLTFExporter preserves it as extras
+  info.mesh.userData.materialType = newType;
+
   const health = MATERIAL_HEALTH[newType];
   detailHealth.textContent = `${health.healthMultiplier}x`;
   detailFragments.textContent = `${health.fragmentCount} (${health.style})`;
@@ -942,6 +954,49 @@ saveMaterialsBtn.addEventListener('click', () => {
 
 loadMaterialsBtn.addEventListener('click', () => loadInput.click());
 
+// --- Export GLB with material tags embedded as userData/extras ---
+
+const exportGlbBtn = document.getElementById('export-glb-btn')!;
+const overwriteCb = document.getElementById('overwrite-cb') as HTMLInputElement;
+
+/** Track export version per filename so repeated exports increment */
+let exportVersion = 0;
+let exportVersionFile = '';
+
+exportGlbBtn.addEventListener('click', async () => {
+  if (!glbLoaded || !currentObject) return;
+
+  const exporter = new GLTFExporter();
+  const baseName = glbFilename.replace(/\.(glb|gltf)$/i, '');
+
+  let downloadName: string;
+  if (overwriteCb.checked) {
+    downloadName = `${baseName}.glb`;
+  } else {
+    // Increment version counter (resets if a different file is loaded)
+    if (exportVersionFile !== glbFilename) {
+      exportVersion = 0;
+      exportVersionFile = glbFilename;
+    }
+    exportVersion++;
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    downloadName = `${baseName}_v${exportVersion}_${ts}.glb`;
+  }
+
+  try {
+    const glb = await exporter.parseAsync(currentObject, { binary: true });
+    const blob = new Blob([glb as ArrayBuffer], { type: 'model/gltf-binary' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = downloadName;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('GLB export failed:', err);
+  }
+});
+
 loadInput.addEventListener('change', () => {
   const file = loadInput.files?.[0];
   if (!file) return;
@@ -959,6 +1014,7 @@ loadInput.addEventListener('change', () => {
         if (idx >= 0) {
           const info = meshRegistry[idx];
           info.taggedType = override.materialType === info.autoType ? null : override.materialType;
+          info.mesh.userData.materialType = override.materialType;
           updateDotColor(idx);
         }
       }

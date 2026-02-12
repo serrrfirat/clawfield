@@ -63,3 +63,7 @@ assets/maps/ts-test*
 assets/maps/incursion-test*
 assets/maps/incursion-177*
 assets/maps/nyc-times-square*
+.todos/
+
+# GDC Audio Bundle (3.1GB, files up to 675MB — exceeds GitHub 100MB limit)
+apps/client/public/GDC 2024 Game Audio Bundle 1/

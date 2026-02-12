@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { RigidBody, BallCollider } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
-import { inputToVelocity, createTerrainHeight, WEAPONS, WeaponId, JUMP_VELOCITY, GRAVITY } from '@clawfield/shared'
+import { inputToVelocity, createTerrainHeight, WEAPONS, WeaponId, JUMP_VELOCITY, GRAVITY, PLAYER_HEIGHT } from '@clawfield/shared'
 import type { Vec3 } from '@clawfield/shared'
 
 import { TopDownInputCapture } from './TopDownInput'
@@ -12,6 +12,10 @@ import { useNetwork } from '../network/NetworkProvider'
 import useStore from '../stores/useStore'
 import { combatSystems } from '../combat/CombatEffects'
 import { soundManager, SoundId } from '../audio/sound-manager'
+import SoldierModel from './SoldierModel'
+import type { SoldierModelHandle } from './SoldierModel'
+import { AnimState, deriveAnimState } from './animation-state'
+import AimCursor from './AimCursor'
 
 const heightGetter = createTerrainHeight()
 const BALL_RADIUS = 0.4
@@ -29,18 +33,25 @@ export default function PlayerController() {
   const groundedRef = useRef(true)
   const rigidBodyRef = useRef<RapierRigidBody>(null!)
   const meshRef = useRef<THREE.Group>(null!)
-  const weaponRef = useRef<THREE.Mesh>(null!)
+  const soldierRef = useRef<SoldierModelHandle>(null!)
   const seqRef = useRef(0)
   /** Fire rate limiter — tracks last shot time */
   const lastShotRef = useRef(0)
+  /** Tracks whether we're actively shooting (for anim derivation) */
+  const shootingRef = useRef(false)
+  /** Cursor world position for AimCursor — updated each frame via .copy() */
+  const cursorWorldPosRef = useRef(new THREE.Vector3())
+  /** Player world position for AimCursor — updated each frame via .set() */
+  const playerWorldPosRef = useRef(new THREE.Vector3(0, 5, 0))
 
   const setBallPosition = useStore((s) => s.setBallPosition)
   const setSmoothedCircleCenter = useStore((s) => s.setSmoothedCircleCenter)
   const setLandBallDistance = useStore((s) => s.setLandBallDistance)
   const alive = useStore((s) => s.alive)
+  const downed = useStore((s) => s.downed)
+  const reloading = useStore((s) => s.reloading)
 
   useFrame((_, dt) => {
-    if (!alive) return
     if (!rigidBodyRef.current) return
 
     const clamped = Math.min(dt, 0.1)
@@ -81,6 +92,24 @@ export default function PlayerController() {
     inputCapture.yaw = aimYaw
     const input = inputCapture.consume()
 
+    // Update mutable positions for AimCursor (must mutate in-place, not reassign)
+    cursorWorldPosRef.current.copy(camera.getCursorWorldPos())
+    playerWorldPosRef.current.set(resolved.x, playerY, resolved.z)
+
+    if (!alive) {
+      // Still update camera/store but skip movement
+      const pos3 = new THREE.Vector3(resolved.x, playerY, resolved.z)
+      setBallPosition(pos3)
+      setSmoothedCircleCenter(pos3)
+      setLandBallDistance(Math.abs(playerY - terrainY))
+
+      // Derive death anim
+      const vel = rb.linvel()
+      const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z)
+      soldierRef.current?.setAnimState(deriveAnimState(input, alive, downed, reloading, false, speed))
+      return
+    }
+
     // ── 5. Jump: apply upward velocity when grounded ──
     if (input.jump && groundedRef.current) {
       vyRef.current = JUMP_VELOCITY
@@ -96,32 +125,69 @@ export default function PlayerController() {
       meshRef.current.rotation.y = -aimYaw
     }
 
-    // ── Shooting: spawn client-predicted projectile ──
+    // ── Shooting: spawn client-predicted projectile toward crosshair ──
     const now = performance.now()
     const fireInterval = 60000 / DEFAULT_WEAPON.rpm // ms between shots
+    shootingRef.current = false
     if (input.shoot && now - lastShotRef.current >= fireInterval) {
       lastShotRef.current = now
+      shootingRef.current = true
 
-      const shootDirX = Math.sin(aimYaw)
-      const shootDirZ = -Math.cos(aimYaw)
+      // Match server eye offset: playerY (feet) + PLAYER_HEIGHT - 0.1
+      const eyeOffset = PLAYER_HEIGHT - 0.1
+      const cursorWP = cursorWorldPosRef.current
 
+      // Direction from muzzle origin to cursor ground position
+      const muzzleOriginX = resolved.x
+      const muzzleOriginZ = resolved.z
+      const muzzleY = playerY + eyeOffset
+
+      const dx = cursorWP.x - muzzleOriginX
+      const dz = cursorWP.z - muzzleOriginZ
+      const dy = cursorWP.y - muzzleY
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+      const shootRange = Math.max(1, dist) // minimum 1m range
+
+      // Normalize direction toward cursor
+      let dirX: number, dirY: number, dirZ: number
+      if (dist > 0.01) {
+        dirX = dx / dist
+        dirY = dy / dist
+        dirZ = dz / dist
+      } else {
+        dirX = Math.sin(aimYaw)
+        dirY = 0
+        dirZ = -Math.cos(aimYaw)
+      }
+
+      // Offset muzzle slightly forward from player center
       const muzzlePos: Vec3 = {
-        x: resolved.x + shootDirX * 0.7,
-        y: playerY + 0.5,
-        z: resolved.z + shootDirZ * 0.7,
+        x: muzzleOriginX + dirX * 0.7,
+        y: muzzleY + dirY * 0.7,
+        z: muzzleOriginZ + dirZ * 0.7,
       }
 
       if (combatSystems.projectiles) {
         combatSystems.projectiles.spawnLocal(
           muzzlePos,
-          { x: shootDirX, y: 0, z: shootDirZ },
+          { x: dirX, y: dirY, z: dirZ },
           DEFAULT_WEAPON.projectileSpeed,
-          DEFAULT_WEAPON.maxRange,
+          shootRange,
+          { x: cursorWP.x, y: cursorWP.y, z: cursorWP.z },
         )
       }
 
-      soundManager.play(SoundId.ShootRifle)
+      // Layered weapon sound: main crack + bass punch + delayed tail
+      const shotPitch = 0.94 + Math.random() * 0.12
+      soundManager.play(SoundId.ShootRifle, { pitch: shotPitch })
+      setTimeout(() => soundManager.play(SoundId.ShootBass, { pitch: 0.9 + Math.random() * 0.2, volume: 0.35 }), 10)
+      setTimeout(() => soundManager.play(SoundId.ShootTail, { pitch: 0.92 + Math.random() * 0.16, volume: 0.2 }), 50)
     }
+
+    // ── Derive animation state ──
+    const vel = rb.linvel()
+    const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z)
+    soldierRef.current?.setAnimState(deriveAnimState(input, alive, downed, reloading, shootingRef.current, speed))
 
     // Update store for terrain chunks to follow
     const pos3 = new THREE.Vector3(resolved.x, playerY, resolved.z)
@@ -140,31 +206,28 @@ export default function PlayerController() {
   })
 
   return (
-    <RigidBody
-      ref={rigidBodyRef}
-      type="dynamic"
-      gravityScale={0}
-      lockRotations
-      canSleep={false}
-      position={[0, 5, 0]}
-      linearDamping={0}
-      colliders={false}
-      ccd
-    >
-      <BallCollider args={[0.4]} />
-      <group ref={meshRef}>
-        {/* Player body - sphere */}
-        <mesh castShadow>
-          <sphereGeometry args={[0.4, 16, 16]} />
-          <meshStandardMaterial color="#4488ff" />
-        </mesh>
-
-        {/* Weapon indicator - box pointing forward (toward aimYaw) */}
-        <mesh ref={weaponRef} position={[0, 0.1, -0.7]} castShadow>
-          <boxGeometry args={[0.1, 0.1, 0.6]} />
-          <meshStandardMaterial color="#333333" />
-        </mesh>
-      </group>
-    </RigidBody>
+    <>
+      <RigidBody
+        ref={rigidBodyRef}
+        type="dynamic"
+        gravityScale={0}
+        lockRotations
+        canSleep={false}
+        position={[0, 5, 0]}
+        linearDamping={0}
+        colliders={false}
+        ccd
+      >
+        <BallCollider args={[0.4]} />
+        <group ref={meshRef}>
+          <SoldierModel ref={soldierRef} />
+        </group>
+      </RigidBody>
+      <AimCursor
+        cursorWorldPos={cursorWorldPosRef.current}
+        playerPos={playerWorldPosRef.current}
+        visible={alive}
+      />
+    </>
   )
 }

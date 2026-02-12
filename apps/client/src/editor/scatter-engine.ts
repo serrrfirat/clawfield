@@ -10,6 +10,10 @@ export function generateScatter(
   const rng = mulberry32(config.seed)
   const noise2D = createNoise2D(mulberry32(config.seed + 7))
 
+  // Build asset pool: multi-select takes priority, fall back to single assetId
+  const pool = config.assetIds.length > 0 ? config.assetIds : config.assetId ? [config.assetId] : []
+  if (pool.length === 0) return []
+
   const placements: EditorPlacement[] = []
   const placed: [number, number][] = []
   const { radius, density, noiseScale, noiseThreshold, minScale, maxScale, minSpacing } = config
@@ -48,10 +52,13 @@ export function generateScatter(
       const s = minScale + rng() * (maxScale - minScale)
       const rotY = rng() * Math.PI * 2
 
+      // Pick random asset from pool
+      const assetId = pool[Math.floor(rng() * pool.length)]
+
       placed.push([jx, jz])
       placements.push({
         id: crypto.randomUUID(),
-        assetId: config.assetId,
+        assetId,
         position: [jx, y, jz],
         rotation: [0, rotY, 0],
         scale: [s, s, s],

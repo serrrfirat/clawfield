@@ -87,6 +87,14 @@ export default function Loader() {
         input.click()
     }, [phase, setMapPlacements, setPhase])
 
+    const handleOpenEditor = () => {
+        window.location.href = window.location.pathname + '?mode=editor'
+    }
+
+    const handleOpenViewer = () => {
+        window.location.href = 'viewer.html'
+    }
+
     const showLoading = phase === PHASES.loading
     const showStart = phase === PHASES.warmup
 
@@ -112,6 +120,13 @@ export default function Loader() {
                         </button>
                         <button className="loader-btn" onClick={handleLoadMap}>
                             LOAD MAP
+                        </button>
+                        <div className="loader-divider" />
+                        <button className="loader-btn loader-btn-secondary" onClick={handleOpenEditor}>
+                            MAP EDITOR
+                        </button>
+                        <button className="loader-btn loader-btn-secondary" onClick={handleOpenViewer}>
+                            VIEWER
                         </button>
                     </div>
                 )}

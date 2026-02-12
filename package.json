@@ -8,7 +8,8 @@
     "convert:map": "tsx tools/vox-converter.ts",
     "build:shoreline-map": "python3 tools/generate-shoreline-vox.py && pnpm tsx tools/vox-converter.ts assets/vox/shoreline_mvp.vox assets/maps/shoreline && pnpm tsx tools/map-packer.ts assets/maps/shoreline.chunks.json assets/maps/shoreline.palette.json assets/maps/shoreline.map",
     "geo-tiles": "tsx tools/geo-tiles/cli.ts",
-    "voxelearth-import": "tsx tools/voxelearth-import.ts"
+    "voxelearth-import": "tsx tools/voxelearth-import.ts",
+    "bake:soldier": "tsx tools/bake-character-glb.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -16,9 +17,14 @@
     ]
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^0.1.91",
+    "@playwright/test": "^1.58.2",
+    "@types/jsdom": "^21.1.7",
+    "jsdom": "^25.0.1",
     "playwright": "^1.58.2",
     "pngjs": "^7.0.0",
     "sharp": "^0.34.5",
+    "three": "^0.174.0",
     "tsx": "^4.21.0"
   }
 }

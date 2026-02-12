@@ -24,18 +24,24 @@ function colorDistance(a: RGB3, b: RGB3): number {
   return Math.sqrt(dr * dr + dg * dg + db * db);
 }
 
+interface RemappedCell {
+  base: Uint8Array;
+  stacks: { level: number; data: Uint8Array }[];
+}
+
 /**
  * Build a unified palette from all tile palettes, remapping voxel color indices.
+ * Also remaps stack layer voxels for vertical chunks.
  */
 function buildUnifiedPalette(
   result: SolveResult,
   variants: TileVariant[],
   tilePalettes: Map<string, RGB[]>,
-): { palette: RGB3[]; remappedGrid: Uint8Array[][] } {
+): { palette: RGB3[]; remappedGrid: RemappedCell[][] } {
   const palette: RGB3[] = new Array(PALETTE_SIZE).fill(null).map(() => ({ r: 0, g: 0, b: 0 }));
   let nextFree = 1; // index 0 = air
 
-  // Map from tile name → remap table (old index → new index)
+  // Map from palette name → remap table (old index → new index)
   const remapTables = new Map<string, Uint8Array>();
 
   // Build remap for each tile's palette
@@ -44,7 +50,9 @@ function buildUnifiedPalette(
     remap[0] = 0;
     for (let i = 1; i < tilePal.length && i < 256; i++) {
       const c = tilePal[i];
-      if (c.r === 0 && c.g === 0 && c.b === 0) { remap[i] = 0; continue; }
+      // Only treat high palette indices (>200) with true black as air;
+      // low indices may legitimately use black (asphalt, outlines, etc.)
+      if (c.r === 0 && c.g === 0 && c.b === 0 && i > 200) { remap[i] = 0; continue; }
 
       // Check existing palette for close match
       let found = -1;
@@ -70,24 +78,38 @@ function buildUnifiedPalette(
     remapTables.set(name, remap);
   }
 
-  // Remap all tile voxels
+  // Remap all tile voxels (base + stack layers)
   const { grid, width, depth } = result;
-  const remappedGrid: Uint8Array[][] = [];
+  const remappedGrid: RemappedCell[][] = [];
   for (let z = 0; z < depth; z++) {
     remappedGrid[z] = [];
     for (let x = 0; x < width; x++) {
       const cell = grid[z][x];
       if (cell.collapsed === null) {
-        remappedGrid[z][x] = new Uint8Array(CHUNK_VOXEL_COUNT);
+        remappedGrid[z][x] = { base: new Uint8Array(CHUNK_VOXEL_COUNT), stacks: [] };
         continue;
       }
       const variant = variants[cell.collapsed];
-      const remap = remapTables.get(variant.spec.name)!;
-      const remapped = new Uint8Array(CHUNK_VOXEL_COUNT);
+      const baseRemap = remapTables.get(variant.spec.name)!;
+      const remappedBase = new Uint8Array(CHUNK_VOXEL_COUNT);
       for (let i = 0; i < CHUNK_VOXEL_COUNT; i++) {
-        remapped[i] = remap[variant.voxels[i]];
+        remappedBase[i] = baseRemap[variant.voxels[i]];
       }
-      remappedGrid[z][x] = remapped;
+
+      // Remap stack layers
+      const stacks: { level: number; data: Uint8Array }[] = [];
+      if (variant.stackLayers) {
+        for (const sl of variant.stackLayers) {
+          const slRemap = remapTables.get(sl.paletteName) ?? baseRemap;
+          const remappedSl = new Uint8Array(CHUNK_VOXEL_COUNT);
+          for (let i = 0; i < CHUNK_VOXEL_COUNT; i++) {
+            remappedSl[i] = slRemap[sl.voxels[i]];
+          }
+          stacks.push({ level: sl.level, data: remappedSl });
+        }
+      }
+
+      remappedGrid[z][x] = { base: remappedBase, stacks };
     }
   }
 
@@ -105,20 +127,84 @@ export function writeMap(
   gameplay: GameplayMeta,
 ): void {
   const { palette, remappedGrid } = buildUnifiedPalette(result, variants, tilePalettes);
-  const { width, depth } = result;
+  const { grid, width, depth } = result;
 
-  // Collect non-empty chunks
-  // Each WFC tile = one chunk (16³). Chunk coords = tile coords.
-  const nonEmpty: { cx: number; cy: number; cz: number; data: Uint8Array }[] = [];
+  // Ground-fill pass: ensure y=0 layer has no air holes (prevents fall-through).
+  // Only applies to base chunks (cy=0), not upper floors.
+  // Detect ground color from the most common non-zero voxel at y=0 across grass tiles.
+  let groundColor = 1; // fallback
+  const colorCounts = new Map<number, number>();
   for (let z = 0; z < depth; z++) {
     for (let x = 0; x < width; x++) {
-      const data = remappedGrid[z][x];
-      let empty = true;
-      for (let i = 0; i < data.length; i++) {
-        if (data[i] !== 0) { empty = false; break; }
+      const cell = grid[z][x];
+      if (cell.collapsed === null) continue;
+      const variant = variants[cell.collapsed];
+      if (!variant.spec.tags.includes('grass')) continue;
+      const data = remappedGrid[z][x].base;
+      for (let gz = 0; gz < CHUNK_SIZE; gz++) {
+        for (let gx = 0; gx < CHUNK_SIZE; gx++) {
+          const idx = gx + 0 * CHUNK_SIZE + gz * CHUNK_SIZE * CHUNK_SIZE; // y=0
+          const c = data[idx];
+          if (c !== 0) colorCounts.set(c, (colorCounts.get(c) || 0) + 1);
+        }
       }
-      if (!empty) {
-        nonEmpty.push({ cx: x, cy: 0, cz: z, data });
+    }
+  }
+  let maxCount = 0;
+  for (const [c, count] of colorCounts) {
+    if (count > maxCount) { maxCount = count; groundColor = c; }
+  }
+
+  // Fill air at y=0 in every non-empty base chunk
+  let holesFilled = 0;
+  for (let z = 0; z < depth; z++) {
+    for (let x = 0; x < width; x++) {
+      const data = remappedGrid[z][x].base;
+      let hasVoxels = false;
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] !== 0) { hasVoxels = true; break; }
+      }
+      if (!hasVoxels) continue;
+      for (let gz = 0; gz < CHUNK_SIZE; gz++) {
+        for (let gx = 0; gx < CHUNK_SIZE; gx++) {
+          const idx = gx + 0 * CHUNK_SIZE + gz * CHUNK_SIZE * CHUNK_SIZE; // y=0
+          if (data[idx] === 0) {
+            data[idx] = groundColor;
+            holesFilled++;
+          }
+        }
+      }
+    }
+  }
+  if (holesFilled > 0) {
+    console.log(`  Ground-fill: patched ${holesFilled} holes at y=0 (color index ${groundColor})`);
+  }
+
+  // Collect non-empty chunks (base at cy=0 + stacked at cy=1, cy=2, ...)
+  const nonEmpty: { cx: number; cy: number; cz: number; data: Uint8Array }[] = [];
+  let maxCy = 0;
+  for (let z = 0; z < depth; z++) {
+    for (let x = 0; x < width; x++) {
+      const cell = remappedGrid[z][x];
+      // Base chunk (cy=0)
+      const baseData = cell.base;
+      let baseEmpty = true;
+      for (let i = 0; i < baseData.length; i++) {
+        if (baseData[i] !== 0) { baseEmpty = false; break; }
+      }
+      if (!baseEmpty) {
+        nonEmpty.push({ cx: x, cy: 0, cz: z, data: baseData });
+      }
+      // Stacked chunks (cy=1, cy=2, ...)
+      for (const stack of cell.stacks) {
+        let stackEmpty = true;
+        for (let i = 0; i < stack.data.length; i++) {
+          if (stack.data[i] !== 0) { stackEmpty = false; break; }
+        }
+        if (!stackEmpty) {
+          nonEmpty.push({ cx: x, cy: stack.level, cz: z, data: stack.data });
+          if (stack.level > maxCy) maxCy = stack.level;
+        }
       }
     }
   }
@@ -163,10 +249,11 @@ export function writeMap(
     generator: 'wfc',
     width: width * CHUNK_SIZE,
     depth: depth * CHUNK_SIZE,
-    height: CHUNK_SIZE,
+    height: (maxCy + 1) * CHUNK_SIZE,
     tileSize: CHUNK_SIZE,
     gridWidth: width,
     gridDepth: depth,
+    gridHeight: maxCy + 1,
     gameplay,
   };
   fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));

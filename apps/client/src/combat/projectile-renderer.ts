@@ -7,6 +7,9 @@ import { soundManager, SoundId } from '../audio/sound-manager';
 /** Maximum number of point lights attached to projectiles (performance cap) */
 const MAX_PROJECTILE_LIGHTS = 5;
 
+/** Number of trail segments per bullet trace (creates TRAIL_LENGTH+1 vertices) */
+const TRAIL_LENGTH = 6;
+
 /** Tracked projectile with mesh and interpolation data */
 interface TrackedProjectile {
   mesh: THREE.Mesh;
@@ -19,6 +22,12 @@ interface TrackedProjectile {
   maxRange?: number;
   /** Distance traveled so far (local projectiles only) */
   distanceTraveled?: number;
+  /** Target world position — local projectiles snap here on removal for precise impact */
+  targetPos?: Vec3;
+  /** Trail line mesh for bullet trace */
+  trail: THREE.Line;
+  /** Trail vertex positions buffer (mutated in-place each frame) */
+  trailPositions: Float32Array;
 }
 
 /**
@@ -51,6 +60,7 @@ export class ProjectileRenderer {
   /** Shared geometry and material for all projectile meshes (reused for performance) */
   private readonly sharedGeometry: THREE.BoxGeometry;
   private readonly sharedMaterial: THREE.MeshBasicMaterial;
+  private readonly trailMaterial: THREE.ShaderMaterial;
 
   /** Count of currently active projectile lights */
   private activeLightCount = 0;
@@ -61,6 +71,31 @@ export class ProjectileRenderer {
     // Elongated box that looks like a tracer round
     this.sharedGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.2);
     this.sharedMaterial = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+
+    // Trail line shader: per-vertex alpha for fading tracer effect
+    this.trailMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(0xffcc00) },
+      },
+      vertexShader: /* glsl */ `
+        attribute float aAlpha;
+        varying float vAlpha;
+        void main() {
+          vAlpha = aAlpha;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform vec3 uColor;
+        varying float vAlpha;
+        void main() {
+          gl_FragColor = vec4(uColor, vAlpha * 0.6);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
   }
 
   /** Set the particle system used for bullet impact effects */
@@ -81,7 +116,7 @@ export class ProjectileRenderer {
    * Spawn a client-predicted projectile immediately from the muzzle.
    * Called when the local player fires for instant visual feedback.
    */
-  spawnLocal(position: Vec3, direction: Vec3, speed: number, maxRange: number): void {
+  spawnLocal(position: Vec3, direction: Vec3, speed: number, maxRange: number, targetPos?: Vec3): void {
     const velocity: Vec3 = {
       x: direction.x * speed,
       y: direction.y * speed,
@@ -102,15 +137,20 @@ export class ProjectileRenderer {
       this.activeLightCount++;
     }
 
+    const { trail, trailPositions } = this.createTrail(position.x, position.y, position.z);
+
     this.projectiles.set(id, {
       mesh,
       light,
       velocity,
+      trail,
+      trailPositions,
       ownerId: this.localPlayerId ?? undefined,
       nearMissUntil: 0,
       lastUpdate: performance.now(),
       maxRange,
       distanceTraveled: 0,
+      targetPos: targetPos ? { ...targetPos } : undefined,
     });
   }
 
@@ -186,6 +226,18 @@ export class ProjectileRenderer {
       tracked.mesh.position.y += tracked.velocity.y * dt;
       tracked.mesh.position.z += tracked.velocity.z * dt;
 
+      // Advance trail: shift positions back, set head to current bullet position
+      const tp = tracked.trailPositions;
+      for (let j = TRAIL_LENGTH; j > 0; j--) {
+        tp[j * 3] = tp[(j - 1) * 3];
+        tp[j * 3 + 1] = tp[(j - 1) * 3 + 1];
+        tp[j * 3 + 2] = tp[(j - 1) * 3 + 2];
+      }
+      tp[0] = tracked.mesh.position.x;
+      tp[1] = tracked.mesh.position.y;
+      tp[2] = tracked.mesh.position.z;
+      (tracked.trail.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+
       if (listenerPos && id > 0 && tracked.ownerId !== this.localPlayerId && speed > 60) {
         const now = performance.now();
         if (!tracked.nearMissUntil || now >= tracked.nearMissUntil) {
@@ -224,6 +276,10 @@ export class ProjectileRenderer {
       if (id < 0 && tracked.maxRange !== undefined && tracked.distanceTraveled !== undefined) {
         tracked.distanceTraveled += speed * dt;
         if (tracked.distanceTraveled > tracked.maxRange) {
+          // Snap to exact target position so impact particles land on crosshair
+          if (tracked.targetPos) {
+            tracked.mesh.position.set(tracked.targetPos.x, tracked.targetPos.y, tracked.targetPos.z);
+          }
           this.removeProjectile(id, tracked);
         }
       }
@@ -237,6 +293,7 @@ export class ProjectileRenderer {
     }
     this.sharedGeometry.dispose();
     this.sharedMaterial.dispose();
+    this.trailMaterial.dispose();
   }
 
   /** Create a projectile mesh and optional light, add to scene */
@@ -255,14 +312,36 @@ export class ProjectileRenderer {
       this.activeLightCount++;
     }
 
+    const { trail, trailPositions } = this.createTrail(sp.position.x, sp.position.y, sp.position.z);
+
     this.projectiles.set(sp.id, {
       mesh,
       light,
+      trail,
+      trailPositions,
       velocity: { ...sp.velocity },
       ownerId: sp.ownerId,
       nearMissUntil: 0,
       lastUpdate: performance.now(),
     });
+
+    // Play muzzle sound for remote players' projectiles
+    if (sp.ownerId !== this.localPlayerId) {
+      soundManager.play3D(SoundId.ShootRifle, sp.position, {
+        pitch: 0.92 + Math.random() * 0.16,
+        volume: 0.55 + Math.random() * 0.1,
+        refDistance: 8,
+      });
+      // Delayed tail for distant character
+      const tailPos = { ...sp.position };
+      setTimeout(() => {
+        soundManager.play3D(SoundId.ShootTail, tailPos, {
+          pitch: 0.9 + Math.random() * 0.2,
+          volume: 0.25,
+          refDistance: 12,
+        });
+      }, 50);
+    }
   }
 
   private closestPointOnSegment(p: Vec3, a: Vec3, b: Vec3): Vec3 {
@@ -290,20 +369,21 @@ export class ProjectileRenderer {
     if (this.particles) {
       this.particles.emit({
         position: { x: pos.x, y: pos.y, z: pos.z },
-        count: 10,
-        speedMin: 3,
-        speedMax: 8,
-        spread: Math.PI * 2,
+        count: 15,
+        speedMin: 2,
+        speedMax: 7,
+        spread: Math.PI,
         lifetimeMin: 0.1,
-        lifetimeMax: 0.3,
-        sizeMin: 0.06,
-        sizeMax: 0.15,
+        lifetimeMax: 0.4,
+        sizeMin: 0.08,
+        sizeMax: 0.2,
         colors: IMPACT_COLORS,
         gravityScale: 0.5,
       });
     }
 
-    if (id > 0) {
+    // Play impact sound for all projectiles (server and local predicted)
+    {
       const wx = Math.floor(pos.x);
       const wy = Math.floor(pos.y);
       const wz = Math.floor(pos.z);
@@ -332,6 +412,10 @@ export class ProjectileRenderer {
     this.scene.remove(tracked.mesh);
     // Geometry and material are shared, so don't dispose per-projectile
 
+    // Clean up trail
+    this.scene.remove(tracked.trail);
+    tracked.trail.geometry.dispose();
+
     if (tracked.light) {
       this.scene.remove(tracked.light);
       tracked.light.dispose();
@@ -359,5 +443,31 @@ export class ProjectileRenderer {
       mesh.position.y + velocity.y,
       mesh.position.z + velocity.z
     );
+  }
+
+  /** Create a trail line mesh for a projectile at the given initial position */
+  private createTrail(x: number, y: number, z: number): { trail: THREE.Line; trailPositions: Float32Array } {
+    const vertexCount = TRAIL_LENGTH + 1;
+    const trailPositions = new Float32Array(vertexCount * 3);
+    const trailAlphas = new Float32Array(vertexCount);
+
+    for (let i = 0; i < vertexCount; i++) {
+      trailPositions[i * 3] = x;
+      trailPositions[i * 3 + 1] = y;
+      trailPositions[i * 3 + 2] = z;
+      trailAlphas[i] = 1.0 - i / TRAIL_LENGTH;
+    }
+
+    const geo = new THREE.BufferGeometry();
+    const posAttr = new THREE.BufferAttribute(trailPositions, 3);
+    posAttr.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('position', posAttr);
+    geo.setAttribute('aAlpha', new THREE.BufferAttribute(trailAlphas, 1));
+
+    const trail = new THREE.Line(geo, this.trailMaterial);
+    trail.frustumCulled = false;
+    this.scene.add(trail);
+
+    return { trail, trailPositions };
   }
 }

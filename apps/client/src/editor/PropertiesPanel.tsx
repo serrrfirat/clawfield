@@ -36,8 +36,36 @@ export default function PropertiesPanel() {
         step={5}
         onChange={(v) => updatePlacement(placement.id, { rotation: v })}
       />
+      <div style={sectionStyle}>
+        <label style={labelStyle}>Size</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="range"
+            min={0.1}
+            max={20}
+            step={0.1}
+            value={placement.scale[0]}
+            onChange={(e) => {
+              const s = parseFloat(e.target.value)
+              updatePlacement(placement.id, { scale: [s, s, s] })
+            }}
+            style={{ flex: 1, accentColor: '#4a9fff' }}
+          />
+          <input
+            type="number"
+            min={0.1}
+            step={0.1}
+            value={Math.round(placement.scale[0] * 100) / 100}
+            onChange={(e) => {
+              const s = parseFloat(e.target.value) || 1
+              updatePlacement(placement.id, { scale: [s, s, s] })
+            }}
+            style={{ ...inputStyle, width: 52 }}
+          />
+        </div>
+      </div>
       <Vec3Input
-        label="Scale"
+        label="Scale (per-axis)"
         value={placement.scale}
         step={0.1}
         onChange={(v) => updatePlacement(placement.id, { scale: v })}

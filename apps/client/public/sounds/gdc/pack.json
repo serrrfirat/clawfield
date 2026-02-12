@@ -1,0 +1,24 @@
+{
+  "name": "GDC 2024 Game Audio Bundle",
+  "sounds": {
+    "shoot_rifle": "shoot_rifle.mp3",
+    "shoot_smg": "shoot_smg.mp3",
+    "shoot_shotgun": "shoot_shotgun.mp3",
+    "shoot_sniper": "shoot_sniper.mp3",
+    "shoot_mechanical": "shoot_mechanical.mp3",
+    "shoot_tail": "shoot_tail.mp3",
+    "shoot_bass": "shoot_bass.mp3",
+    "reload": "reload.mp3",
+    "reload_done": "reload_done.mp3",
+    "dry_fire": "dry_fire.mp3",
+    "explosion": "explosion.mp3",
+    "impact_dirt": "impact_dirt.mp3",
+    "impact_concrete": "impact_concrete.mp3",
+    "impact_wood": "impact_wood.mp3",
+    "impact_metal": "impact_metal.mp3",
+    "ricochet": "ricochet.mp3",
+    "bullet_crack": "bullet_crack.mp3",
+    "grenade_bounce": "grenade_bounce.mp3",
+    "rocket_fire": "rocket_fire.mp3"
+  }
+}

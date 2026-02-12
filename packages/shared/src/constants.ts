@@ -16,7 +16,10 @@ export const GRAVITY = -20;
 /** Jump initial velocity in m/s */
 export const JUMP_VELOCITY = 8;
 
-/** Player move speed in m/s */
+/** Walk speed in m/s (default movement) */
+export const WALK_SPEED = 3;
+
+/** Run speed in m/s (double-tap direction) */
 export const MOVE_SPEED = 6;
 
 /** Sprint speed in m/s */
@@ -37,6 +40,11 @@ export const SPRINT_FIRE_DELAY = 0.12;
 
 /** Wall climb speed when scrambling up walls (m/s) — slower than jump */
 export const CLIMB_SPEED = 4;
+
+/** Auto step-up height in voxel units — allows climbing 1-voxel ledges without jumping.
+ *  Must be > 1.0 because physics uses voxel units (1 voxel = 1.0 unit).
+ *  1.1 clears a 1-voxel step but not a 2-voxel wall. */
+export const STEP_HEIGHT = 1.1;
 
 /** Maximum pitch angle (radians) */
 export const MAX_PITCH = Math.PI / 2 - 0.01;
@@ -63,6 +71,27 @@ export const MAT_WATER_DEEP = 17;
 export const MAT_ROAD = 18;
 export const MAT_WINDOW = 19;
 export const MAT_METAL = 20;
+
+/**
+ * Materials rendered with heightmap terrain (smooth low-poly).
+ * Everything else uses greedy mesh (blocky structures).
+ * Defaults to standard terrain IDs; maps with custom palettes
+ * override via setTerrainMaterials().
+ */
+const _terrainMaterials = new Set([
+  MAT_GRASS, MAT_DIRT, MAT_STONE,
+  MAT_SAND_LIGHT, MAT_SAND_DARK,
+  MAT_GRASS_DARK, MAT_STONE_DARK,
+]);
+
+/** Check if a material is classified as terrain (smooth heightmap rendering) */
+export const TERRAIN_MATERIALS = _terrainMaterials;
+
+/** Override which palette indices count as terrain (called on map load) */
+export function setTerrainMaterials(indices: number[]): void {
+  _terrainMaterials.clear();
+  for (const i of indices) _terrainMaterials.add(i);
+}
 
 // --- Destruction system constants ---
 
@@ -460,7 +489,7 @@ export const INCURSION_OBJECTIVE_BONUS = 30;
 export const INCURSION_OBJECTIVE_DURATION = 90;
 
 /** WFC grid width (tiles) for Incursion maps */
-export const INCURSION_WFC_WIDTH = 20;
+export const INCURSION_WFC_WIDTH = 40;
 
 /** WFC grid depth (tiles) for Incursion maps */
-export const INCURSION_WFC_DEPTH = 20;
+export const INCURSION_WFC_DEPTH = 40;

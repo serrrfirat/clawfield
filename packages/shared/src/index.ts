@@ -8,3 +8,5 @@ export * from './combat.js';
 export * from './structural.js';
 export * from './attachments.js';
 export * from './voxel-object.js';
+export * from './terrain-noise.js';
+export * from './match-config.js';

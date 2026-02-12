@@ -13,6 +13,12 @@ export interface Sockets {
   w: SocketType;
 }
 
+/** A vertically-stacked layer placed above the base tile */
+export interface StackLayer {
+  file: string;       // .vox file relative to tileset dir
+  level: number;      // chunk Y offset (1 = cy+1, 2 = cy+2)
+}
+
 /** Tile specification from tileset.json */
 export interface TileSpec {
   name: string;
@@ -21,6 +27,7 @@ export interface TileSpec {
   weight: number;
   rotatable: boolean;
   tags: string[];
+  stack?: StackLayer[];
 }
 
 /** A tile variant (original or rotated) ready for the solver */
@@ -29,6 +36,7 @@ export interface TileVariant {
   rotation: number; // 0, 1, 2, or 3 (× 90° CW)
   sockets: Sockets;
   voxels: Uint8Array; // 4096 bytes (16³)
+  stackLayers?: { level: number; voxels: Uint8Array; paletteName: string }[];
 }
 
 /** A cell in the WFC grid */

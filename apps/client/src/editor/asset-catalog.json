@@ -1,10 +1,250 @@
 [
   {
+    "id": "pine-trees",
+    "name": "Pine Trees",
+    "category": "vegetation",
+    "path": "/models/props/natural/Pine Trees.glb",
+    "tags": ["nature", "foliage", "cover", "group"],
+    "defaultScale": 1
+  },
+  {
+    "id": "pine",
+    "name": "Pine",
+    "category": "vegetation",
+    "path": "/models/props/natural/Pine.glb",
+    "tags": ["nature", "foliage", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "birch-trees",
+    "name": "Birch Trees",
+    "category": "vegetation",
+    "path": "/models/props/natural/Birch Trees.glb",
+    "tags": ["nature", "foliage", "cover", "group"],
+    "defaultScale": 1
+  },
+  {
+    "id": "maple-trees",
+    "name": "Maple Trees",
+    "category": "vegetation",
+    "path": "/models/props/natural/Maple Trees.glb",
+    "tags": ["nature", "foliage", "cover", "group"],
+    "defaultScale": 1
+  },
+  {
+    "id": "palm-trees",
+    "name": "Palm Trees",
+    "category": "vegetation",
+    "path": "/models/props/natural/Palm Trees.glb",
+    "tags": ["nature", "foliage", "tropical"],
+    "defaultScale": 1
+  },
+  {
     "id": "tree",
     "name": "Tree",
     "category": "vegetation",
-    "path": "../assets/models/tree.glb",
+    "path": "/models/props/natural/Tree.glb",
     "tags": ["nature", "foliage", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "trees",
+    "name": "Trees",
+    "category": "vegetation",
+    "path": "/models/props/natural/Trees.glb",
+    "tags": ["nature", "foliage", "cover", "group"],
+    "defaultScale": 1
+  },
+  {
+    "id": "dead-tree",
+    "name": "Dead Tree",
+    "category": "vegetation",
+    "path": "/models/props/natural/Dead Tree.glb",
+    "tags": ["nature", "dead", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "dead-trees",
+    "name": "Dead Trees",
+    "category": "vegetation",
+    "path": "/models/props/natural/Dead Trees.glb",
+    "tags": ["nature", "dead", "cover", "group"],
+    "defaultScale": 1
+  },
+  {
+    "id": "twisted-tree",
+    "name": "Twisted Tree",
+    "category": "vegetation",
+    "path": "/models/props/natural/Twisted Tree.glb",
+    "tags": ["nature", "foliage", "spooky"],
+    "defaultScale": 1
+  },
+  {
+    "id": "bush",
+    "name": "Bush",
+    "category": "vegetation",
+    "path": "/models/props/natural/Bush.glb",
+    "tags": ["nature", "concealment"],
+    "defaultScale": 1
+  },
+  {
+    "id": "bushes",
+    "name": "Bushes",
+    "category": "vegetation",
+    "path": "/models/props/natural/Bushes.glb",
+    "tags": ["nature", "concealment", "group"],
+    "defaultScale": 1
+  },
+  {
+    "id": "bush-flowers",
+    "name": "Bush with Flowers",
+    "category": "vegetation",
+    "path": "/models/props/natural/Bush with Flowers.glb",
+    "tags": ["nature", "concealment", "decorative"],
+    "defaultScale": 1
+  },
+  {
+    "id": "fern",
+    "name": "Fern",
+    "category": "vegetation",
+    "path": "/models/props/natural/Fern.glb",
+    "tags": ["nature", "ground-cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "flower-group",
+    "name": "Flower Group",
+    "category": "vegetation",
+    "path": "/models/props/natural/Flower Group.glb",
+    "tags": ["nature", "decorative"],
+    "defaultScale": 1
+  },
+  {
+    "id": "flower-bushes",
+    "name": "Flower Bushes",
+    "category": "vegetation",
+    "path": "/models/props/natural/Flower Bushes.glb",
+    "tags": ["nature", "decorative"],
+    "defaultScale": 1
+  },
+  {
+    "id": "flowers",
+    "name": "Flowers",
+    "category": "vegetation",
+    "path": "/models/props/natural/Flowers.glb",
+    "tags": ["nature", "decorative"],
+    "defaultScale": 1
+  },
+  {
+    "id": "grass",
+    "name": "Grass",
+    "category": "vegetation",
+    "path": "/models/props/natural/Grass.glb",
+    "tags": ["nature", "ground-cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "tall-grass",
+    "name": "Tall Grass",
+    "category": "vegetation",
+    "path": "/models/props/natural/Tall Grass.glb",
+    "tags": ["nature", "concealment", "ground-cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "rocks",
+    "name": "Rocks",
+    "category": "vegetation",
+    "path": "/models/props/natural/Rocks.glb",
+    "tags": ["nature", "cover", "group"],
+    "defaultScale": 1
+  },
+  {
+    "id": "rock-medium",
+    "name": "Rock Medium",
+    "category": "vegetation",
+    "path": "/models/props/natural/Rock Medium.glb",
+    "tags": ["nature", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "pebbles",
+    "name": "Pebbles",
+    "category": "vegetation",
+    "path": "/models/props/natural/Pebble Round.glb",
+    "tags": ["nature", "detail"],
+    "defaultScale": 1
+  },
+  {
+    "id": "plant",
+    "name": "Plant",
+    "category": "vegetation",
+    "path": "/models/props/natural/Plant.glb",
+    "tags": ["nature", "decorative"],
+    "defaultScale": 1
+  },
+  {
+    "id": "plant-big",
+    "name": "Plant Big",
+    "category": "vegetation",
+    "path": "/models/props/natural/Plant Big.glb",
+    "tags": ["nature", "decorative"],
+    "defaultScale": 1
+  },
+  {
+    "id": "mushroom",
+    "name": "Mushroom",
+    "category": "vegetation",
+    "path": "/models/props/natural/Mushroom.glb",
+    "tags": ["nature", "decorative"],
+    "defaultScale": 1
+  },
+  {
+    "id": "buildings",
+    "name": "Buildings (5)",
+    "category": "structures",
+    "path": "/models/props/urban/5 Buildings Low-Poly.glb",
+    "tags": ["building", "cover", "interior", "group"],
+    "defaultScale": 1
+  },
+  {
+    "id": "car",
+    "name": "Car",
+    "category": "vehicles",
+    "path": "/models/props/urban/Car.glb",
+    "tags": ["vehicle", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "police-car",
+    "name": "Police Car",
+    "category": "vehicles",
+    "path": "/models/props/urban/Police Car.glb",
+    "tags": ["vehicle", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "suv",
+    "name": "SUV",
+    "category": "vehicles",
+    "path": "/models/props/urban/SUV.glb",
+    "tags": ["vehicle", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "sports-car",
+    "name": "Sports Car",
+    "category": "vehicles",
+    "path": "/models/props/urban/Sports Car.glb",
+    "tags": ["vehicle", "cover", "fast"],
+    "defaultScale": 1
+  },
+  {
+    "id": "taxi",
+    "name": "Taxi",
+    "category": "vehicles",
+    "path": "/models/props/urban/Taxi.glb",
+    "tags": ["vehicle", "cover", "urban"],
     "defaultScale": 1
   }
 ]

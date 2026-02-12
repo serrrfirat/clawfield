@@ -1,0 +1,164 @@
+[
+  {
+    "name": "grass-flat",
+    "file": "grass-flat.vox",
+    "sockets": { "n": "G", "e": "G", "s": "G", "w": "G" },
+    "weight": 15,
+    "rotatable": false,
+    "tags": ["terrain", "grass"]
+  },
+  {
+    "name": "grass-hill",
+    "file": "grass-hill.vox",
+    "sockets": { "n": "G", "e": "G", "s": "G", "w": "G" },
+    "weight": 5,
+    "rotatable": true,
+    "tags": ["terrain", "grass", "elevation"]
+  },
+  {
+    "name": "grass-trees",
+    "file": "grass-trees.vox",
+    "sockets": { "n": "G", "e": "G", "s": "G", "w": "G" },
+    "weight": 6,
+    "rotatable": true,
+    "tags": ["terrain", "grass", "cover"]
+  },
+  {
+    "name": "road-straight",
+    "file": "road-straight.vox",
+    "sockets": { "n": "R", "e": "G", "s": "R", "w": "G" },
+    "weight": 5,
+    "rotatable": true,
+    "tags": ["road"]
+  },
+  {
+    "name": "road-turn",
+    "file": "road-turn.vox",
+    "sockets": { "n": "G", "e": "R", "s": "R", "w": "G" },
+    "weight": 3,
+    "rotatable": true,
+    "tags": ["road"]
+  },
+  {
+    "name": "road-cross",
+    "file": "road-cross.vox",
+    "sockets": { "n": "R", "e": "R", "s": "R", "w": "R" },
+    "weight": 2,
+    "rotatable": false,
+    "tags": ["road"]
+  },
+  {
+    "name": "road-tee",
+    "file": "road-tee.vox",
+    "sockets": { "n": "R", "e": "R", "s": "R", "w": "G" },
+    "weight": 2,
+    "rotatable": true,
+    "tags": ["road"]
+  },
+  {
+    "name": "road-end",
+    "file": "road-end.vox",
+    "sockets": { "n": "R", "e": "G", "s": "G", "w": "G" },
+    "weight": 1,
+    "rotatable": true,
+    "tags": ["road"]
+  },
+  {
+    "name": "building-small",
+    "file": "building-small.vox",
+    "sockets": { "n": "RG", "e": "G", "s": "RG", "w": "G" },
+    "weight": 2,
+    "rotatable": true,
+    "tags": ["building"],
+    "stack": [{ "file": "building-small-upper.vox", "level": 1 }]
+  },
+  {
+    "name": "building-medium",
+    "file": "building-medium.vox",
+    "sockets": { "n": "RG", "e": "RG", "s": "RG", "w": "G" },
+    "weight": 1,
+    "rotatable": true,
+    "tags": ["building"],
+    "stack": [
+      { "file": "building-medium-upper.vox", "level": 1 },
+      { "file": "building-medium-roof.vox", "level": 2 }
+    ]
+  },
+  {
+    "name": "building-large",
+    "file": "building-large.vox",
+    "sockets": { "n": "RG", "e": "RG", "s": "RG", "w": "RG" },
+    "weight": 0.5,
+    "rotatable": true,
+    "tags": ["building"],
+    "stack": [
+      { "file": "building-large-upper.vox", "level": 1 },
+      { "file": "building-large-top.vox", "level": 2 }
+    ]
+  },
+  {
+    "name": "building-ruin",
+    "file": "building-ruin.vox",
+    "sockets": { "n": "G", "e": "G", "s": "G", "w": "G" },
+    "weight": 2,
+    "rotatable": true,
+    "tags": ["building", "cover"]
+  },
+  {
+    "name": "building-garage",
+    "file": "building-garage.vox",
+    "sockets": { "n": "R", "e": "G", "s": "G", "w": "G" },
+    "weight": 1.5,
+    "rotatable": true,
+    "tags": ["building", "road"]
+  },
+  {
+    "name": "water-pool",
+    "file": "water-pool.vox",
+    "sockets": { "n": "WG", "e": "WG", "s": "WG", "w": "WG" },
+    "weight": 0.3,
+    "rotatable": false,
+    "tags": ["water"]
+  },
+  {
+    "name": "cover-sandbags",
+    "file": "cover-sandbags.vox",
+    "sockets": { "n": "G", "e": "G", "s": "G", "w": "G" },
+    "weight": 4,
+    "rotatable": true,
+    "tags": ["cover"]
+  },
+  {
+    "name": "cover-wall",
+    "file": "cover-wall.vox",
+    "sockets": { "n": "G", "e": "G", "s": "G", "w": "G" },
+    "weight": 3,
+    "rotatable": true,
+    "tags": ["cover"]
+  },
+  {
+    "name": "road-bridge",
+    "file": "road-bridge.vox",
+    "sockets": { "n": "R", "e": "WG", "s": "R", "w": "WG" },
+    "weight": 0.5,
+    "rotatable": true,
+    "tags": ["road", "water"]
+  },
+  {
+    "name": "hill-plateau",
+    "file": "hill-plateau.vox",
+    "sockets": { "n": "G", "e": "G", "s": "G", "w": "G" },
+    "weight": 2,
+    "rotatable": true,
+    "tags": ["terrain", "grass", "elevation"],
+    "stack": [{ "file": "hill-plateau-upper.vox", "level": 1 }]
+  },
+  {
+    "name": "hill-ramp",
+    "file": "hill-ramp.vox",
+    "sockets": { "n": "G", "e": "G", "s": "G", "w": "G" },
+    "weight": 1.5,
+    "rotatable": true,
+    "tags": ["terrain", "grass", "elevation"]
+  }
+]

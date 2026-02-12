@@ -3,6 +3,7 @@ import { useGLTF } from '@react-three/drei'
 import { SkeletonUtils } from 'three-stdlib'
 import * as THREE from 'three'
 import useEditorStore from './useEditorStore'
+import type { PrimitiveGeometry } from './editor-types'
 
 const ROTATE_STEP = Math.PI / 12 // 15 degrees
 
@@ -36,7 +37,59 @@ export default function PlacementGhost() {
 
   if (!visible || !asset) return null
 
+  if (asset.primitive) {
+    return (
+      <GhostPrimitive
+        primitive={asset.primitive}
+        position={ghostPosition}
+        rotationY={ghostRotation}
+        scale={asset.defaultScale}
+      />
+    )
+  }
+
   return <GhostModel path={asset.path} position={ghostPosition} rotationY={ghostRotation} scale={asset.defaultScale} />
+}
+
+function GhostPrimitive({
+  primitive,
+  position,
+  rotationY,
+  scale,
+}: {
+  primitive: PrimitiveGeometry
+  position: [number, number, number]
+  rotationY: number
+  scale: number
+}) {
+  const yOffset = primitive.shape === 'box' ? (primitive.args[1] ?? 1) / 2
+    : primitive.shape === 'cylinder' ? (primitive.args[4] ?? primitive.args[2] ?? 1) / 2
+    : primitive.shape === 'cone' ? (primitive.args[1] ?? 1) / 2
+    : primitive.args[0] ?? 1
+
+  return (
+    <group position={position} rotation={[0, rotationY, 0]} scale={[scale, scale, scale]}>
+      <mesh position={[0, yOffset, 0]}>
+        <PrimitiveGeo shape={primitive.shape} args={primitive.args} />
+        <meshBasicMaterial color={0x66aaff} transparent opacity={0.35} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
+function PrimitiveGeo({ shape, args }: { shape: string; args: number[] }) {
+  switch (shape) {
+    case 'box':
+      return <boxGeometry args={args as [number, number, number]} />
+    case 'cylinder':
+      return <cylinderGeometry args={args as [number, number, number, number]} />
+    case 'cone':
+      return <coneGeometry args={args as [number, number, number]} />
+    case 'sphere':
+      return <sphereGeometry args={args as [number, number, number]} />
+    default:
+      return <boxGeometry args={[1, 1, 1]} />
+  }
 }
 
 function GhostModel({

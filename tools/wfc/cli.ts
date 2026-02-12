@@ -16,8 +16,8 @@ import { writeMap } from './map-writer.js';
 function parseArgs(): { tileset: string; width: number; depth: number; seed: number; output: string } {
   const args = process.argv.slice(2);
   let tileset = 'assets/vox/tiles/tileset.json';
-  let width = 30;
-  let depth = 30;
+  let width = 40;
+  let depth = 40;
   let seed = Date.now();
   let output = 'assets/maps/incursion';
 
@@ -31,8 +31,8 @@ function parseArgs(): { tileset: string; width: number; depth: number; seed: num
       case '--help':
         console.log('Usage: npx tsx tools/wfc/cli.ts [options]');
         console.log('  --tileset <path>  Path to tileset.json (default: assets/vox/tiles/tileset.json)');
-        console.log('  --width <n>       Grid width in tiles (default: 30)');
-        console.log('  --depth <n>       Grid depth in tiles (default: 30)');
+        console.log('  --width <n>       Grid width in tiles (default: 40)');
+        console.log('  --depth <n>       Grid depth in tiles (default: 40)');
         console.log('  --seed <n>        Random seed (default: current timestamp)');
         console.log('  --output <path>   Output path without extension (default: assets/maps/incursion)');
         process.exit(0);

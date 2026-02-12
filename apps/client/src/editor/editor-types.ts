@@ -8,6 +8,12 @@ export interface EditorPlacement {
   metadata?: Record<string, unknown>
 }
 
+export interface PrimitiveGeometry {
+  shape: 'box' | 'cylinder' | 'cone' | 'sphere'
+  args: number[]
+  color: string
+}
+
 export interface AssetEntry {
   id: string
   name: string
@@ -15,10 +21,12 @@ export interface AssetEntry {
   path: string
   tags: string[]
   defaultScale: number
+  primitive?: PrimitiveGeometry
 }
 
 export interface ScatterConfig {
   assetId: string
+  assetIds: string[]
   radius: number
   density: number
   noiseScale: number

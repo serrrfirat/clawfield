@@ -5,7 +5,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { TileSpec, TileVariant, VoxVoxel, RGB } from './types.js';
+import type { TileSpec, TileVariant, VoxVoxel, RGB, StackLayer } from './types.js';
 import { rotateTile } from './rotation.js';
 
 const SIZE = 16;
@@ -106,14 +106,43 @@ export function loadTiles(tilesetPath: string): { variants: TileVariant[]; palet
     const baseVoxels = voxelsToGrid(parsed.voxels);
     palettes.set(spec.name, parsed.palette);
 
+    // Load stack layers if present
+    const baseStackLayers: { level: number; voxels: Uint8Array; paletteName: string }[] = [];
+    if (spec.stack) {
+      for (const layer of spec.stack) {
+        const layerPath = path.resolve(dir, layer.file);
+        if (!fs.existsSync(layerPath)) {
+          console.warn(`  Warning: stack layer ${layer.file} not found, skipping`);
+          continue;
+        }
+        const layerBuf = fs.readFileSync(layerPath);
+        const layerParsed = parseVox(layerBuf as Buffer);
+        const layerVoxels = voxelsToGrid(layerParsed.voxels);
+        const palName = `${spec.name}-L${layer.level}`;
+        palettes.set(palName, layerParsed.palette);
+        baseStackLayers.push({ level: layer.level, voxels: layerVoxels, paletteName: palName });
+      }
+    }
+
     // Add base variant (rotation 0)
-    variants.push({ spec, rotation: 0, sockets: { ...spec.sockets }, voxels: baseVoxels });
+    variants.push({
+      spec, rotation: 0, sockets: { ...spec.sockets }, voxels: baseVoxels,
+      stackLayers: baseStackLayers.length > 0 ? baseStackLayers : undefined,
+    });
 
     // Add rotated variants if tile is rotatable
     if (spec.rotatable) {
       for (let r = 1; r <= 3; r++) {
         const rotated = rotateTile(baseVoxels, spec.sockets, r);
-        variants.push({ spec, rotation: r, sockets: rotated.sockets, voxels: rotated.voxels });
+        // Rotate each stack layer's voxels using the same rotation
+        const rotatedStacks = baseStackLayers.map(sl => {
+          const rotLayer = rotateTile(sl.voxels, spec.sockets, r);
+          return { level: sl.level, voxels: rotLayer.voxels, paletteName: sl.paletteName };
+        });
+        variants.push({
+          spec, rotation: r, sockets: rotated.sockets, voxels: rotated.voxels,
+          stackLayers: rotatedStacks.length > 0 ? rotatedStacks : undefined,
+        });
       }
     }
   }

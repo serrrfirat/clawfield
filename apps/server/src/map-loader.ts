@@ -432,6 +432,71 @@ export function getChunksInRadius(
 }
 
 // ---------------------------------------------------------------------------
+// Chunk merging (stamp a secondary .map into the primary chunk map)
+// ---------------------------------------------------------------------------
+
+/**
+ * Merge voxels from a source chunk map into a target chunk map with a voxel offset.
+ * For each non-zero voxel in source, compute (sourceWorldPos + offset) and write
+ * a solid material into the target chunk map. Creates chunks as needed.
+ *
+ * Returns the number of voxels stamped.
+ */
+export function mergeMapChunks(
+  target: Map<string, Uint8Array>,
+  source: Map<string, Uint8Array>,
+  offsetX: number,
+  offsetY: number,
+  offsetZ: number,
+): number {
+  const CS = 16; // CHUNK_SIZE
+  const MAT_SOLID = 3; // MAT_STONE
+  let stampedCount = 0;
+
+  for (const [key, voxels] of source) {
+    const [scx, scy, scz] = key.split(',').map(Number);
+
+    for (let lz = 0; lz < CS; lz++) {
+      for (let ly = 0; ly < CS; ly++) {
+        for (let lx = 0; lx < CS; lx++) {
+          const mat = voxels[lx + ly * CS + lz * CS * CS];
+          if (mat === 0) continue;
+
+          // Source world position + offset
+          const wx = scx * CS + lx + offsetX;
+          const wy = scy * CS + ly + offsetY;
+          const wz = scz * CS + lz + offsetZ;
+
+          // Target chunk coordinates
+          const tcx = Math.floor(wx / CS);
+          const tcy = Math.floor(wy / CS);
+          const tcz = Math.floor(wz / CS);
+          const tKey = `${tcx},${tcy},${tcz}`;
+
+          const tlx = ((wx % CS) + CS) % CS;
+          const tly = ((wy % CS) + CS) % CS;
+          const tlz = ((wz % CS) + CS) % CS;
+
+          let chunk = target.get(tKey);
+          if (!chunk) {
+            chunk = new Uint8Array(CS * CS * CS);
+            target.set(tKey, chunk);
+          }
+
+          const idx = tlx + tly * CS + tlz * CS * CS;
+          if (chunk[idx] === 0) {
+            chunk[idx] = MAT_SOLID;
+            stampedCount++;
+          }
+        }
+      }
+    }
+  }
+
+  return stampedCount;
+}
+
+// ---------------------------------------------------------------------------
 // Voxel object loading & collision stamping
 // ---------------------------------------------------------------------------
 

@@ -9,9 +9,15 @@
 
 import type { GridCell, TileVariant, SocketType } from './types.js';
 
-/** Sockets match if they are equal (symmetric compatibility). */
+/** Sockets match if equal, or via hybrid socket rules (RG↔R/G, WG↔W/G). */
 function compatible(a: SocketType, b: SocketType): boolean {
-  return a === b;
+  if (a === b) return true;
+  // Hybrid sockets: RG connects to R, G, or RG; WG connects to W, G, or WG
+  if (a === 'RG') return b === 'R' || b === 'G';
+  if (b === 'RG') return a === 'R' || a === 'G';
+  if (a === 'WG') return b === 'W' || b === 'G';
+  if (b === 'WG') return a === 'W' || a === 'G';
+  return false;
 }
 
 /** Seeded PRNG (xoshiro128**) for reproducible maps. */

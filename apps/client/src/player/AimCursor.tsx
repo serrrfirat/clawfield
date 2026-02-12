@@ -16,8 +16,8 @@ export default function AimCursor({ cursorWorldPos, playerPos, weaponRange = 50,
   // Create crosshair line geometries
   const crosshairLines = useMemo(() => {
     const lines: { start: THREE.Vector3; end: THREE.Vector3 }[] = []
-    const lineLen = 0.8
-    const lineGap = 0.5
+    const lineLen = 0.3
+    const lineGap = 0.15
     for (let i = 0; i < 4; i++) {
       const angle = (i * Math.PI) / 2
       const cos = Math.cos(angle)
@@ -68,7 +68,7 @@ export default function AimCursor({ cursorWorldPos, playerPos, weaponRange = 50,
     <group ref={groupRef} renderOrder={999}>
       {/* Central dot */}
       <mesh rotation-x={-Math.PI / 2}>
-        <circleGeometry args={[0.3, 16]} />
+        <circleGeometry args={[0.1, 12]} />
         <meshBasicMaterial
           color={teamColor ?? 0xffffff}
           transparent
@@ -97,7 +97,7 @@ export default function AimCursor({ cursorWorldPos, playerPos, weaponRange = 50,
       ))}
 
       {/* Range ring */}
-      <line ref={ringRef}>
+      <line ref={ringRef as any}>
         <primitive object={ringGeo} attach="geometry" />
         <lineBasicMaterial color={0xffffff} transparent opacity={0.15} depthTest={false} />
       </line>

@@ -1,0 +1,96 @@
+{
+  "name": "wfc-vert-test",
+  "generator": "wfc",
+  "width": 640,
+  "depth": 640,
+  "height": 48,
+  "tileSize": 16,
+  "gridWidth": 40,
+  "gridDepth": 40,
+  "gridHeight": 3,
+  "gameplay": {
+    "spawns": {
+      "team1": [
+        {
+          "x": 8,
+          "y": 2,
+          "z": 8
+        },
+        {
+          "x": 8,
+          "y": 2,
+          "z": 24
+        },
+        {
+          "x": 8,
+          "y": 2,
+          "z": 40
+        }
+      ],
+      "team2": [
+        {
+          "x": 632,
+          "y": 2,
+          "z": 72
+        },
+        {
+          "x": 632,
+          "y": 2,
+          "z": 264
+        },
+        {
+          "x": 632,
+          "y": 2,
+          "z": 312
+        }
+      ]
+    },
+    "captureZones": [
+      {
+        "id": "A",
+        "x": 344,
+        "y": 2,
+        "z": 88,
+        "radius": 16
+      },
+      {
+        "id": "B",
+        "x": 344,
+        "y": 2,
+        "z": 168,
+        "radius": 16
+      },
+      {
+        "id": "C",
+        "x": 312,
+        "y": 13,
+        "z": 248,
+        "radius": 16
+      },
+      {
+        "id": "D",
+        "x": 328,
+        "y": 13,
+        "z": 328,
+        "radius": 16
+      },
+      {
+        "id": "E",
+        "x": 328,
+        "y": 2,
+        "z": 408,
+        "radius": 16
+      },
+      {
+        "id": "F",
+        "x": 344,
+        "y": 2,
+        "z": 488,
+        "radius": 16
+      }
+    ],
+    "mapWidth": 640,
+    "mapDepth": 640,
+    "tileSize": 16
+  }
+}

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import * as THREE from 'three'
-import type { GameMode, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, ExplosionEvent, MatchConfig } from '@clawfield/shared'
+import type { GameMode, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, ExplosionEvent, MatchConfig, Vec3 } from '@clawfield/shared'
 import type { MapdefPlacement } from '../editor/editor-types'
 
 const THEMES = {
@@ -174,6 +174,7 @@ const createStore = () =>
 
             generalParameters: {
                 trees: true,
+                foliage: true,
                 wind: true,
             },
 
@@ -242,6 +243,16 @@ const createStore = () =>
             scoreboard: [] as ScoreboardEntry[],
             matchConfig: null as MatchConfig | null,
 
+            // ── Hit Confirm State ──────────────────────────────────
+            /** Pending hit confirmations for sound/visual feedback */
+            pendingHitConfirms: [] as { targetId: string; damage: number; sourcePos: Vec3 }[],
+            /** Consume pending hit confirms (called by CombatEffects each frame) */
+            consumeHitConfirms: () => {
+                const hits = (useStore.getState() as any).pendingHitConfirms
+                if (hits.length > 0) set({ pendingHitConfirms: [] })
+                return hits as { targetId: string; damage: number; sourcePos: Vec3 }[]
+            },
+
             // ── Combat State ─────────────────────────────────────
             serverProjectiles: [] as ProjectileState[],
             serverGrenades: [] as GrenadeState[],
@@ -293,7 +304,12 @@ const createStore = () =>
                     }
 
                     case 'hit_confirm':
-                        // Store for HUD later — no-op for now
+                        set((state: any) => ({
+                            pendingHitConfirms: [
+                                ...state.pendingHitConfirms,
+                                { targetId: msg.targetId, damage: msg.damage, sourcePos: msg.sourcePos },
+                            ],
+                        }))
                         break
 
                     case 'kill':

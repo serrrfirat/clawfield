@@ -48,7 +48,8 @@ import {
   INCURSION_WFC_WIDTH,
   INCURSION_WFC_DEPTH,
 } from '@clawfield/shared';
-import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode, DirectorEvent, WeatherState, DynamicObjective } from '@clawfield/shared';
+import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode, DirectorEvent, WeatherState, DynamicObjective, HeightGetter, MatchConfig } from '@clawfield/shared';
+import { createTerrainHeight, DEFAULT_HEIGHTMAP_CONFIG } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
 import { PlayerSim } from './player-sim.js';
 import { DummyBot } from './bot.js';
@@ -87,6 +88,7 @@ import {
   loadMapMetadata,
   loadObjectDefs,
   stampObjectsIntoChunks,
+  mergeMapChunks,
 } from './map-loader.js';
 import { randomUUID } from 'node:crypto';
 import { generateIncursionMap } from './wfc-map-generator.js';
@@ -153,6 +155,7 @@ export class GameLoop {
   private mapDisplayName = 'Test';
   private waterIndices: number[] | undefined;
   private objectPlacements: import('@clawfield/shared').MapObjectPlacement[] = [];
+  private glbBuildings: { glbPath: string; position: { x: number; y: number; z: number }; rotation?: number }[] = [];
   private worldBounds:
     | { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }
     | null = null;
@@ -177,6 +180,11 @@ export class GameLoop {
 
   /** Optional map override from lobby selection */
   private mapOverride: string | undefined;
+
+  // --- Heightmap mode (for terrain-only maps without voxel chunks) ---
+  heightmapMode = false;
+  private terrainHeightGetter: HeightGetter = createTerrainHeight();
+  private matchConfig: MatchConfig | null = null;
 
   // --- AI Director (deterministic fallback) ---
   private directorCurrentWeather: WeatherState = 'clear';
@@ -273,6 +281,8 @@ export class GameLoop {
       mapName: this.mapDisplayName,
       objectives: this.mapObjectives,
       objectPlacements: this.objectPlacements.length > 0 ? this.objectPlacements : undefined,
+      glbBuildings: this.glbBuildings.length > 0 ? this.glbBuildings : undefined,
+      matchConfig: this.heightmapMode ? (this.matchConfig ?? undefined) : undefined,
       gameMode: this.gameMode,
     });
 
@@ -359,6 +369,12 @@ export class GameLoop {
 
   /** Attempt to load a configured binary map; fall back to Oasis, then test map if missing */
   private loadMap(): void {
+    // Heightmap mode: env var CLAWFIELD_HEIGHTMAP=1
+    if (process.env.CLAWFIELD_HEIGHTMAP === '1') {
+      this.activateHeightmapMode();
+      return;
+    }
+
     // Incursion: try WFC-generated map first
     if (this.gameMode === 'incursion') {
       const seed = Date.now();
@@ -398,7 +414,55 @@ export class GameLoop {
     this.mapDisplayName = 'Test';
     this.mapObjectives = [];
   }
-  
+
+  /** Activate heightmap mode using the default match config */
+  private activateHeightmapMode(): void {
+    const cfg = DEFAULT_HEIGHTMAP_CONFIG;
+    this.matchConfig = cfg;
+    this.heightmapMode = true;
+    this.terrainHeightGetter = createTerrainHeight(
+      cfg.terrain.scale,
+      cfg.terrain.amplitude,
+      cfg.seed,
+    );
+
+    // Resolve spawn Y values from terrain height
+    this.mapSpawnsAlpha = cfg.spawns.alpha.map((s) => ({
+      x: s.x,
+      y: this.terrainHeightGetter(s.x, s.z) + 0.5,
+      z: s.z,
+    }));
+    this.mapSpawnsBravo = cfg.spawns.bravo.map((s) => ({
+      x: s.x,
+      y: this.terrainHeightGetter(s.x, s.z) + 0.5,
+      z: s.z,
+    }));
+
+    this.worldBounds = {
+      minX: cfg.bounds.minX,
+      maxX: cfg.bounds.maxX,
+      minY: -50,
+      maxY: 100,
+      minZ: cfg.bounds.minZ,
+      maxZ: cfg.bounds.maxZ,
+    };
+
+    // No voxel data
+    this.chunks = new Map();
+    this.usingBinaryMap = false;
+    this.mapName = 'heightmap';
+    this.mapDisplayName = 'Heightmap';
+    this.mapObjectives = [];
+    this.palette = [];
+
+    // Initialize destruction manager (required but no-op in heightmap mode)
+    if (!this.destructionManager) {
+      this.destructionManager = new DestructionManager(this.chunks, null as any);
+    }
+
+    console.log('[GameLoop] Heightmap mode activated');
+  }
+
   /**
    * Initialize the debris physics system.
    * Creates the physics manager and links it to the destruction manager.
@@ -534,6 +598,32 @@ export class GameLoop {
             `(${defs.size} types, ${stamped} collision voxels stamped)`
         );
       }
+    }
+
+    // Merge GLB building voxel collision data
+    this.glbBuildings = [];
+    const buildingsMapPath = getDefaultMapPath('city-buildings');
+    const buildingsData = loadBinaryMap(buildingsMapPath);
+    if (buildingsData) {
+      // Source center: approx (-40, 16, -152) from voxelized bounds
+      // Target: voxel coords (-100, 3, -167) = Hotel area
+      // Offset: target - source = (-100-(-40), 3-16, -167-(-152)) = (-60, -13, -15)
+      const offsetX = -60;
+      const offsetY = -13;
+      const offsetZ = -15;
+      const stamped = mergeMapChunks(this.chunks, buildingsData.chunks, offsetX, offsetY, offsetZ);
+
+      // Convert voxel position to world coords for client rendering
+      const VOXEL_SIZE = 0.5;
+      this.glbBuildings.push({
+        glbPath: '/models/buildings.glb',
+        position: {
+          x: -100 * VOXEL_SIZE,
+          y: 3 * VOXEL_SIZE,
+          z: -167 * VOXEL_SIZE,
+        },
+      });
+      console.log(`[GlbBuildings] Merged city-buildings.map: ${stamped} collision voxels stamped at offset (${offsetX}, ${offsetY}, ${offsetZ})`);
     }
 
     console.log(`${this.mapName} map loaded: ${this.chunks.size} chunks`);
@@ -781,7 +871,7 @@ export class GameLoop {
   /** Spawn dummy bots and register them in the player list.
    *  Fills a 24v24 match: 23 bots per team (human player fills the last slot). */
   private spawnBots(): void {
-    const BOTS_PER_TEAM = 23;
+    const BOTS_PER_TEAM = this.heightmapMode ? 11 : 23;
     const totalBots = BOTS_PER_TEAM * 2;
 
     for (let i = 0; i < totalBots; i++) {
@@ -811,6 +901,15 @@ export class GameLoop {
     if (captureSpawns.length > 0) {
       const idx = Math.floor(Math.random() * captureSpawns.length);
       return { ...captureSpawns[idx] };
+    }
+
+    // Heightmap mode: use match config spawns (Y already resolved)
+    if (this.heightmapMode) {
+      const spawns = team === Team.Alpha ? this.mapSpawnsAlpha : this.mapSpawnsBravo;
+      if (spawns.length > 0) {
+        const idx = Math.floor(Math.random() * spawns.length);
+        return { ...spawns[idx] };
+      }
     }
 
     // Use map-defined/discovered spawn points when a binary map is loaded.
@@ -902,6 +1001,12 @@ export class GameLoop {
 
   handleConnect(_client: Client): void {
     // No-op; players are set up via welcomePlayer in the constructor
+  }
+
+  /** Allow a player to join an in-progress game (called by RoomManager for late joiners) */
+  hotJoinPlayer(client: Client, name: string, team: number): void {
+    client.name = name;
+    this.welcomePlayer(client, team);
   }
 
   handleMessage(client: Client, msg: ClientMessage): void {
@@ -1052,6 +1157,7 @@ export class GameLoop {
       mapName: this.mapDisplayName,
       objectives: this.mapObjectives,
       objectPlacements: this.objectPlacements.length > 0 ? this.objectPlacements : undefined,
+      glbBuildings: this.glbBuildings.length > 0 ? this.glbBuildings : undefined,
       gameMode: this.gameMode,
     });
 
@@ -1130,8 +1236,14 @@ export class GameLoop {
       void this.initializeDebrisPhysics();
     }
 
-    const voxelGetter = (wx: number, wy: number, wz: number) =>
-      getVoxel(this.chunks, wx, wy, wz);
+    // In heightmap mode, provide a voxel shim that treats terrain as solid
+    const voxelGetter = this.heightmapMode
+      ? (wx: number, wy: number, wz: number) => {
+          const terrainY = this.terrainHeightGetter(wx, wz);
+          return wy < terrainY ? 1 : 0;
+        }
+      : (wx: number, wy: number, wz: number) =>
+          getVoxel(this.chunks, wx, wy, wz);
 
     // --- Chunk streaming: send new chunks to players as they move ---
     if (this.tickCount % STREAM_CHECK_INTERVAL === 0) {
@@ -1145,7 +1257,11 @@ export class GameLoop {
 
     // Process all player inputs (movement, reload)
     for (const sim of this.players.values()) {
-      sim.tick(voxelGetter, this.debrisPhysicsManager ?? undefined);
+      if (this.heightmapMode) {
+        sim.tickHeightmap(this.terrainHeightGetter);
+      } else {
+        sim.tick(voxelGetter, this.debrisPhysicsManager ?? undefined);
+      }
     }
 
     // Kill players who leave the loaded world bounds or fall into the void.
@@ -1161,7 +1277,9 @@ export class GameLoop {
 
     // Advance projectiles and collect hits
     const { playerHits: projectileHits, voxelHits: projectileVoxelHits } =
-      this.projectileManager.update(TICK_INTERVAL / 1000, voxelGetter, this.players);
+      this.heightmapMode
+        ? this.projectileManager.updateHeightmap(TICK_INTERVAL / 1000, this.terrainHeightGetter, this.players)
+        : this.projectileManager.update(TICK_INTERVAL / 1000, voxelGetter, this.players);
 
     // Advance pending rubble drops (delayed voxel placement for falling sections)
     this.destructionManager.update(now);
@@ -1923,8 +2041,10 @@ export class GameLoop {
           z: shooter.position.z,
         };
 
-        // Base aim direction from yaw/pitch
-        const baseDir = aimDirection(shooter.yaw, shooter.pitch);
+        // Base aim direction: use aimYaw (top-down mode) or yaw (FPS mode)
+        const shootYaw = shooter.aimYaw ?? shooter.yaw;
+        const shootPitch = this.heightmapMode ? 0 : shooter.pitch;
+        const baseDir = aimDirection(shootYaw, shootPitch);
 
         const weapon = shooter.activeWeapon;
         const effectiveSpread = shooter.getEffectiveSpread();
@@ -2027,7 +2147,8 @@ export class GameLoop {
         y: player.position.y + eyeHeight,
         z: player.position.z,
       };
-      const dir = aimDirection(player.yaw, player.pitch);
+      const throwYaw = player.aimYaw ?? player.yaw;
+      const dir = aimDirection(throwYaw, player.pitch);
 
       // Determine grenade type from grenadeIndex (0 = frag, 1 = smoke)
       if ((input.grenadeIndex ?? 0) === 1) {

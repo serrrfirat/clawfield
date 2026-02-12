@@ -1,5 +1,6 @@
 import { isWater } from './constants.js';
 import type { Vec3, AABB } from './types.js';
+import type { HeightGetter } from './terrain-noise.js';
 
 /** Team identifiers */
 export enum Team {
@@ -179,6 +180,32 @@ export function rayVoxelMarch(
     }
   }
 
+  return maxDist;
+}
+
+/**
+ * Ray march along a heightmap terrain.
+ * Walks the ray in 3D, sampling terrain height at each step.
+ * Returns distance to first terrain hit, or maxDist if unobstructed.
+ */
+export function rayHeightmapMarch(
+  origin: Vec3,
+  direction: Vec3,
+  maxDist: number,
+  getHeight: HeightGetter,
+  sampleStep: number = 0.5,
+): number {
+  let t = sampleStep;
+  while (t < maxDist) {
+    const px = origin.x + direction.x * t;
+    const py = origin.y + direction.y * t;
+    const pz = origin.z + direction.z * t;
+    const terrainY = getHeight(px, pz);
+    if (py <= terrainY) {
+      return t;
+    }
+    t += sampleStep;
+  }
   return maxDist;
 }
 

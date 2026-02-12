@@ -89,6 +89,20 @@
         font-family: monospace; font-size: 12px;
       }
       #panel-buttons button:hover { background: #4a4a7c; }
+      #panel-export {
+        padding: 8px 12px; display: flex; gap: 8px; flex-shrink: 0;
+        align-items: center; border-top: 1px solid #333;
+      }
+      #panel-export button {
+        flex: 1; background: #3a5c3a; border: 1px solid #5a5; color: #e0e0e0;
+        padding: 6px 8px; border-radius: 4px; cursor: pointer;
+        font-family: monospace; font-size: 12px;
+      }
+      #panel-export button:hover { background: #4a7c4a; }
+      #overwrite-label {
+        font-size: 11px; color: #aaa; cursor: pointer;
+        display: flex; align-items: center; gap: 4px; white-space: nowrap;
+      }
       #load-input { display: none; }
     </style>
   </head>
@@ -149,9 +163,15 @@
         </div>
       </div>
       <div id="panel-buttons">
-        <button id="save-materials-btn">Save</button>
-        <button id="load-materials-btn">Load</button>
+        <button id="save-materials-btn">Save JSON</button>
+        <button id="load-materials-btn">Load JSON</button>
         <input id="load-input" type="file" accept=".json" />
+      </div>
+      <div id="panel-export">
+        <label id="overwrite-label">
+          <input type="checkbox" id="overwrite-cb" /> Overwrite
+        </label>
+        <button id="export-glb-btn">Export GLB</button>
       </div>
     </div>
     <div id="drop-overlay">Drop .vox, .map, .glb, or .vobj.json file here</div>

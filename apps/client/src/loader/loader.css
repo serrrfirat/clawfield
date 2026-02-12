@@ -37,6 +37,7 @@
     height: 200px;
     border-radius: 50%;
     background-color: transparent;
+    pointer-events: none;
 }
 
 .loader-percent {
@@ -73,5 +74,23 @@
 
 .loader-btn:hover {
     background-color: #ffffff;
+    color: #9a9065;
+}
+
+.loader-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.25);
+    margin: 4px 0;
+}
+
+.loader-btn-secondary {
+    font-size: 20px;
+    padding: 6px 36px;
+    border-color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.loader-btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.85);
     color: #9a9065;
 }

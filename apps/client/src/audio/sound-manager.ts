@@ -36,6 +36,9 @@ class SoundManager {
   private ambienceBaseGain = 0.8;
   private ambienceDuckUntil = 0;
 
+  /** Cached listener position for distance-based filtering */
+  private listenerPos: Vec3 = { x: 0, y: 0, z: 0 };
+
   /** File-based audio buffers loaded from a sound pack */
   private packBuffers = new Map<SoundId, AudioBuffer>();
 
@@ -114,7 +117,7 @@ class SoundManager {
   }
 
   /** Play a 2D (non-positional) sound. */
-  play(soundId: SoundId): void {
+  play(soundId: SoundId, options?: { pitch?: number; volume?: number }): void {
     if (!this.ctx || !this.masterGain) return;
     if (!this.acquireSlot(soundId)) return;
 
@@ -126,7 +129,12 @@ class SoundManager {
     }
 
     const { source, gainNode, duration } = nodes;
-    gainNode.gain.value = config.volume;
+    gainNode.gain.value = options?.volume ?? config.volume;
+
+    if (options?.pitch) {
+      source.playbackRate.value = options.pitch;
+    }
+
     gainNode.connect(this.getBusGain(soundId));
 
     if (soundId === SoundId.Explosion || soundId === SoundId.ShootShotgun || soundId === SoundId.ShootSniper) {
@@ -179,7 +187,20 @@ class SoundManager {
     panner.positionY.setValueAtTime(position.y, this.ctx.currentTime);
     panner.positionZ.setValueAtTime(position.z, this.ctx.currentTime);
 
-    gainNode.connect(panner);
+    // Distance-based low-pass filter: distant sounds lose high frequencies
+    const dx = position.x - this.listenerPos.x;
+    const dy = position.y - this.listenerPos.y;
+    const dz = position.z - this.listenerPos.z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const cutoff = Math.max(800, Math.min(22000, 22000 - distance * 180));
+
+    const distanceFilter = this.ctx.createBiquadFilter();
+    distanceFilter.type = 'lowpass';
+    distanceFilter.frequency.value = cutoff;
+    distanceFilter.Q.value = 0.7;
+
+    gainNode.connect(distanceFilter);
+    distanceFilter.connect(panner);
     panner.connect(this.getBusGain(soundId));
 
     if (soundId === SoundId.Explosion || soundId === SoundId.ShootShotgun || soundId === SoundId.ShootSniper) {
@@ -195,6 +216,10 @@ class SoundManager {
   /** Update the listener position and orientation for spatial audio. */
   updateListener(position: Vec3, forward: Vec3, up: Vec3): void {
     if (!this.ctx) return;
+
+    this.listenerPos.x = position.x;
+    this.listenerPos.y = position.y;
+    this.listenerPos.z = position.z;
 
     const listener = this.ctx.listener;
 

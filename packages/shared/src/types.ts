@@ -8,6 +8,17 @@ export interface Vec3 {
   z: number;
 }
 
+/** Match configuration shared between server and client (heightmap mode) */
+export interface MatchConfig {
+  seed: number;
+  terrain: { scale: number; amplitude: number };
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
+  spawns: {
+    alpha: Vec3[];
+    bravo: Vec3[];
+  };
+}
+
 /** Player state sent from server to clients */
 export interface PlayerState {
   id: string;
@@ -43,6 +54,10 @@ export interface InputState {
   jump: boolean;
   shoot: boolean;
   reload: boolean;
+  /** Double-tap direction to run (faster than walk, slower than sprint) */
+  run?: boolean;
+  /** Hold alt/option to walk (slower than default move speed) */
+  walk?: boolean;
   sprint: boolean;
   crouch: boolean;
   throwGrenade: boolean;
@@ -57,6 +72,8 @@ export interface InputState {
   weaponSlot: number;
   yaw: number;
   pitch: number;
+  /** Aim direction (top-down mode): direction the player faces/shoots, separate from movement yaw */
+  aimYaw?: number;
 }
 
 /** Chunk data for network transport */
@@ -296,6 +313,8 @@ export type ServerMessage =
       weather?: WeatherState;
       objectives?: MapObjective[];
       objectPlacements?: import('./voxel-object.js').MapObjectPlacement[];
+      glbBuildings?: { glbPath: string; position: { x: number; y: number; z: number }; rotation?: number }[];
+      matchConfig?: MatchConfig;
       gameMode: GameMode;
     }
   | { type: 'player_joined'; id: string; name: string; team: number }

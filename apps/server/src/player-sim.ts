@@ -1,6 +1,7 @@
-import type { Vec3, InputState, PlayerState } from '@clawfield/shared';
+import type { Vec3, InputState, PlayerState, HeightGetter } from '@clawfield/shared';
 import {
   movePlayer,
+  movePlayerHeightmap,
   type VoxelGetter,
   Team,
   MAX_HEALTH,
@@ -38,6 +39,8 @@ export class PlayerSim {
   velocity: Vec3 = { x: 0, y: 0, z: 0 };
   yaw = 0;
   pitch = 0;
+  /** Aim direction for top-down mode (separate from movement yaw) */
+  aimYaw: number | undefined = undefined;
   grounded = false;
   inWater = false;
 
@@ -259,6 +262,7 @@ export class PlayerSim {
       this.inWater = result.inWater;
       this.yaw = qi.input.yaw;
       this.pitch = qi.input.pitch;
+      this.aimYaw = qi.input.aimYaw;
       this.lastAckedSeq = qi.seq;
       this.latestInput = this.downed ? null : qi.input;
 
@@ -293,6 +297,112 @@ export class PlayerSim {
         }
 
         // Start reload if client pressed reload (for the active weapon)
+        if (qi.input.reload) {
+          if (this.currentWeaponSlot === 0 && !this.reloading && this.ammo < this.weapon.magSize) {
+            this.startReload();
+          } else if (this.currentWeaponSlot === 1 && !this.secondaryReloading && this.secondaryAmmo < this.secondaryWeapon.magSize) {
+            this.startSecondaryReload();
+          } else if (this.currentWeaponSlot === 2 && this.specialWeapon && !this.specialReloading && this.specialAmmo < this.specialWeapon.magSize) {
+            this.startSpecialReload();
+          }
+        }
+      }
+    }
+    this.inputQueue = [];
+  }
+
+  /** Process all queued inputs using heightmap physics (no voxel collision) */
+  tickHeightmap(getHeight: HeightGetter): void {
+    this.latestInput = null;
+
+    if (this.inputQueue.length === 0) {
+      this.prevShootHeld = false;
+    }
+
+    // Update reload timer regardless of alive status
+    if (this.inputQueue.length > 0) {
+      let totalDt = 0;
+      for (const qi of this.inputQueue) {
+        totalDt += qi.dt;
+      }
+      this.updateReload(totalDt);
+      this.updateSecondaryReload(totalDt);
+      this.updateSpecialReload(totalDt);
+      if (this.currentBloom > 0) {
+        this.currentBloom = Math.max(0, this.currentBloom - this.activeWeapon.spreadRecovery * totalDt);
+      }
+      if (this.swapTimer > 0) {
+        this.swapTimer = Math.max(0, this.swapTimer - totalDt);
+      }
+    }
+
+    // Dead players don't move
+    if (!this.alive && !this.downed) {
+      for (const qi of this.inputQueue) {
+        this.lastAckedSeq = qi.seq;
+      }
+      this.inputQueue = [];
+      return;
+    }
+
+    for (const qi of this.inputQueue) {
+      const effectiveInput: InputState = this.downed
+        ? {
+            ...qi.input,
+            shoot: false,
+            reload: false,
+            sprint: false,
+            throwGrenade: false,
+            useGadget: false,
+            scope: false,
+            crouch: true,
+          }
+        : qi.input;
+
+      const result = movePlayerHeightmap(
+        this.position,
+        this.velocity,
+        effectiveInput,
+        this.downed ? qi.dt * DOWNED_SPEED_MULT : qi.dt,
+        getHeight,
+      );
+
+      this.position = result.position;
+      this.velocity = result.velocity;
+      this.grounded = result.grounded;
+      this.inWater = result.inWater;
+      this.yaw = qi.input.yaw;
+      this.pitch = qi.input.pitch;
+      this.aimYaw = qi.input.aimYaw;
+      this.lastAckedSeq = qi.seq;
+      this.latestInput = this.downed ? null : qi.input;
+
+      if (!this.downed) {
+        const isSprinting = qi.input.sprint && (qi.input.forward || qi.input.back || qi.input.left || qi.input.right);
+        if (isSprinting) {
+          this.sprintFireTimer = this.activeWeapon.sprintToFireTime;
+        } else if (this.sprintFireTimer > 0) {
+          this.sprintFireTimer -= qi.dt;
+        }
+
+        const wantsShoot = qi.input.shoot;
+        if (wantsShoot && !this.prevShootHeld) {
+          this.pendingShotIntents++;
+        }
+        this.prevShootHeld = wantsShoot;
+
+        this.crouching = qi.input.crouch && !qi.input.sprint;
+
+        const desiredSlot = qi.input.weaponSlot ?? 0;
+        if (desiredSlot !== this.currentWeaponSlot && this.swapTimer <= 0) {
+          if (desiredSlot === 2 && !this.specialWeapon) {
+            // no-op
+          } else {
+            this.swapTimer = this.activeWeapon.swapTime;
+            this.currentWeaponSlot = desiredSlot;
+          }
+        }
+
         if (qi.input.reload) {
           if (this.currentWeaponSlot === 0 && !this.reloading && this.ammo < this.weapon.magSize) {
             this.startReload();

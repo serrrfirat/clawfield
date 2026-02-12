@@ -15,6 +15,9 @@
     "build": "tsc",
     "dev": "tsc --watch"
   },
+  "dependencies": {
+    "simplex-noise": "^4.0.3"
+  },
   "devDependencies": {
     "typescript": "^5.7.0"
   }

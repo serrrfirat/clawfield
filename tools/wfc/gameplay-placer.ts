@@ -16,6 +16,36 @@ function hasTag(variant: TileVariant, tag: string): boolean {
 }
 
 /**
+ * Scan tile voxels top-down to find the actual ground surface Y.
+ * Returns the Y coordinate of the highest non-air voxel at the tile center,
+ * plus 1 (so entities spawn on top of it).
+ */
+function findSurfaceY(variant: TileVariant): number {
+  const cx = Math.floor(TILE_SIZE / 2);
+  const cz = Math.floor(TILE_SIZE / 2);
+  // Scan from top down at tile center
+  for (let y = TILE_SIZE - 1; y >= 0; y--) {
+    const idx = cx + cz * TILE_SIZE + y * TILE_SIZE * TILE_SIZE;
+    if (variant.voxels[idx] !== 0) {
+      return y + 1; // spawn on top of surface
+    }
+  }
+  // Also try a few nearby positions if center is air
+  for (const [ox, oz] of [[2, 2], [-2, -2], [4, 0], [0, 4]]) {
+    const sx = cx + ox;
+    const sz = cz + oz;
+    if (sx < 0 || sx >= TILE_SIZE || sz < 0 || sz >= TILE_SIZE) continue;
+    for (let y = TILE_SIZE - 1; y >= 0; y--) {
+      const idx = sx + sz * TILE_SIZE + y * TILE_SIZE * TILE_SIZE;
+      if (variant.voxels[idx] !== 0) {
+        return y + 1;
+      }
+    }
+  }
+  return 2; // fallback
+}
+
+/**
  * Place gameplay elements based on collapsed grid.
  */
 export function placeGameplay(
@@ -73,9 +103,12 @@ function findEdgeSpawns(
   const picks = candidates.slice(0, 3);
 
   for (const p of picks) {
+    const cell = grid[p.z][p.x];
+    const variant = cell.collapsed !== null ? variants[cell.collapsed] : null;
+    const surfaceY = variant ? findSurfaceY(variant) : 2;
     spawns.push({
       x: p.x * TILE_SIZE + TILE_SIZE / 2,
-      y: 2, // ground level + small offset
+      y: surfaceY,
       z: p.z * TILE_SIZE + TILE_SIZE / 2,
     });
   }
@@ -123,8 +156,8 @@ function placeCaptureZones(
 
   candidates.sort((a, b) => b.score - a.score);
 
-  // Pick 3-5 capture points, spaced apart
-  const numZones = Math.min(5, Math.max(3, Math.floor(depth / 6)));
+  // Pick 3-7 capture points, spaced apart (more for larger maps)
+  const numZones = Math.min(7, Math.max(3, Math.floor(depth / 6)));
   const spacing = Math.floor(depth / (numZones + 1));
 
   for (let i = 0; i < numZones; i++) {
@@ -141,11 +174,14 @@ function placeCaptureZones(
     }
 
     if (best) {
-      const id = String.fromCharCode(65 + i); // A, B, C, D, E
+      const id = String.fromCharCode(65 + i); // A, B, C, ..., G
+      const cell = grid[best.z][best.x];
+      const variant = cell.collapsed !== null ? variants[cell.collapsed] : null;
+      const surfaceY = variant ? findSurfaceY(variant) : 2;
       zones.push({
         id,
         x: best.x * TILE_SIZE + TILE_SIZE / 2,
-        y: 2,
+        y: surfaceY,
         z: best.z * TILE_SIZE + TILE_SIZE / 2,
         radius: TILE_SIZE,
       });

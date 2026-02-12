@@ -19,6 +19,9 @@ When the goal is an urban battlefield, a sparse prototype with widely spaced box
 ### Greedy mesher water filter silently eats voxel object voxels
 The `greedyMesh()` function filters palette indices 6 and 17 via `isWater()` — designed for terrain chunks. Voxel objects (.vobj.json) use their own palettes where indices 6/17 are regular colors (e.g. khaki, dark gray). This caused the sandbag cover to lose 44% of its voxels, the wall segment 18%, and the watchtower 13%. Fix: added `skipWaterFilter` parameter to `greedyMesh()` — always pass `true` when meshing voxel objects. **Rule: any terrain-specific filter in shared mesher code must have an opt-out for voxel objects.**
 
+### Triangle winding order matters for terrain heightmaps
+When generating terrain mesh via heightmap triangulation, the vertex winding order determines which side is the "front face". Three.js uses CCW = front face (OpenGL convention). A quad at corners (x0,z0), (x1,z0), (x0,z1), (x1,z1) must have CCW order when viewed from above (positive Y). The triangle (00→10→11) is CW from above → backface-culled → invisible terrain. Fix: use (00→11→10) instead. Symptom: terrain appears "white" because the sky dome is visible through the culled terrain. Always verify: `e1 × e2` should give positive Y for upward-facing terrain.
+
 ### Custom palettes break hardcoded material assumptions
 Material indices 1-6 (MAT_GRASS through MAT_WATER) have hardcoded atlas tile textures, but custom maps (like Shoreline) override these palette indices with completely different colors (e.g. index 1 = sand, not grass). Any mesher/shader code that assumes "material 1 = grass" must verify the palette color matches the expected color first. Otherwise, fall back to palette RGB + white fallback tile. The guard is:
 ```typescript
@@ -30,6 +33,11 @@ const hasAtlasTile = MATERIAL_TILES[mat] !== undefined
 
 ### Standard map size: 1000×1000 voxels (bounds ±500)
 All maps should target 1000×1000 voxel bounds (`xMin: -500, xMax: 500, zMin: -500, zMax: 500`). This matches BF2 64-player scale (~1km²). When scaling up a smaller map, use the "scale the world, not the buildings" principle: landmark positions scale fully (3.33x for 300→1000), but individual building footprints only scale ~1.5x to stay human-readable. The extra space becomes courtyards, open terrain, and side streets. Karkand at this size: 33 MB output, 0.67s generation, 8429 chunks.
+
+## Physics
+
+### Physics coordinates are in voxel units, not meters
+The physics system (`aabbOverlapsSolid`, `playerAABB`, `movePlayer`) operates in **voxel units** where 1 unit = 1 voxel. `VOXEL_SIZE = 0.5` is only for rendering scale, not physics. A 1-voxel terrain step = 1.0 in physics coords. When setting step-up/jump/size constants, always think in voxel units. Example: `STEP_HEIGHT = 0.6` was wrong because 0.6 < 1.0 voxel (the blocking voxel still overlapped). Fixed to `STEP_HEIGHT = 1.1` (slightly more than 1 voxel, gravity settles the rest).
 
 ## Project Setup
 

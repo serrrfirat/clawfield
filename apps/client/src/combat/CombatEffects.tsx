@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber'
 import { ProjectileRenderer } from './projectile-renderer'
 import { ParticleSystem } from './particle-system'
 import { GrenadeRenderer } from './grenade-renderer'
-import { soundManager } from '../audio/sound-manager'
+import { soundManager, SoundId } from '../audio/sound-manager'
 import useStore from '../stores/useStore'
 
 /**
@@ -53,6 +53,7 @@ export default function CombatEffects() {
     // Initialize audio context on first interaction
     const initAudio = () => {
       soundManager.init()
+      soundManager.loadPack('/sounds/gdc/')
       window.removeEventListener('click', initAudio)
       window.removeEventListener('keydown', initAudio)
     }
@@ -107,6 +108,37 @@ export default function CombatEffects() {
     const explosions = store.consumeExplosions()
     for (const exp of explosions) {
       grenades.current?.addExplosion(exp.position, exp.radius)
+    }
+
+    // Process hit confirmations: play ding sound + emit hit particles at target
+    const hitConfirms = store.consumeHitConfirms()
+    for (const hit of hitConfirms) {
+      // Only play ding for hits WE deal (we are the shooter, not the victim)
+      const myId = store.myId
+      if (myId && hit.targetId !== myId) {
+        soundManager.play(SoundId.HitConfirmDing)
+
+        // Emit red/orange hit burst at the target player's position
+        if (particles.current) {
+          const remotePlayers = store.remotePlayers as Map<string, any> | undefined
+          const target = remotePlayers?.get(hit.targetId)
+          if (target?.position) {
+            particles.current.emit({
+              position: target.position,
+              count: 12,
+              speedMin: 2,
+              speedMax: 5,
+              spread: Math.PI,
+              lifetimeMin: 0.15,
+              lifetimeMax: 0.35,
+              sizeMin: 0.08,
+              sizeMax: 0.2,
+              colors: [[1, 0.3, 0.1], [1, 0.5, 0.1], [0.9, 0.2, 0.05]],
+              gravityScale: 0.4,
+            })
+          }
+        }
+      }
     }
 
     if (particles.current) {

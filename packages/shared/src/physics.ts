@@ -1,6 +1,7 @@
 import {
   GRAVITY,
   JUMP_VELOCITY,
+  WALK_SPEED,
   MOVE_SPEED,
   SPRINT_SPEED,
   CROUCH_SPEED,
@@ -15,8 +16,10 @@ import {
   WATER_GRAVITY,
   WATER_DRAG,
   CLIMB_SPEED,
+  STEP_HEIGHT,
 } from './constants.js';
 import type { AABB, InputState, Vec3 } from './types.js';
+import type { HeightGetter } from './terrain-noise.js';
 
 /** Get voxel at integer world coordinates — injected to avoid chunk-map dependency */
 export type VoxelGetter = (wx: number, wy: number, wz: number) => number;
@@ -100,10 +103,12 @@ export function inputToVelocity(input: InputState, yaw: number): Vec3 {
   if (input.left) { dx -= Math.cos(yaw); dz -= Math.sin(yaw); }
   if (input.right) { dx += Math.cos(yaw); dz += Math.sin(yaw); }
 
-  // Determine speed: sprint takes priority over crouch, both are mutually exclusive
+  // Determine speed: sprint > default (move) > walk (alt) > crouch
   let speed = MOVE_SPEED;
   if (input.sprint && hasMovement) {
     speed = SPRINT_SPEED;
+  } else if (input.walk && hasMovement) {
+    speed = WALK_SPEED;
   } else if (input.crouch) {
     speed = CROUCH_SPEED;
   }
@@ -202,6 +207,20 @@ export function movePlayer(
     vx = 0;
   }
 
+  // Auto step-up on X axis: if blocked while grounded, try stepping up.
+  // Only one step-up per frame to prevent diagonal double-steps climbing 2-voxel walls.
+  let didStepUp = false;
+  if (xBlocked && !submerged && isGrounded({ x: px, y: py, z: pz }, getVoxel)) {
+    const stepY = py + STEP_HEIGHT;
+    const stepAABB = playerAABB({ x: newPx, y: stepY, z: pz }, height);
+    if (!aabbOverlapsSolid(stepAABB, getVoxel)) {
+      px = newPx;
+      py = stepY;
+      xBlocked = false;
+      didStepUp = true;
+    }
+  }
+
   // Sweep Y axis
   const newPy = py + vy * clampedDt;
   const testAABBy = playerAABB({ x: px, y: newPy, z: pz }, height);
@@ -225,6 +244,17 @@ export function movePlayer(
   } else {
     zBlocked = moveVel.z !== 0;
     vz = 0;
+  }
+
+  // Auto step-up on Z axis: if blocked while grounded, skip if already stepped up on X
+  if (zBlocked && !didStepUp && !submerged && isGrounded({ x: px, y: py, z: pz }, getVoxel)) {
+    const stepY = py + STEP_HEIGHT;
+    const stepAABB = playerAABB({ x: px, y: stepY, z: newPz }, height);
+    if (!aabbOverlapsSolid(stepAABB, getVoxel)) {
+      pz = newPz;
+      py = stepY;
+      zBlocked = false;
+    }
   }
 
   // Wall climb: if pressing jump into a wall while falling/stationary, scramble up
@@ -277,4 +307,59 @@ function isGrounded(position: Vec3, getVoxel: VoxelGetter): boolean {
 /** Clamp pitch value */
 export function clampPitch(pitch: number): number {
   return Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+}
+
+/**
+ * Move a player on heightmap terrain (no voxel collision).
+ * Ground is determined by a height function rather than AABB sweep.
+ */
+export function movePlayerHeightmap(
+  position: Vec3,
+  velocity: Vec3,
+  input: InputState,
+  dt: number,
+  getHeight: HeightGetter,
+): MoveResult {
+  const clampedDt = Math.min(dt, 0.1);
+  const isCrouching = input.crouch && !input.sprint;
+
+  const yaw = input.yaw;
+  const moveVel = inputToVelocity(input, yaw);
+
+  let vx = moveVel.x;
+  let vz = moveVel.z;
+  let vy = velocity.y;
+
+  // Apply gravity
+  vy += GRAVITY * clampedDt;
+
+  // Move horizontally
+  let px = position.x + vx * clampedDt;
+  let pz = position.z + vz * clampedDt;
+  let py = position.y + vy * clampedDt;
+
+  // Get terrain height at new position
+  const terrainY = getHeight(px, pz);
+
+  // Ground collision: snap to terrain if below
+  let grounded = false;
+  if (py <= terrainY) {
+    py = terrainY;
+    vy = 0;
+    grounded = true;
+  }
+
+  // Jump if grounded
+  if (input.jump && grounded && !isCrouching) {
+    vy = JUMP_VELOCITY;
+    grounded = false;
+  }
+
+  return {
+    position: { x: px, y: py, z: pz },
+    velocity: { x: vx, y: vy, z: vz },
+    grounded,
+    inWater: false,
+    climbing: false,
+  };
 }

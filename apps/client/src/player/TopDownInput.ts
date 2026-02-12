@@ -24,6 +24,13 @@ export class TopDownInputCapture {
   /** Gadget use pressed this frame */
   private gadgetPressed = false;
 
+  /** Double-tap detection for running */
+  private lastTapKey = '';
+  private lastTapTime = 0;
+  private _running = false;
+  private static DOUBLE_TAP_MS = 300;
+  private static RUN_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD']);
+
   /** F key hold time for radial menu */
   private fKeyDownTime = 0;
   private _radialMenuOpen = false;
@@ -56,6 +63,17 @@ export class TopDownInputCapture {
   constructor() {
     document.addEventListener('keydown', (e) => {
       this.keys.add(e.code);
+
+      // Double-tap detection for running
+      if (!e.repeat && TopDownInputCapture.RUN_KEYS.has(e.code)) {
+        const now = performance.now();
+        if (e.code === this.lastTapKey && now - this.lastTapTime < TopDownInputCapture.DOUBLE_TAP_MS) {
+          this._running = true;
+        }
+        this.lastTapKey = e.code;
+        this.lastTapTime = now;
+      }
+
       if (e.code === 'KeyR') this.reloadPressed = true;
       if (e.code === 'KeyG' && !e.repeat) this.gKeyDownTime = performance.now();
       if (e.code === 'KeyF' && !e.repeat) this.fKeyDownTime = performance.now();
@@ -74,6 +92,14 @@ export class TopDownInputCapture {
 
     document.addEventListener('keyup', (e) => {
       this.keys.delete(e.code);
+
+      // Stop running when all movement keys are released
+      if (TopDownInputCapture.RUN_KEYS.has(e.code)) {
+        const anyMovement = this.keys.has('KeyW') || this.keys.has('KeyA') ||
+          this.keys.has('KeyS') || this.keys.has('KeyD');
+        if (!anyMovement) this._running = false;
+      }
+
       if (e.code === 'KeyC') this.crouchTogglePending = false;
       if (e.code === 'Tab') this.scoreboardVisible = false;
       if (e.code === 'KeyF') {
@@ -159,6 +185,7 @@ export class TopDownInputCapture {
     this.grenadePressed = false;
 
     const sprint = this.rightMouseDown || this.keys.has('ShiftLeft');
+    const walk = this.keys.has('AltLeft') || this.keys.has('AltRight');
     const crouch = this.crouchToggle;
 
     if (sprint) this.crouchToggle = false;
@@ -206,6 +233,8 @@ export class TopDownInputCapture {
       jump: this.keys.has('Space'),
       shoot,
       reload,
+      run: this._running,
+      walk,
       sprint: sprint ? true : false,
       crouch: sprint ? false : crouch,
       throwGrenade,

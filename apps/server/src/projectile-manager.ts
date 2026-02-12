@@ -3,10 +3,12 @@ import {
   Team,
   GRAVITY,
   rayVoxelMarch,
+  rayHeightmapMarch,
   rayIntersectAABB,
   playerAABB,
   type VoxelGetter,
   type WeaponStats,
+  type HeightGetter,
 } from '@clawfield/shared';
 import type { PlayerSim } from './player-sim.js';
 
@@ -207,6 +209,106 @@ export class ProjectileManager {
     // Remove dead projectiles
     this.projectiles = this.projectiles.filter((p) => p.alive);
 
+    return { playerHits, voxelHits };
+  }
+
+  /**
+   * Advance projectiles using heightmap terrain collision instead of voxels.
+   * Player AABB intersection is identical to update().
+   */
+  updateHeightmap(
+    dt: number,
+    getHeight: HeightGetter,
+    players: Map<string, PlayerSim>
+  ): { playerHits: ProjectileHit[]; voxelHits: ProjectileVoxelHit[] } {
+    const playerHits: ProjectileHit[] = [];
+    const voxelHits: ProjectileVoxelHit[] = [];
+
+    for (const proj of this.projectiles) {
+      if (!proj.alive) continue;
+
+      proj.velocity.y += GRAVITY * dt;
+
+      const dirLen = Math.sqrt(
+        proj.velocity.x * proj.velocity.x +
+        proj.velocity.y * proj.velocity.y +
+        proj.velocity.z * proj.velocity.z
+      );
+      if (dirLen < 1e-8) {
+        proj.alive = false;
+        continue;
+      }
+      const stepDist = dirLen * dt;
+      const dir: Vec3 = {
+        x: proj.velocity.x / dirLen,
+        y: proj.velocity.y / dirLen,
+        z: proj.velocity.z / dirLen,
+      };
+
+      const oldPos: Vec3 = { ...proj.position };
+
+      // Terrain collision via heightmap ray march
+      const terrainHitDist = rayHeightmapMarch(oldPos, dir, stepDist, getHeight);
+
+      // Player collision
+      let closestPlayerDist = terrainHitDist;
+      let closestPlayerId: string | null = null;
+
+      for (const target of players.values()) {
+        if (target.id === proj.ownerId) continue;
+        if (!target.alive) continue;
+        if (target.team === proj.ownerTeam) continue;
+
+        const aabb = playerAABB(target.position);
+        const hit = rayIntersectAABB(oldPos, dir, aabb, stepDist);
+
+        if (hit && hit.t < closestPlayerDist) {
+          closestPlayerDist = hit.t;
+          closestPlayerId = target.id;
+        }
+      }
+
+      if (closestPlayerId !== null) {
+        proj.alive = false;
+        playerHits.push({
+          projectileId: proj.id,
+          ownerId: proj.ownerId,
+          ownerTeam: proj.ownerTeam,
+          weapon: proj.weapon,
+          targetId: closestPlayerId,
+          distance: proj.distanceTraveled + closestPlayerDist,
+        });
+        proj.position = {
+          x: oldPos.x + dir.x * closestPlayerDist,
+          y: oldPos.y + dir.y * closestPlayerDist,
+          z: oldPos.z + dir.z * closestPlayerDist,
+        };
+      } else if (terrainHitDist < stepDist) {
+        proj.alive = false;
+        proj.position = {
+          x: oldPos.x + dir.x * terrainHitDist,
+          y: oldPos.y + dir.y * terrainHitDist,
+          z: oldPos.z + dir.z * terrainHitDist,
+        };
+        voxelHits.push({
+          position: { ...proj.position },
+          direction: { ...dir },
+        });
+      } else {
+        proj.position = {
+          x: oldPos.x + proj.velocity.x * dt,
+          y: oldPos.y + proj.velocity.y * dt,
+          z: oldPos.z + proj.velocity.z * dt,
+        };
+      }
+
+      proj.distanceTraveled += stepDist;
+      if (proj.distanceTraveled > proj.weapon.maxRange) {
+        proj.alive = false;
+      }
+    }
+
+    this.projectiles = this.projectiles.filter((p) => p.alive);
     return { playerHits, voxelHits };
   }
 
