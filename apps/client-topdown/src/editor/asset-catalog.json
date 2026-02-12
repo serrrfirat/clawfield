@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tree",
+    "name": "Tree",
+    "category": "vegetation",
+    "path": "../assets/models/tree.glb",
+    "tags": ["nature", "foliage", "cover"],
+    "defaultScale": 1
+  }
+]
