@@ -7,6 +7,7 @@ import * as THREE from 'three'
 
 import TerrainChunk from './TerrainChunk'
 import Trees from './Trees'
+import Foliage from './Foliage'
 import useTerrainMaterial from '../materials/TerrainMaterial'
 import useGrassMaterial from '../materials/GrassMaterial'
 import useStonesMaterial from '../materials/StonesMaterial'
@@ -41,6 +42,7 @@ export default function Terrain() {
     const windDirection = windParameters.direction
     const stoneParameters = useStore((s) => s.stoneParameters)
     const treesEnabled = useStore((s) => s.generalParameters.trees)
+    const foliageEnabled = useStore((s) => s.generalParameters.foliage)
     const windEnabled = useStore((s) => s.generalParameters.wind)
 
     const noise2D = sharedNoise2D
@@ -244,16 +246,30 @@ export default function Terrain() {
                 />
             ))}
             {treesEnabled && (
-                <Trees
-                    activeChunks={activeChunks}
-                    chunkSize={chunkSize}
-                    noise2D={noise2D}
-                    stoneParameters={stoneParameters}
-                    terrainScale={terrainScale}
-                    terrainAmplitude={terrainAmplitude}
-                    treeMaterial={treeMaterial}
-                    rigidBodyMaterial={rigidBodyMaterial}
-                />
+                <>
+                    <Trees
+                        activeChunks={activeChunks}
+                        chunkSize={chunkSize}
+                        noise2D={noise2D}
+                        stoneParameters={stoneParameters}
+                        terrainScale={terrainScale}
+                        terrainAmplitude={terrainAmplitude}
+                        treeMaterial={treeMaterial}
+                        rigidBodyMaterial={rigidBodyMaterial}
+                    />
+                    {foliageEnabled && (
+                        <Foliage
+                            activeChunks={activeChunks}
+                            chunkSize={chunkSize}
+                            noise2D={noise2D}
+                            stoneParameters={stoneParameters}
+                            terrainScale={terrainScale}
+                            terrainAmplitude={terrainAmplitude}
+                            treeMaterialUniforms={treeMaterial.uniforms}
+                            noiseTexture={noiseTexture}
+                        />
+                    )}
+                </>
             )}
         </group>
     )
