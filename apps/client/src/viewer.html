@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clawfield - Voxel Viewer</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { overflow: hidden; background: #1a1a2e; font-family: monospace; color: #e0e0e0; }
+      canvas { display: block; }
+      #top-bar {
+        position: fixed; top: 0; left: 0; right: 0;
+        height: 40px; background: rgba(20, 20, 40, 0.9);
+        display: flex; align-items: center; gap: 12px;
+        padding: 0 16px; z-index: 10;
+        border-bottom: 1px solid #333;
+      }
+      #top-bar label { font-size: 13px; cursor: pointer; }
+      #file-input { display: none; }
+      #file-btn {
+        background: #3a3a5c; border: 1px solid #555; color: #e0e0e0;
+        padding: 4px 12px; border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 13px;
+      }
+      #file-btn:hover { background: #4a4a7c; }
+      #model-name { font-size: 14px; color: #aaa; }
+      #wireframe-toggle { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+      #bottom-bar {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        height: 28px; background: rgba(20, 20, 40, 0.9);
+        display: flex; align-items: center; gap: 16px;
+        padding: 0 16px; z-index: 10; font-size: 12px; color: #888;
+        border-top: 1px solid #333;
+      }
+      #drop-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(60, 60, 120, 0.6); z-index: 100;
+        display: none; align-items: center; justify-content: center;
+        font-size: 24px; color: white; pointer-events: none;
+      }
+
+      /* --- Material tagging panel --- */
+      #material-panel {
+        position: fixed; top: 40px; right: 0; bottom: 28px;
+        width: 280px; background: rgba(20, 20, 40, 0.95);
+        border-left: 1px solid #333; z-index: 10;
+        display: none; flex-direction: column; font-size: 12px;
+      }
+      #material-panel.visible { display: flex; }
+      #material-panel h3 {
+        padding: 8px 12px; margin: 0; font-size: 13px; color: #ccc;
+        border-bottom: 1px solid #333; flex-shrink: 0;
+      }
+      #mesh-list {
+        flex: 1; overflow-y: auto; border-bottom: 1px solid #333;
+      }
+      .mesh-item {
+        padding: 6px 12px; cursor: pointer; display: flex;
+        align-items: center; gap: 8px; border-bottom: 1px solid #2a2a44;
+      }
+      .mesh-item:hover { background: rgba(60, 60, 100, 0.3); }
+      .mesh-item.selected { background: rgba(60, 80, 160, 0.4); }
+      .mesh-dot {
+        width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+      }
+      .mesh-item-name {
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      #mesh-detail {
+        flex-shrink: 0; padding: 12px; display: none;
+        border-bottom: 1px solid #333;
+      }
+      #mesh-detail.visible { display: block; }
+      #mesh-detail .detail-row {
+        display: flex; justify-content: space-between; margin-bottom: 6px;
+      }
+      #mesh-detail .detail-label { color: #888; }
+      #mesh-detail .detail-value { color: #ccc; text-align: right; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+      #mat-type-select {
+        width: 100%; background: #2a2a44; color: #e0e0e0;
+        border: 1px solid #555; border-radius: 3px; padding: 4px 6px;
+        font-family: monospace; font-size: 12px; margin-top: 4px;
+      }
+      #panel-buttons {
+        padding: 8px 12px; display: flex; gap: 8px; flex-shrink: 0;
+      }
+      #panel-buttons button {
+        flex: 1; background: #3a3a5c; border: 1px solid #555; color: #e0e0e0;
+        padding: 6px 8px; border-radius: 4px; cursor: pointer;
+        font-family: monospace; font-size: 12px;
+      }
+      #panel-buttons button:hover { background: #4a4a7c; }
+      #load-input { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="top-bar">
+      <button id="file-btn">Open model</button>
+      <input id="file-input" type="file" accept=".json,.map,.vox,.glb,.gltf" />
+      <span id="model-name">No model loaded</span>
+      <div id="wireframe-toggle">
+        <label><input type="checkbox" id="wireframe-cb" /> Wireframe</label>
+      </div>
+    </div>
+    <div id="bottom-bar">
+      <span id="info-dims">--</span>
+      <span id="info-voxels">--</span>
+      <span id="info-palette">--</span>
+      <span id="info-world">--</span>
+      <span style="margin-left:auto; color:#aaa">[F] fly mode | WASD move | QE up/down | Shift fast | Right-click look</span>
+    </div>
+    <div id="material-panel">
+      <h3>Materials</h3>
+      <div id="mesh-list"></div>
+      <div id="mesh-detail">
+        <div class="detail-row">
+          <span class="detail-label">Mesh</span>
+          <span class="detail-value" id="detail-mesh-name">--</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Material</span>
+          <span class="detail-value" id="detail-mat-name">--</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Auto-classified</span>
+          <span class="detail-value" id="detail-auto-type">--</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Type</span>
+          <span class="detail-value">
+            <select id="mat-type-select">
+              <option value="glass">glass</option>
+              <option value="wood">wood</option>
+              <option value="concrete">concrete</option>
+              <option value="metal">metal</option>
+              <option value="stone">stone</option>
+              <option value="brick">brick</option>
+              <option value="plastic">plastic</option>
+              <option value="unknown">unknown</option>
+            </select>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Health mult.</span>
+          <span class="detail-value" id="detail-health">--</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Fragments</span>
+          <span class="detail-value" id="detail-fragments">--</span>
+        </div>
+      </div>
+      <div id="panel-buttons">
+        <button id="save-materials-btn">Save</button>
+        <button id="load-materials-btn">Load</button>
+        <input id="load-input" type="file" accept=".json" />
+      </div>
+    </div>
+    <div id="drop-overlay">Drop .vox, .map, .glb, or .vobj.json file here</div>
+    <script type="module" src="./viewer/viewer.ts"></script>
+  </body>
+</html>

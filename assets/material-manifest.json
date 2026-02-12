@@ -1,0 +1,25 @@
+[
+  {
+    "glbPath": "apps/client/src/assets/models/tree.glb",
+    "meshes": [
+      {
+        "meshName": "Cylinder.009",
+        "materialName": "(none)",
+        "materialType": "unknown",
+        "classifiedBy": "default",
+        "healthMultiplier": 1,
+        "fragmentCount": 12,
+        "fragmentStyle": "chunks"
+      },
+      {
+        "meshName": "Cube.006",
+        "materialName": "(none)",
+        "materialType": "unknown",
+        "classifiedBy": "default",
+        "healthMultiplier": 1,
+        "fragmentCount": 12,
+        "fragmentStyle": "chunks"
+      }
+    ]
+  }
+]
