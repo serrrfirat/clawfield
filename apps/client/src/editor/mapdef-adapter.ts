@@ -1,5 +1,6 @@
 import type { EditorPlacement, MapdefJson, MapdefPlacement } from './editor-types'
 import useEditorStore from './useEditorStore'
+import { fromSparseHeightmap, toSparseHeightmap } from './heightmap-utils'
 
 const TERRAIN_SEED = 1337
 const TERRAIN_SCALE = 0.05
@@ -10,7 +11,13 @@ export function exportMapdef(): MapdefJson {
   return {
     name: state.mapName,
     bounds: { minX: -500, maxX: 500, minZ: -500, maxZ: 500 },
-    terrain: { seed: TERRAIN_SEED, scale: TERRAIN_SCALE, amplitude: TERRAIN_AMPLITUDE },
+    terrain: {
+      seed: state.terrainSeed ?? TERRAIN_SEED,
+      scale: state.terrainScale ?? TERRAIN_SCALE,
+      amplitude: state.terrainAmplitude ?? TERRAIN_AMPLITUDE,
+      waterLevel: state.waterLevel,
+    },
+    heightmap: toSparseHeightmap(state.heightCellSize, state.heightCells),
     placements: state.placements.map(toMapdefPlacement),
     editorState: {
       cameraTarget: state.cameraTarget,
@@ -28,6 +35,9 @@ export function importMapdef(json: MapdefJson) {
     store.setCameraTarget(json.editorState.cameraTarget)
     store.setCameraZoom(json.editorState.cameraZoom)
   }
+  store.setWaterLevel(json.terrain?.waterLevel ?? -0.5)
+  store.setHeightCells(fromSparseHeightmap(json.heightmap))
+  store.setDirty(false)
 }
 
 function toMapdefPlacement(p: EditorPlacement): MapdefPlacement {

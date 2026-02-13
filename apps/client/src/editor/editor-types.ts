@@ -5,7 +5,12 @@ export interface EditorPlacement {
   rotation: [number, number, number]
   scale: [number, number, number]
   source: 'manual' | 'scatter' | 'ai'
-  metadata?: Record<string, unknown>
+  metadata?: EditorPlacementMetadata
+}
+
+export interface EditorPlacementMetadata {
+  collidable?: boolean
+  [key: string]: unknown
 }
 
 export interface PrimitiveGeometry {
@@ -21,6 +26,7 @@ export interface AssetEntry {
   path: string
   tags: string[]
   defaultScale: number
+  collidable?: boolean
   primitive?: PrimitiveGeometry
 }
 
@@ -37,13 +43,25 @@ export interface ScatterConfig {
   seed: number
 }
 
-export type EditorTool = 'select' | 'place' | 'scatter'
+export type EditorTool = 'select' | 'place' | 'scatter' | 'height'
 export type GizmoMode = 'translate' | 'rotate' | 'scale'
+
+export interface HeightmapCell {
+  x: number
+  z: number
+  h: number
+}
+
+export interface TerrainHeightmap {
+  cellSize: number
+  cells: HeightmapCell[]
+}
 
 export interface MapdefJson {
   name: string
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number }
-  terrain: { seed: number; scale: number; amplitude: number }
+  terrain: { seed: number; scale: number; amplitude: number; waterLevel?: number }
+  heightmap?: TerrainHeightmap
   placements: MapdefPlacement[]
   editorState?: {
     cameraTarget: [number, number, number]

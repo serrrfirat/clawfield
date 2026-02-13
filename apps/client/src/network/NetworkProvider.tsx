@@ -2,7 +2,7 @@ import React, { createContext, useContext, useRef, useEffect } from 'react'
 import { NetworkClient } from './network-client'
 import { ColyseusNetworkClient } from './colyseus-network-client'
 import useStore from '../stores/useStore'
-import type { PlacementCollider } from '@clawfield/shared'
+import type { MatchConfig, PlacementCollider } from '@clawfield/shared'
 
 type TransportClient = {
   connect: () => void | Promise<void>
@@ -15,6 +15,7 @@ type TransportClient = {
   setLobbyMode?: (gameMode: 'tdm' | 'conquest' | 'incursion') => void
   setLobbyMap?: (mapName: string) => void
   setLobbySeed?: (seed: number) => void
+  setLobbyMatchConfig?: (matchConfig: MatchConfig) => void
   setLobbyPlacementColliders?: (colliders: PlacementCollider[]) => void
   returnToMenu?: () => void
   send: (msg: any) => void

@@ -7,6 +7,7 @@ import type { InputState } from '@clawfield/shared';
  * Mouse position → ground raycast → aimYaw toward cursor.
  */
 export class TopDownInputCapture {
+  private static GRENADE_HOLD_TOGGLE_MS = 350;
   private keys = new Set<string>();
 
   /** Left mouse button = shoot */
@@ -77,8 +78,22 @@ export class TopDownInputCapture {
       if (e.code === 'KeyR') this.reloadPressed = true;
       if (e.code === 'KeyG' && !e.repeat) this.gKeyDownTime = performance.now();
       if (e.code === 'KeyF' && !e.repeat) this.fKeyDownTime = performance.now();
-      if (e.code === 'Digit1' && !e.repeat) this.weaponSlot = 0;
-      if (e.code === 'Digit2' && !e.repeat) this.weaponSlot = 1;
+      if (e.code === 'Digit1' && !e.repeat) {
+        if (this._grenadeRadialMenuOpen) {
+          this.selectedGrenadeIndex = 0;
+          this._grenadeRadialMenuOpen = false;
+        } else {
+          this.weaponSlot = 0;
+        }
+      }
+      if (e.code === 'Digit2' && !e.repeat) {
+        if (this._grenadeRadialMenuOpen) {
+          this.selectedGrenadeIndex = 1;
+          this._grenadeRadialMenuOpen = false;
+        } else {
+          this.weaponSlot = 1;
+        }
+      }
       if (e.code === 'Digit3' && !e.repeat) this.weaponSlot = 2;
       if (e.code === 'Tab') {
         e.preventDefault();
@@ -114,9 +129,17 @@ export class TopDownInputCapture {
         const held = performance.now() - this.gKeyDownTime;
         if (this._grenadeRadialMenuOpen) {
           this._grenadeRadialMenuOpen = false;
+          if (held >= TopDownInputCapture.GRENADE_HOLD_TOGGLE_MS) {
+            this.selectedGrenadeIndex = this.selectedGrenadeIndex === 0 ? 1 : 0;
+          } else {
+            this.grenadePressed = true;
+          }
         } else if (held < 200) {
           this.grenadePressed = true;
+        } else if (held >= TopDownInputCapture.GRENADE_HOLD_TOGGLE_MS) {
+          this.selectedGrenadeIndex = this.selectedGrenadeIndex === 0 ? 1 : 0;
         }
+        this.gKeyDownTime = 0;
       }
     });
 

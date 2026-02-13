@@ -5,7 +5,8 @@ import { gsap } from 'gsap'
 import usePhases, { PHASES } from '../stores/usePhases'
 import useStore from '../stores/useStore'
 import type { MapdefJson } from '../editor/editor-types'
-import { buildPlacementColliders } from '@clawfield/shared'
+import { buildPlacementColliders, DEFAULT_HEIGHTMAP_CONFIG } from '@clawfield/shared'
+import type { MatchConfig } from '@clawfield/shared'
 import { useNetwork } from '../network/NetworkProvider'
 import './loader.css'
 
@@ -17,6 +18,7 @@ export default function Loader() {
     const phase = usePhases((s: any) => s.phase)
     const setPhase = usePhases((s: any) => s.setPhase)
     const setMapPlacements = useStore((s) => s.setMapPlacements)
+    const setMapTerrain = useStore((s: any) => s.setMapTerrain)
     const connected = useStore((s: any) => s.connected)
     const myId = useStore((s: any) => s.myId)
     const lobbyPlayers = useStore((s: any) => s.lobbyPlayers)
@@ -27,11 +29,16 @@ export default function Loader() {
     const lobbySeed = useStore((s: any) => s.lobbySeed)
     const gameMode = useStore((s: any) => s.gameMode)
     const mapPlacements = useStore((s: any) => s.mapPlacements)
+    const mapTerrain = useStore((s: any) => s.mapTerrain)
 
     const network = useNetwork()
     const [playerName, setPlayerName] = useState('Player')
     const [roomCodeInput, setRoomCodeInput] = useState('')
     const [seedInput, setSeedInput] = useState('1337')
+    const [loadedMapInfo, setLoadedMapInfo] = useState<null | { name: string; seed: number; placements: number; heightCells: number }>(null)
+
+    const inLobby = phase === PHASES.warmup && lobbyPhase === 'lobby' && lobbyRoomCode
+    const isHost = !!myId && myId === lobbyHostId
 
     const [displayed, setDisplayed] = useState(0)
 
@@ -114,7 +121,29 @@ export default function Loader() {
         }
     }
 
+    const buildLobbyMatchConfig = useCallback((terrainOverride?: any): MatchConfig | null => {
+        const src = terrainOverride ?? mapTerrain
+        if (!src) return null
+
+        return {
+            ...DEFAULT_HEIGHTMAP_CONFIG,
+            seed: Number.isFinite(src.seed) ? src.seed : (Number.isFinite(lobbySeed) ? lobbySeed : DEFAULT_HEIGHTMAP_CONFIG.seed),
+            terrain: {
+                scale: src.scale ?? DEFAULT_HEIGHTMAP_CONFIG.terrain.scale,
+                amplitude: src.amplitude ?? DEFAULT_HEIGHTMAP_CONFIG.terrain.amplitude,
+                waterLevel: src.waterLevel,
+            },
+            heightmap: src.heightmap,
+        }
+    }, [mapTerrain, lobbySeed])
+
     const handleStartGame = () => {
+        if (network?.setLobbyMatchConfig) {
+            const cfg = buildLobbyMatchConfig()
+            if (cfg) {
+                network.setLobbyMatchConfig(cfg)
+            }
+        }
         if (network?.setLobbyPlacementColliders) {
             const colliders = buildPlacementColliders(mapPlacements ?? [])
             network.setLobbyPlacementColliders(colliders)
@@ -149,16 +178,47 @@ export default function Loader() {
             try {
                 const text = await file.text()
                 const mapdef: MapdefJson = JSON.parse(text)
+                const placementCount = mapdef.placements?.length ?? 0
+                const heightCellCount = mapdef.heightmap?.cells?.length ?? 0
+
                 if (mapdef.placements?.length) {
                     setMapPlacements(mapdef.placements)
+                } else {
+                    setMapPlacements([])
                 }
-                setPhase(PHASES.start)
+                if (mapdef.terrain) {
+                    const terrainPayload = {
+                        seed: mapdef.terrain.seed,
+                        scale: mapdef.terrain.scale,
+                        amplitude: mapdef.terrain.amplitude,
+                        waterLevel: mapdef.terrain.waterLevel,
+                        heightmap: mapdef.heightmap,
+                    }
+                    setMapTerrain(terrainPayload)
+                    if (Number.isFinite(terrainPayload.seed)) {
+                        setSeedInput(String(terrainPayload.seed))
+                        network?.setLobbySeed?.(Math.floor(terrainPayload.seed))
+                    }
+
+                    if (inLobby && isHost && network?.setLobbyMatchConfig) {
+                        const cfg = buildLobbyMatchConfig(terrainPayload)
+                        if (cfg) {
+                            network.setLobbyMatchConfig(cfg)
+                        }
+                    }
+                }
+                setLoadedMapInfo({
+                    name: mapdef.name || file.name,
+                    seed: Number.isFinite(mapdef.terrain?.seed) ? mapdef.terrain!.seed : 1337,
+                    placements: placementCount,
+                    heightCells: heightCellCount,
+                })
             } catch (err) {
                 console.error('Failed to load mapdef:', err)
             }
         }
         input.click()
-    }, [phase, setMapPlacements, setPhase])
+    }, [phase, setMapPlacements, setMapTerrain, inLobby, isHost, network, buildLobbyMatchConfig])
 
     const handleOpenEditor = () => {
         window.location.href = window.location.pathname + '?mode=editor'
@@ -170,8 +230,6 @@ export default function Loader() {
 
     const showLoading = phase === PHASES.loading
     const showStart = phase === PHASES.warmup
-    const inLobby = showStart && lobbyPhase === 'lobby' && lobbyRoomCode
-    const isHost = !!myId && myId === lobbyHostId
 
     if (!showLoading && !showStart) return null
 
@@ -269,6 +327,11 @@ export default function Loader() {
                         )}
 
                         {lobbyError && <div className="loader-error">{lobbyError}</div>}
+                        {loadedMapInfo && (
+                            <div className="loader-lobby-meta">
+                                MAP {loadedMapInfo.name} | SEED {loadedMapInfo.seed} | P {loadedMapInfo.placements} | H {loadedMapInfo.heightCells}
+                            </div>
+                        )}
 
                         <div className="loader-divider" />
                         <button className="loader-btn" onClick={handleLoadMap}>

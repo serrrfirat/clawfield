@@ -29,23 +29,39 @@ interface SoldierModelProps {
 }
 
 function findRightHandBone(root: THREE.Object3D): THREE.Bone | null {
-  const preferredNames = ['mixamorigrighthand', 'righthand', 'hand_r', 'r_hand']
-  let fallback: THREE.Bone | null = null
-
+  const bones: THREE.Bone[] = []
   root.traverse((child) => {
-    if (!(child as THREE.Bone).isBone) return
-    const bone = child as THREE.Bone
-    const name = bone.name.toLowerCase()
-    if (preferredNames.some((token) => name.includes(token))) {
-      fallback = bone
-      return
-    }
-    if (!fallback && name.includes('hand') && name.includes('right')) {
-      fallback = bone
-    }
+    if ((child as THREE.Bone).isBone) bones.push(child as THREE.Bone)
   })
 
-  return fallback
+  if (bones.length === 0) return null
+
+  const byName = new Map<string, THREE.Bone>()
+  for (const bone of bones) byName.set(bone.name.toLowerCase(), bone)
+
+  const exactCandidates = ['mixamorigrighthand', 'righthand', 'hand_r', 'r_hand']
+  for (const candidate of exactCandidates) {
+    const hit = byName.get(candidate)
+    if (hit) return hit
+  }
+
+  const fingerTokens = ['thumb', 'index', 'middle', 'ring', 'pinky']
+  const handNoFinger = bones.find((bone) => {
+    const n = bone.name.toLowerCase()
+    return (n.includes('righthand') || (n.includes('right') && n.includes('hand'))) && !fingerTokens.some((t) => n.includes(t))
+  })
+  if (handNoFinger) return handNoFinger
+
+  const forearm = bones.find((bone) => {
+    const n = bone.name.toLowerCase()
+    return n.includes('rightforearm') || n.includes('forearm_r') || n.includes('r_forearm')
+  })
+  if (forearm) return forearm
+
+  return bones.find((bone) => {
+    const n = bone.name.toLowerCase()
+    return n.includes('right') && (n.includes('arm') || n.includes('hand'))
+  }) ?? null
 }
 
 function centerObject(root: THREE.Object3D): void {
@@ -54,6 +70,14 @@ function centerObject(root: THREE.Object3D): void {
   const center = new THREE.Vector3()
   box.getCenter(center)
   root.position.sub(center)
+}
+
+function countMeshes(root: THREE.Object3D): number {
+  let count = 0
+  root.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) count += 1
+  })
+  return count
 }
 
 const SoldierModel = forwardRef<SoldierModelHandle, SoldierModelProps>(
@@ -66,6 +90,7 @@ const SoldierModel = forwardRef<SoldierModelHandle, SoldierModelProps>(
     const groupRef = useRef<THREE.Group>(null!)
     const currentAnimRef = useRef<AnimState>(initialAnimState)
     const activeAnimRef = useRef<AnimState | null>(null)
+    const handBoneRef = useRef<THREE.Bone | null>(null)
     const weaponMountRef = useRef<THREE.Group | null>(null)
     const weaponObjectRef = useRef<THREE.Object3D | null>(null)
 
@@ -95,16 +120,15 @@ const SoldierModel = forwardRef<SoldierModelHandle, SoldierModelProps>(
 
     useEffect(() => {
       const handBone = findRightHandBone(cloned)
+      handBoneRef.current = handBone
       const mount = new THREE.Group()
       mount.name = 'weapon_mount'
-      if (handBone) {
-        handBone.add(mount)
-      } else {
-        cloned.add(mount)
-      }
+      cloned.add(mount)
+      if (!handBone) mount.position.set(0.2, 1.35, 0)
       weaponMountRef.current = mount
 
       return () => {
+        handBoneRef.current = null
         weaponObjectRef.current?.removeFromParent()
         weaponObjectRef.current = null
         mount.removeFromParent()
@@ -118,8 +142,23 @@ const SoldierModel = forwardRef<SoldierModelHandle, SoldierModelProps>(
 
       weaponObjectRef.current?.removeFromParent()
 
-      const weaponObject = SkeletonUtils.clone(weaponGLTF.scene) as THREE.Object3D
+      const weaponObject = weaponGLTF.scene.clone(true) as THREE.Object3D
+      if (countMeshes(weaponObject) === 0) {
+        const fallback = new THREE.Mesh(
+          new THREE.BoxGeometry(0.2, 0.05, 0.7),
+          new THREE.MeshStandardMaterial({ color: 0x88ccff }),
+        )
+        weaponObject.add(fallback)
+      }
       centerObject(weaponObject)
+      weaponObject.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh
+          mesh.frustumCulled = false
+          mesh.castShadow = true
+          mesh.receiveShadow = true
+        }
+      })
       weaponObject.scale.setScalar(activeWeaponVisual.scale)
       weaponObject.position.set(...activeWeaponVisual.position)
       weaponObject.rotation.set(...activeWeaponVisual.rotation)
@@ -202,6 +241,23 @@ const SoldierModel = forwardRef<SoldierModelHandle, SoldierModelProps>(
     // Poll for animation state changes every frame and crossfade
     useFrame(() => {
       ditherUniforms.uDitherCircleCenter.value.copy(useStore.getState().smoothedCircleCenter)
+
+      const mount = weaponMountRef.current
+      const hand = handBoneRef.current
+      if (mount && hand) {
+        const worldPos = new THREE.Vector3()
+        const worldQuat = new THREE.Quaternion()
+        const parentWorldQuat = new THREE.Quaternion()
+        const localQuat = new THREE.Quaternion()
+        hand.getWorldPosition(worldPos)
+        hand.getWorldQuaternion(worldQuat)
+        cloned.worldToLocal(worldPos)
+        cloned.getWorldQuaternion(parentWorldQuat)
+        localQuat.copy(parentWorldQuat).invert().multiply(worldQuat)
+        mount.position.copy(worldPos)
+        mount.quaternion.copy(localQuat)
+        mount.scale.set(1, 1, 1)
+      }
 
       const desired = currentAnimRef.current
       if (desired === activeAnimRef.current) return

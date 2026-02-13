@@ -24,8 +24,8 @@ export interface WeaponVisualDef {
 const DEFAULT_HAND_WEAPON: WeaponVisualDef = {
   type: 'assault_rifle',
   path: '/models/weapons/assault_rifle.glb',
-  scale: 0.138334,
-  position: [-1.076019, -0.039139, -0.09],
+  scale: 0.1,
+  position: [0.05, 0.01, -0.08],
   rotation: [0, -Math.PI * 0.5, 0],
 }
 
@@ -133,6 +133,12 @@ export const ALL_WEAPON_MODEL_PATHS = Array.from(
 export function getWeaponVisualForName(weaponName?: string): WeaponVisualDef {
   if (!weaponName) return DEFAULT_HAND_WEAPON
   const normalized = weaponName.trim().toLowerCase()
+  if (normalized === 'frag grenade' || normalized === 'frag_grenade') {
+    return FRAG_GRENADE_VISUAL
+  }
+  if (normalized === 'smoke grenade' || normalized === 'smoke_grenade') {
+    return SMOKE_GRENADE_VISUAL
+  }
   const id = WEAPON_NAME_TO_ID[normalized]
   if (!id) return DEFAULT_HAND_WEAPON
   return WEAPON_VISUALS_BY_ID[id] ?? DEFAULT_HAND_WEAPON

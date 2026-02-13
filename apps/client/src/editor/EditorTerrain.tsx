@@ -1,22 +1,42 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { sharedNoise2D } from '../world/utils/worldNoise'
+import { createSeededNoise2D } from '../world/utils/worldNoise'
 import useEditorStore from './useEditorStore'
+import { sampleHeightDelta } from './heightmap-utils'
 
 const CHUNK_SIZE = 10
 const SEGMENTS = 16
-const TERRAIN_SCALE = 0.05
-const TERRAIN_AMPLITUDE = 2
 const GRID_RADIUS = 2 // 5x5 grid
+const noiseBySeed = new Map<number, ReturnType<typeof createSeededNoise2D>>()
+
+function getNoise(seed: number) {
+  const existing = noiseBySeed.get(seed)
+  if (existing) return existing
+  const next = createSeededNoise2D(seed)
+  noiseBySeed.set(seed, next)
+  return next
+}
 
 /** Get terrain height at a world position (for placing objects) */
 export function getTerrainHeight(wx: number, wz: number): number {
-  return sharedNoise2D(wx * TERRAIN_SCALE, wz * TERRAIN_SCALE) * TERRAIN_AMPLITUDE
+  const s = useEditorStore.getState()
+  const noise = getNoise(s.terrainSeed)
+  const base = noise(wx * s.terrainScale, wz * s.terrainScale) * s.terrainAmplitude
+  const delta = sampleHeightDelta(wx, wz, s.heightCellSize, s.heightCells)
+  return base + delta
 }
 
 function EditorTerrainChunk({ cx, cz }: { cx: number; cz: number }) {
+  const terrainSeed = useEditorStore((s) => s.terrainSeed)
+  const terrainScale = useEditorStore((s) => s.terrainScale)
+  const terrainAmplitude = useEditorStore((s) => s.terrainAmplitude)
+  const heightCellSize = useEditorStore((s) => s.heightCellSize)
+  const heightCells = useEditorStore((s) => s.heightCells)
+  const heightRevision = useEditorStore((s) => s.heightRevision)
+
   const geometry = useMemo(() => {
+    const noise2D = getNoise(terrainSeed)
     const geo = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE, SEGMENTS, SEGMENTS)
     const posAttr = geo.attributes.position
     const worldX0 = cx * CHUNK_SIZE
@@ -25,11 +45,13 @@ function EditorTerrainChunk({ cx, cz }: { cx: number; cz: number }) {
     for (let i = 0; i < posAttr.count; i++) {
       const wx = posAttr.getX(i) + worldX0
       const wz = -posAttr.getY(i) + worldZ0
-      posAttr.setZ(i, sharedNoise2D(wx * TERRAIN_SCALE, wz * TERRAIN_SCALE) * TERRAIN_AMPLITUDE)
+      const base = noise2D(wx * terrainScale, wz * terrainScale) * terrainAmplitude
+      const delta = sampleHeightDelta(wx, wz, heightCellSize, heightCells)
+      posAttr.setZ(i, base + delta)
     }
     geo.computeVertexNormals()
     return geo
-  }, [cx, cz])
+  }, [cx, cz, terrainSeed, terrainScale, terrainAmplitude, heightCellSize, heightCells, heightRevision])
 
   useEffect(() => () => geometry.dispose(), [geometry])
 

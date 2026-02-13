@@ -27,6 +27,7 @@ export default function TerrainChunk({
     worldSeed = 1337,
     terrainScaleOverride,
     terrainAmplitudeOverride,
+    heightDeltaSampler,
 }) {
     const terrainParameters = useStore((s) => s.terrainParameters)
     const stoneParameters = useStore((s) => s.stoneParameters)
@@ -53,10 +54,12 @@ export default function TerrainChunk({
         for (let i = 0; i < posAttribute.count; i++) {
             const worldX = posAttribute.getX(i) + chunkWorldX
             const worldZ = -posAttribute.getY(i) + chunkWorldZ
-            posAttribute.setZ(i, noise2D(worldX * terrainScale, worldZ * terrainScale) * terrainAmplitude)
+            const base = noise2D(worldX * terrainScale, worldZ * terrainScale) * terrainAmplitude
+            const delta = heightDeltaSampler ? heightDeltaSampler(worldX, worldZ) : 0
+            posAttribute.setZ(i, base + delta)
         }
         return geo
-    }, [noise2D, size, x, z, terrainScale, terrainAmplitude, terrainSegments])
+    }, [noise2D, size, x, z, terrainScale, terrainAmplitude, terrainSegments, heightDeltaSampler])
 
     useEffect(() => () => geometry.dispose(), [geometry])
 
@@ -77,7 +80,6 @@ export default function TerrainChunk({
                 chunkIndexX={x}
                 chunkIndexZ={z}
                 noise2D={noise2D}
-                noiseTexture={noiseTexture}
                 scale={terrainScale}
                 amplitude={terrainAmplitude}
                 stones={stoneField.stones}

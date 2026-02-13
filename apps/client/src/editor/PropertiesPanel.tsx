@@ -1,13 +1,16 @@
 import { useCallback } from 'react'
 import useEditorStore from './useEditorStore'
+import { getDefaultCollidableForAsset, getPlacementCollidable } from './collision-defaults'
 
 export default function PropertiesPanel() {
   const selectedId = useEditorStore((s) => s.selectedPlacementId)
   const placements = useEditorStore((s) => s.placements)
   const updatePlacement = useEditorStore((s) => s.updatePlacement)
   const removePlacement = useEditorStore((s) => s.removePlacement)
+  const assets = useEditorStore((s) => s.assets)
 
   const placement = placements.find((p) => p.id === selectedId)
+  const asset = assets.find((a) => a.id === placement?.assetId)
 
   if (!placement) {
     return (
@@ -24,6 +27,25 @@ export default function PropertiesPanel() {
       <div style={sectionStyle}>
         <label style={labelStyle}>Asset</label>
         <div style={valueStyle}>{placement.assetId}</div>
+      </div>
+      <div style={sectionStyle}>
+        <label style={labelStyle}>Collision</label>
+        <label style={checkRowStyle}>
+          <input
+            type="checkbox"
+            checked={getPlacementCollidable(placement, asset)}
+            onChange={(e) => {
+              updatePlacement(placement.id, {
+                metadata: {
+                  ...(placement.metadata ?? {}),
+                  collidable: e.target.checked,
+                },
+              })
+            }}
+          />
+          <span style={valueStyle}>Collidable</span>
+        </label>
+        <div style={hintStyle}>Default: {getDefaultCollidableForAsset(asset) ? 'on' : 'off'}</div>
       </div>
       <Vec3Input
         label="Position"
@@ -200,4 +222,16 @@ const deleteBtn: React.CSSProperties = {
   fontSize: 12,
   cursor: 'pointer',
   width: '100%',
+}
+
+const checkRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+}
+
+const hintStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: '#777',
+  marginTop: 4,
 }

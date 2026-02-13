@@ -3,6 +3,15 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import * as THREE from 'three'
 import type { CollisionDisc, GameMode, PlacementCollider, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, ExplosionEvent, SmokeDeployEvent, MatchConfig, Vec3, LobbyPlayer, ServerPhase } from '@clawfield/shared'
 import type { MapdefPlacement } from '../editor/editor-types'
+import type { TerrainHeightmap } from '../editor/editor-types'
+
+type LocalMapTerrain = {
+    seed: number
+    scale: number
+    amplitude: number
+    waterLevel?: number
+    heightmap?: TerrainHeightmap
+}
 
 const THEMES = {
     dark: {
@@ -220,6 +229,8 @@ const createStore = () =>
             // ── Map Placements (loaded from .mapdef.json) ────────
             mapPlacements: [] as MapdefPlacement[],
             setMapPlacements: (p: MapdefPlacement[]) => set({ mapPlacements: p }),
+            mapTerrain: null as LocalMapTerrain | null,
+            setMapTerrain: (terrain: LocalMapTerrain | null) => set({ mapTerrain: terrain }),
 
             // ── Game State ─────────────────────────────────────────
             connected: false,

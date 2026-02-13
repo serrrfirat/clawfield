@@ -52,3 +52,13 @@ For BFS flood fill on voxel grids, NEVER use `Set<string>` with keys like `"x,y,
 
 ### Kill old server before testing protocol changes
 The game server (`tsx --watch`) may not always restart cleanly. If new message types are added (e.g. `create_room`), an old server silently ignores unknown messages — nothing crashes, nothing errors, the client just gets no response. Always check `lsof -ti :3000` and kill stale processes before testing.
+
+## UX / Feature Rollout
+
+### Experimental rendering features should default to off until gameplay-validated
+When introducing a new visual stack (e.g. third-party smoke renderer), do not make it the default runtime path on first integration. Gate it behind an explicit opt-in flag and keep a known-good baseline active by default. This prevents shipping visually unstable effects that block gameplay readability and avoids immediate user rollback requests.
+
+## Networking / Authority
+
+### All collision logic must be server-authoritative
+Any collision-related feature (player collision, projectile collision, grenade collision, map/placement collision, visibility blockers tied to collision, etc.) must be implemented and resolved on the server as the source of truth. Client-side collision may be used only for local prediction/visual smoothness and must never be treated as authoritative gameplay outcome.

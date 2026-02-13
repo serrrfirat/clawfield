@@ -1,5 +1,5 @@
 import { Room, type Client as ColyseusClient } from 'colyseus';
-import { Team, type ClientMessage, type GameMode, type LobbyPlayer, type PlacementCollider, type PlayerState, type ServerPhase } from '@clawfield/shared';
+import { Team, type ClientMessage, type GameMode, type LobbyPlayer, type MatchConfig, type PlacementCollider, type PlayerState, type ServerPhase } from '@clawfield/shared';
 import { TICK_INTERVAL } from '@clawfield/shared';
 import { GameLoop, type LobbyPlayerInfo } from '../game-loop.js';
 import { ColyseusNetworkAdapter } from './ColyseusNetworkAdapter.js';
@@ -42,6 +42,7 @@ export class BattleRoom extends Room<GameState> {
   private selectedMap = 'heightmap';
   private matchSeed = 1337;
   private placementColliders: PlacementCollider[] = [];
+  private customMatchConfig: MatchConfig | null = null;
   private readonly availableMaps: { id: string; name: string }[] = [];
   private autoMode = false;
   private readonly useSchemaStateSync = process.env.CLAWFIELD_USE_SCHEMA_SYNC === '1';
@@ -161,6 +162,10 @@ export class BattleRoom extends Room<GameState> {
       }
       case 'lobby_set_seed': {
         this.handleLobbySetSeed(serverClient.id, msg.seed);
+        return;
+      }
+      case 'lobby_set_match_config': {
+        this.handleLobbySetMatchConfig(serverClient.id, msg.matchConfig);
         return;
       }
       case 'lobby_set_placement_colliders': {
@@ -365,6 +370,35 @@ export class BattleRoom extends Room<GameState> {
     this.updateMetadata();
   }
 
+  private handleLobbySetMatchConfig(clientId: string, matchConfig: MatchConfig): void {
+    if (this.autoMode || this.phase !== 'lobby') return;
+    if (clientId !== this.hostId) return;
+    if (!matchConfig || !Number.isFinite(matchConfig.seed)) return;
+
+    const safeHeightmap = matchConfig.heightmap
+      ? {
+          cellSize: Number.isFinite(matchConfig.heightmap.cellSize) ? Math.max(0.25, matchConfig.heightmap.cellSize) : 1,
+          cells: (matchConfig.heightmap.cells ?? [])
+            .filter((c) => Number.isFinite(c.x) && Number.isFinite(c.z) && Number.isFinite(c.h))
+            .slice(0, 25000),
+        }
+      : undefined;
+
+    this.customMatchConfig = {
+      ...matchConfig,
+      terrain: {
+        scale: Number.isFinite(matchConfig.terrain?.scale) ? matchConfig.terrain.scale : 0.05,
+        amplitude: Number.isFinite(matchConfig.terrain?.amplitude) ? matchConfig.terrain.amplitude : 2,
+        waterLevel: Number.isFinite(matchConfig.terrain?.waterLevel as number) ? matchConfig.terrain.waterLevel : undefined,
+      },
+      heightmap: safeHeightmap,
+    };
+
+    this.matchSeed = this.customMatchConfig.seed;
+    this.broadcastLobbyState();
+    this.updateMetadata();
+  }
+
   private handleLobbySetPlacementColliders(clientId: string, colliders: PlacementCollider[]): void {
     if (this.autoMode || this.phase !== 'lobby') return;
     if (clientId !== this.hostId) return;
@@ -399,6 +433,7 @@ export class BattleRoom extends Room<GameState> {
       this.selectedMap,
       this.matchSeed,
       this.placementColliders,
+      this.customMatchConfig ?? undefined,
     );
 
     this.wireStateSync();
@@ -506,6 +541,7 @@ export class BattleRoom extends Room<GameState> {
         undefined,
         undefined,
         this.placementColliders,
+        this.customMatchConfig ?? undefined,
       );
 
       this.wireStateSync();

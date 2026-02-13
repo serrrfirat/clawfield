@@ -2,6 +2,7 @@ import { useState } from 'react'
 import useEditorStore from './useEditorStore'
 import type { ScatterConfig } from './editor-types'
 import { generateScatter } from './scatter-engine'
+import { getDefaultCollidableForAsset } from './collision-defaults'
 
 const defaultConfig: ScatterConfig = {
   assetId: '',
@@ -90,7 +91,16 @@ export default function ScatterPanel() {
   const handleCommit = () => {
     const c = { ...config, assetIds: selectedIds }
     const result = generateScatter(c, cameraTarget)
-    for (const p of result) addPlacement(p)
+    for (const p of result) {
+      const asset = assets.find((a) => a.id === p.assetId)
+      addPlacement({
+        ...p,
+        metadata: {
+          ...(p.metadata ?? {}),
+          collidable: getDefaultCollidableForAsset(asset),
+        },
+      })
+    }
     setPreviewCount(0)
   }
 

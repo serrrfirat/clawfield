@@ -9,6 +9,14 @@ export default function ToolBar() {
   const dirty = useEditorStore((s) => s.dirty)
   const setActiveTool = useEditorStore((s) => s.setActiveTool)
   const setGizmoMode = useEditorStore((s) => s.setGizmoMode)
+  const waterLevel = useEditorStore((s) => s.waterLevel)
+  const setWaterLevel = useEditorStore((s) => s.setWaterLevel)
+  const heightBrushRadius = useEditorStore((s) => s.heightBrushRadius)
+  const setHeightBrushRadius = useEditorStore((s) => s.setHeightBrushRadius)
+  const heightBrushStrength = useEditorStore((s) => s.heightBrushStrength)
+  const setHeightBrushStrength = useEditorStore((s) => s.setHeightBrushStrength)
+  const heightBrushMode = useEditorStore((s) => s.heightBrushMode)
+  const setHeightBrushMode = useEditorStore((s) => s.setHeightBrushMode)
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -21,6 +29,9 @@ export default function ToolBar() {
           break
         case 'KeyB':
           setActiveTool('place')
+          break
+        case 'KeyH':
+          setActiveTool('height')
           break
         case 'KeyW':
           if (activeTool === 'select') setGizmoMode('translate')
@@ -67,6 +78,7 @@ export default function ToolBar() {
       <div style={divider} />
       <ToolButton label="Select (V)" active={activeTool === 'select'} onClick={() => setActiveTool('select')} />
       <ToolButton label="Place (B)" active={activeTool === 'place'} onClick={() => setActiveTool('place')} />
+      <ToolButton label="Height (H)" active={activeTool === 'height'} onClick={() => setActiveTool('height')} />
       <ToolButton label="Scatter" active={activeTool === 'scatter'} onClick={() => setActiveTool('scatter')} />
       <div style={divider} />
       {activeTool === 'select' && (
@@ -76,6 +88,48 @@ export default function ToolBar() {
           <ToolButton label="Scale (R)" active={gizmoMode === 'scale'} onClick={() => setGizmoMode('scale')} />
         </>
       )}
+      {activeTool === 'height' && (
+        <>
+          <label style={controlLabel}>Mode</label>
+          <select
+            value={heightBrushMode}
+            onChange={(e) => setHeightBrushMode(e.target.value as any)}
+            style={selectStyle}
+          >
+            <option value="raise">Raise</option>
+            <option value="lower">Lower</option>
+            <option value="flatten">Flatten</option>
+          </select>
+          <label style={controlLabel}>Radius</label>
+          <input
+            type="range"
+            min={0.5}
+            max={8}
+            step={0.25}
+            value={heightBrushRadius}
+            onChange={(e) => setHeightBrushRadius(Number(e.target.value))}
+          />
+          <label style={controlLabel}>Strength</label>
+          <input
+            type="range"
+            min={0.02}
+            max={0.8}
+            step={0.02}
+            value={heightBrushStrength}
+            onChange={(e) => setHeightBrushStrength(Number(e.target.value))}
+          />
+        </>
+      )}
+      <div style={divider} />
+      <label style={controlLabel}>Water</label>
+      <input
+        type="range"
+        min={-4}
+        max={4}
+        step={0.05}
+        value={waterLevel}
+        onChange={(e) => setWaterLevel(Number(e.target.value))}
+      />
     </div>
   )
 }
@@ -125,4 +179,18 @@ const btnStyle: React.CSSProperties = {
   fontSize: 12,
   cursor: 'pointer',
   fontFamily: 'inherit',
+}
+
+const controlLabel: React.CSSProperties = {
+  fontSize: 11,
+  color: '#bbb',
+}
+
+const selectStyle: React.CSSProperties = {
+  background: '#2a2a3e',
+  color: '#ddd',
+  border: '1px solid #3e3e5a',
+  borderRadius: 4,
+  fontSize: 12,
+  padding: '2px 6px',
 }

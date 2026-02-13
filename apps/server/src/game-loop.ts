@@ -191,6 +191,8 @@ export class GameLoop {
   private mapOverride: string | undefined;
   /** Optional match seed override from lobby */
   private matchSeedOverride: number | undefined;
+  /** Optional full match config override from lobby */
+  private customMatchConfig: MatchConfig | undefined;
 
   // --- Heightmap mode (for terrain-only maps without voxel chunks) ---
   heightmapMode = false;
@@ -221,7 +223,8 @@ export class GameLoop {
     onGameOver: (winner: number) => void,
     mapOverride?: string,
     matchSeedOverride?: number,
-    placementColliders?: PlacementCollider[]
+    placementColliders?: PlacementCollider[],
+    customMatchConfig?: MatchConfig,
   ) {
     this.network = network;
     this.gameMode = gameMode;
@@ -229,6 +232,7 @@ export class GameLoop {
     this.mapOverride = mapOverride;
     this.matchSeedOverride = matchSeedOverride;
     this.placementColliders = placementColliders ?? [];
+    this.customMatchConfig = customMatchConfig;
 
     // Try to load the configured binary map; fall back to test map
     this.loadMap();
@@ -400,16 +404,35 @@ export class GameLoop {
 
   /** Activate heightmap mode using the default match config */
   private activateHeightmapMode(): void {
-    const cfg: MatchConfig = {
-      ...DEFAULT_HEIGHTMAP_CONFIG,
-      seed: this.matchSeedOverride ?? DEFAULT_HEIGHTMAP_CONFIG.seed,
-    };
+    const cfg: MatchConfig = this.customMatchConfig
+      ? {
+          ...DEFAULT_HEIGHTMAP_CONFIG,
+          ...this.customMatchConfig,
+          terrain: {
+            ...DEFAULT_HEIGHTMAP_CONFIG.terrain,
+            ...this.customMatchConfig.terrain,
+          },
+          bounds: {
+            ...DEFAULT_HEIGHTMAP_CONFIG.bounds,
+            ...this.customMatchConfig.bounds,
+          },
+          spawns: {
+            alpha: this.customMatchConfig.spawns?.alpha?.length ? this.customMatchConfig.spawns.alpha : DEFAULT_HEIGHTMAP_CONFIG.spawns.alpha,
+            bravo: this.customMatchConfig.spawns?.bravo?.length ? this.customMatchConfig.spawns.bravo : DEFAULT_HEIGHTMAP_CONFIG.spawns.bravo,
+          },
+          seed: this.customMatchConfig.seed ?? this.matchSeedOverride ?? DEFAULT_HEIGHTMAP_CONFIG.seed,
+        }
+      : {
+          ...DEFAULT_HEIGHTMAP_CONFIG,
+          seed: this.matchSeedOverride ?? DEFAULT_HEIGHTMAP_CONFIG.seed,
+        };
     this.matchConfig = cfg;
     this.heightmapMode = true;
     this.terrainHeightGetter = createTerrainHeight(
       cfg.terrain.scale,
       cfg.terrain.amplitude,
       cfg.seed,
+      cfg.heightmap,
     );
     this.heightmapObstacles = [
       ...buildHeightmapObstacleDiscs(cfg),
@@ -1461,7 +1484,8 @@ export class GameLoop {
     // Advance smoke grenades and process smoke deployments
     const smokeDeploys = this.smokeGrenadeManager.update(
       TICK_INTERVAL / 1000,
-      voxelGetter
+      voxelGetter,
+      this.heightmapMode ? this.heightmapObstacles : []
     );
     for (const deploy of smokeDeploys) {
       this.network.broadcast({

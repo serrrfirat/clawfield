@@ -11,11 +11,15 @@ export interface Vec3 {
 /** Match configuration shared between server and client (heightmap mode) */
 export interface MatchConfig {
   seed: number;
-  terrain: { scale: number; amplitude: number };
+  terrain: { scale: number; amplitude: number; waterLevel?: number };
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
   spawns: {
     alpha: Vec3[];
     bravo: Vec3[];
+  };
+  heightmap?: {
+    cellSize: number;
+    cells: { x: number; z: number; h: number }[];
   };
 }
 
@@ -310,6 +314,7 @@ export type ClientMessage =
   | { type: 'lobby_set_mode'; gameMode: GameMode }
   | { type: 'lobby_set_map'; mapName: string }
   | { type: 'lobby_set_seed'; seed: number }
+  | { type: 'lobby_set_match_config'; matchConfig: MatchConfig }
   | { type: 'lobby_set_placement_colliders'; colliders: PlacementCollider[] }
   | { type: 'start_game' }
   | { type: 'return_to_menu' };

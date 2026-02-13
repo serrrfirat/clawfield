@@ -1,5 +1,5 @@
 import { Client as ColyseusClient, Room } from 'colyseus.js'
-import type { ClientMessage, GameMode, PlacementCollider, ServerMessage, PlayerState } from '@clawfield/shared'
+import type { ClientMessage, GameMode, MatchConfig, PlacementCollider, ServerMessage, PlayerState } from '@clawfield/shared'
 import { SERVER_PORT } from '@clawfield/shared'
 import type { MessageHandler } from './network-client'
 
@@ -157,6 +157,10 @@ export class ColyseusNetworkClient {
 
   setLobbySeed(seed: number): void {
     this.send({ type: 'lobby_set_seed', seed })
+  }
+
+  setLobbyMatchConfig(matchConfig: MatchConfig): void {
+    this.send({ type: 'lobby_set_match_config', matchConfig })
   }
 
   setLobbyPlacementColliders(colliders: PlacementCollider[]): void {

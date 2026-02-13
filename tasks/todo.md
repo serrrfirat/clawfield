@@ -39,6 +39,30 @@ Verification:
 - Adapted elements: top-left mission banner, bottom-left weapon/ammo cluster, bottom-center objective lane bar with notches, right-side objective count.
 - Intentional differences: kept Bebas Neue + Clawfield neutral green accent, used store-driven objective progress, and simplified icons to avoid adding external art assets.
 
+## Active Task: Grenade polish + smoke rollback
+
+### Checklist
+- [x] Disable unstable smoke renderer runtime path (remove react-smoke hookup).
+- [x] Improve grenade throw arc so smoke grenade does not drop immediately.
+- [x] Show grenade model in hand while selecting/throwing throwable.
+- [x] Research replacement explosion/smoke VFX libraries and asset sources.
+
+### Review
+- Smoke visuals were rolled back to baseline (no deployed smoke cloud renderer) to restore gameplay readability.
+- Throwables now use clamped target distance and a minimum arc pitch; smoke uses a higher minimum lob.
+- Grenade hand model is visible during grenade selection and briefly during throw commit.
+
+## Active Task: Server-authoritative smoke grenade collision
+
+### Checklist
+- [x] Add obstacle-disc collision handling inside server smoke grenade simulation.
+- [x] Wire game loop to pass authoritative obstacle discs to smoke grenade manager in heightmap mode.
+- [x] Keep client as visual-only (no authoritative collision decisions).
+- [x] Verify touched server/client files compile for the changed signatures.
+
+### Review
+- [x] Smoke grenades bounce against server obstacle discs (placements + terrain-derived blockers).
+
 ## Completed: BattleBit-Style Visual Enhancement (5 Phases)
 - [x] Phase 1: Per-Vertex Ambient Occlusion (mesher.ts, chunk-mesh.ts, world-renderer.ts, viewer.ts, voxel-object-renderer.ts)
 - [x] Phase 2: Hi-Res Texture Atlas — 16→32px tiles, LinearFilter + mipmaps (texture-atlas.ts, build-atlas.ts)

@@ -4,11 +4,25 @@ export interface PlacementLike {
   componentId: string;
   position: [number, number, number];
   scale: [number, number, number];
+  metadata?: {
+    collidable?: boolean;
+    [key: string]: unknown;
+  };
 }
 
 function inferBaseRadius(componentId: string): number {
   const id = componentId.toLowerCase();
-  if (id.includes('flower') || id.includes('grass') || id.includes('fern') || id.includes('bush')) return 0;
+  if (
+    id.includes('flower') ||
+    id.includes('grass') ||
+    id.includes('fern') ||
+    id.includes('bush') ||
+    id.includes('plant') ||
+    id.includes('mushroom') ||
+    id.includes('lavender') ||
+    id.includes('sunflower') ||
+    id.includes('pebble')
+  ) return 0;
   if (id.includes('tree') || id.includes('pine') || id.includes('birch') || id.includes('maple')) return 0.9;
   if (id.includes('rock') || id.includes('stone') || id.includes('boulder')) return 0.8;
   if (id.includes('building') || id.includes('house') || id.includes('wall')) return 1.2;
@@ -20,7 +34,11 @@ export function buildPlacementColliders(placements: PlacementLike[]): PlacementC
 
   for (let i = 0; i < placements.length; i++) {
     const p = placements[i];
-    const base = inferBaseRadius(p.componentId);
+    const explicit = p.metadata?.collidable;
+    if (explicit === false) continue;
+
+    const inferred = inferBaseRadius(p.componentId);
+    const base = inferred > 0 ? inferred : explicit === true ? 0.7 : 0;
     if (base <= 0) continue;
 
     const sx = Math.abs(p.scale?.[0] ?? 1);

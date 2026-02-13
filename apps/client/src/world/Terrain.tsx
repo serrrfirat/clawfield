@@ -15,6 +15,7 @@ import useWindMaterial from '../materials/WindMaterial'
 import useStore from '../stores/useStore'
 import usePhases, { PHASES } from '../stores/usePhases'
 import { DEFAULT_HEIGHTMAP_CONFIG } from '@clawfield/shared'
+import { sampleHeightDelta } from '../editor/heightmap-utils'
 
 import noiseTextureUrl from '../assets/textures/noiseTexture.png'
 import alphaLeavesUrl from '../assets/textures/alpha_leaves.png'
@@ -33,17 +34,18 @@ interface TerrainProps {
 export default function Terrain({ uniformsRef }: TerrainProps) {
     const [activeChunks, setActiveChunks] = useState([])
 
-    const currentChunk = useRef({ x: 0, z: 0 })
+    const currentChunk = useRef({ x: 0, z: 0, size: 0 })
     const radiusAnimationRef = useRef(null)
     const prevPhaseRef = useRef(PHASES.loading)
     const circleRadiusRef = useRef(START_CIRCLE_RADIUS)
 
-    const phase = usePhases((s) => s.phase)
+    const phase = usePhases((s: any) => s.phase)
 
     const chunkSize = useStore((s) => s.terrainParameters.chunkSize)
     const terrainScale = useStore((s) => s.terrainParameters.scale)
     const terrainAmplitude = useStore((s) => s.terrainParameters.amplitude)
     const matchConfig = useStore((s: any) => s.matchConfig)
+    const mapTerrain = useStore((s: any) => s.mapTerrain)
     const borderCircleRadius = useStore((s) => s.borderParameters.circleRadiusFactor)
     const windParameters = useStore((s) => s.windParameters)
     const windLineParameters = useStore((s) => s.windLineParameters)
@@ -55,23 +57,30 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
     const windEnabled = useStore((s) => s.generalParameters.wind)
     const obstacleCollisionsEnabled = false
 
-    const worldSeed = matchConfig?.seed ?? DEFAULT_HEIGHTMAP_CONFIG.seed
-    const effectiveTerrainScale = matchConfig?.terrain?.scale ?? terrainScale
-    const effectiveTerrainAmplitude = matchConfig?.terrain?.amplitude ?? terrainAmplitude
+    const worldSeed = matchConfig?.seed ?? mapTerrain?.seed ?? DEFAULT_HEIGHTMAP_CONFIG.seed
+    const effectiveTerrainScale = matchConfig?.terrain?.scale ?? mapTerrain?.scale ?? terrainScale
+    const effectiveTerrainAmplitude = matchConfig?.terrain?.amplitude ?? mapTerrain?.amplitude ?? terrainAmplitude
+    const heightmap = mapTerrain?.heightmap
+
+    const heightDeltaSampler = useMemo(() => {
+        if (!heightmap?.cells?.length) return undefined
+        const byKey: Record<string, number> = {}
+        for (const c of heightmap.cells) {
+            byKey[`${c.x},${c.z}`] = c.h
+        }
+        return (wx: number, wz: number) => sampleHeightDelta(wx, wz, heightmap.cellSize, byKey)
+    }, [heightmap])
     const noise2D = useMemo(() => createSeededNoise2D(worldSeed), [worldSeed])
 
     // Textures
-    const noiseTexture = useTexture(
-        noiseTextureUrl,
-        (texture) => {
-            texture.wrapS = THREE.RepeatWrapping
-            texture.wrapT = THREE.RepeatWrapping
-            texture.minFilter = THREE.LinearFilter
-            texture.magFilter = THREE.LinearFilter
-            return texture
-        },
-        [noiseTextureUrl]
-    )
+    const noiseTexture = useTexture(noiseTextureUrl)
+    useEffect(() => {
+        noiseTexture.wrapS = THREE.RepeatWrapping
+        noiseTexture.wrapT = THREE.RepeatWrapping
+        noiseTexture.minFilter = THREE.LinearFilter
+        noiseTexture.magFilter = THREE.LinearFilter
+        noiseTexture.needsUpdate = true
+    }, [noiseTexture])
     const alphaMap = useTexture(alphaLeavesUrl)
 
     const terrainMaterial = useTerrainMaterial({
@@ -267,6 +276,7 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
                     worldSeed={worldSeed}
                     terrainScaleOverride={effectiveTerrainScale}
                     terrainAmplitudeOverride={effectiveTerrainAmplitude}
+                    heightDeltaSampler={heightDeltaSampler}
                 />
             ))}
             {treesEnabled && (
@@ -289,8 +299,8 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
                             chunkSize={chunkSize}
                             noise2D={noise2D}
                             stoneParameters={stoneParameters}
-                            terrainScale={terrainScale}
-                            terrainAmplitude={terrainAmplitude}
+                            terrainScale={effectiveTerrainScale}
+                            terrainAmplitude={effectiveTerrainAmplitude}
                             treeMaterialUniforms={treeMaterial.uniforms}
                             noiseTexture={noiseTexture}
                         />

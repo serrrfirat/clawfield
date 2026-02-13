@@ -106,6 +106,42 @@
         display: flex; align-items: center; gap: 4px; white-space: nowrap;
       }
       #load-input { display: none; }
+      #weapon-fit-panel {
+        padding: 8px 12px;
+        border-top: 1px solid #333;
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+      }
+      #weapon-fit-panel.visible { display: flex; }
+      .fit-row { display: flex; gap: 6px; align-items: center; }
+      .fit-row label { font-size: 11px; color: #aaa; min-width: 48px; }
+      .fit-row input {
+        width: 64px;
+        background: #2a2a44;
+        color: #e0e0e0;
+        border: 1px solid #555;
+        border-radius: 3px;
+        padding: 2px 4px;
+        font-family: monospace;
+        font-size: 11px;
+      }
+      #fit-controls {
+        display: flex;
+        gap: 6px;
+      }
+      #fit-controls button {
+        flex: 1;
+        background: #3a3a5c;
+        border: 1px solid #555;
+        color: #e0e0e0;
+        padding: 6px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: monospace;
+        font-size: 11px;
+      }
+      #fit-controls button:hover { background: #4a4a7c; }
     </style>
   </head>
   <body>
@@ -178,6 +214,25 @@
           <input type="checkbox" id="overwrite-cb" /> Overwrite
         </label>
         <button id="export-glb-btn">Export GLB</button>
+      </div>
+      <div id="weapon-fit-panel">
+        <div class="fit-row"><label>Pos</label>
+          <input id="fit-pos-x" type="number" step="0.001" />
+          <input id="fit-pos-y" type="number" step="0.001" />
+          <input id="fit-pos-z" type="number" step="0.001" />
+        </div>
+        <div class="fit-row"><label>Rot</label>
+          <input id="fit-rot-x" type="number" step="0.001" />
+          <input id="fit-rot-y" type="number" step="0.001" />
+          <input id="fit-rot-z" type="number" step="0.001" />
+        </div>
+        <div class="fit-row"><label>Scale</label>
+          <input id="fit-scale" type="number" step="0.001" />
+        </div>
+        <div id="fit-controls">
+          <button id="fit-load-soldier-btn">Load Soldier Ref</button>
+          <button id="fit-copy-snippet-btn">Copy Snippet</button>
+        </div>
       </div>
     </div>
     <div id="drop-overlay">Drop .vox, .map, .glb, or .vobj.json file here</div>

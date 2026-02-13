@@ -8,6 +8,7 @@ import PlacedObjectsLayer from './PlacedObjectsLayer'
 import PlacementGhost from './PlacementGhost'
 import useEditorStore from './useEditorStore'
 import { downloadMapdef, loadMapdef } from './mapdef-adapter'
+import { getDefaultCollidableForAsset } from './collision-defaults'
 
 const _raycaster = new THREE.Raycaster()
 const _mouse = new THREE.Vector2()
@@ -16,6 +17,7 @@ const _hitPoint = new THREE.Vector3()
 
 export default function EditorExperience() {
   const { camera, gl, scene } = useThree()
+  const isPaintingRef = useRef(false)
 
   // Track mouse position for ghost placement
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function EditorExperience() {
 
     const onPointerMove = (e: PointerEvent) => {
       const store = useEditorStore.getState()
-      if (store.activeTool !== 'place') return
+      if (store.activeTool !== 'place' && store.activeTool !== 'height') return
 
       const rect = canvas.getBoundingClientRect()
       _mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
@@ -43,15 +45,34 @@ export default function EditorExperience() {
       const hits = _raycaster.intersectObjects(terrainMeshes, false)
       if (hits.length > 0) {
         const p = hits[0].point
-        store.setGhostPosition([p.x, p.y, p.z])
+        if (store.activeTool === 'place') {
+          store.setGhostPosition([p.x, p.y, p.z])
+        } else if (store.activeTool === 'height' && isPaintingRef.current) {
+          store.applyHeightBrushAt(p.x, p.z)
+        }
       } else {
         // Fallback: intersect ground plane
         const hit = _raycaster.ray.intersectPlane(_groundPlane, _hitPoint)
         if (hit) {
           const y = getTerrainHeight(_hitPoint.x, _hitPoint.z)
-          store.setGhostPosition([_hitPoint.x, y, _hitPoint.z])
+          if (store.activeTool === 'place') {
+            store.setGhostPosition([_hitPoint.x, y, _hitPoint.z])
+          } else if (store.activeTool === 'height' && isPaintingRef.current) {
+            store.applyHeightBrushAt(_hitPoint.x, _hitPoint.z)
+          }
         }
       }
+    }
+
+    const onPointerDown = () => {
+      const store = useEditorStore.getState()
+      if (store.activeTool === 'height') {
+        isPaintingRef.current = true
+      }
+    }
+
+    const onPointerUp = () => {
+      isPaintingRef.current = false
     }
 
     const onClick = (e: MouseEvent) => {
@@ -62,6 +83,7 @@ export default function EditorExperience() {
         if (!asset) return
 
         const s = asset.defaultScale
+        const collidable = getDefaultCollidableForAsset(asset)
         store.addPlacement({
           id: crypto.randomUUID(),
           assetId: store.selectedAssetId,
@@ -69,14 +91,19 @@ export default function EditorExperience() {
           rotation: [0, store.ghostRotation, 0],
           scale: [s, s, s],
           source: 'manual',
+          metadata: { collidable },
         })
       }
     }
 
     canvas.addEventListener('pointermove', onPointerMove)
+    canvas.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('pointerup', onPointerUp)
     canvas.addEventListener('click', onClick)
     return () => {
       canvas.removeEventListener('pointermove', onPointerMove)
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointerup', onPointerUp)
       canvas.removeEventListener('click', onClick)
     }
   }, [camera, gl, scene])

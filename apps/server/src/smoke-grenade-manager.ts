@@ -1,4 +1,4 @@
-import type { Vec3, SmokeGrenadeState } from '@clawfield/shared';
+import type { Vec3, SmokeGrenadeState, CollisionDisc } from '@clawfield/shared';
 import {
   GRAVITY,
   SMOKE_GRENADE_THROW_SPEED,
@@ -29,6 +29,8 @@ class SmokeGrenade {
     this.alive = true;
   }
 }
+
+const SMOKE_GRENADE_COLLIDER_RADIUS = 0.28;
 
 /** Result of a smoke grenade detonation — deploys a smoke cloud */
 export interface SmokeDeployResult {
@@ -63,7 +65,7 @@ export class SmokeGrenadeManager {
    * Advance all smoke grenades by dt seconds.
    * Returns an array of deploy results for grenades whose fuse expired.
    */
-  update(dt: number, getVoxel: VoxelGetter): SmokeDeployResult[] {
+  update(dt: number, getVoxel: VoxelGetter, obstacles: CollisionDisc[] = []): SmokeDeployResult[] {
     const deploys: SmokeDeployResult[] = [];
 
     for (const grenade of this.grenades) {
@@ -117,6 +119,35 @@ export class SmokeGrenadeManager {
         grenade.velocity.y *= 1 - SMOKE_GRENADE_BOUNCE_DRAG;
       } else {
         grenade.position.z = candidateZ;
+      }
+
+      // Optional obstacle-disc collision (server-authoritative map/placement blockers)
+      if (obstacles.length > 0) {
+        for (const o of obstacles) {
+          const dx = grenade.position.x - o.x;
+          const dz = grenade.position.z - o.z;
+          const minDist = o.r + SMOKE_GRENADE_COLLIDER_RADIUS;
+          const distSq = dx * dx + dz * dz;
+          if (distSq >= minDist * minDist) continue;
+
+          const dist = Math.sqrt(Math.max(distSq, 1e-8));
+          const nx = dx / dist;
+          const nz = dz / dist;
+
+          // Push grenade out of obstacle to avoid tunneling/sticking.
+          grenade.position.x = o.x + nx * minDist;
+          grenade.position.z = o.z + nz * minDist;
+
+          // Reflect horizontal velocity only when moving into the obstacle.
+          const into = grenade.velocity.x * nx + grenade.velocity.z * nz;
+          if (into < 0) {
+            grenade.velocity.x -= (1 + SMOKE_GRENADE_BOUNCINESS) * into * nx;
+            grenade.velocity.z -= (1 + SMOKE_GRENADE_BOUNCINESS) * into * nz;
+            grenade.velocity.x *= 1 - SMOKE_GRENADE_BOUNCE_DRAG;
+            grenade.velocity.z *= 1 - SMOKE_GRENADE_BOUNCE_DRAG;
+            grenade.velocity.y *= 1 - SMOKE_GRENADE_BOUNCE_DRAG * 0.35;
+          }
+        }
       }
 
       // Fuse countdown

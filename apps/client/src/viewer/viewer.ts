@@ -8,6 +8,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import type { VoxelObjectDef } from '@clawfield/shared';
@@ -31,6 +32,30 @@ renderer.domElement.style.marginTop = '40px';
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
+
+const transformControls = new TransformControls(camera, renderer.domElement);
+transformControls.enabled = false;
+transformControls.setSpace('local');
+transformControls.setSize(0.75);
+const transformHelper = transformControls.getHelper();
+transformHelper.visible = false;
+transformHelper.renderOrder = 10000;
+transformHelper.traverse((child) => {
+  const material = (child as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+  if (!material) return;
+  const mats = Array.isArray(material) ? material : [material];
+  for (const mat of mats) {
+    mat.depthTest = false;
+    mat.depthWrite = false;
+    mat.transparent = true;
+  }
+});
+scene.add(transformHelper);
+
+transformControls.addEventListener('dragging-changed', (event) => {
+  const dragging = Boolean((event as { value?: boolean }).value);
+  controls.enabled = !dragging && !flyMode;
+});
 
 // --- Lighting ---
 
@@ -167,6 +192,12 @@ interface WeaponFitConfig {
   rotation: [number, number, number];
 }
 
+interface ManualFitTransform {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: number;
+}
+
 // --- DOM refs ---
 
 const fileBtn = document.getElementById('file-btn')!;
@@ -180,6 +211,28 @@ const infoWorld = document.getElementById('info-world')!;
 const dropOverlay = document.getElementById('drop-overlay')!;
 const weaponFitCb = document.getElementById('weapon-fit-cb') as HTMLInputElement;
 const weaponFitStatusEl = document.getElementById('weapon-fit-status')!;
+const weaponFitPanel = document.getElementById('weapon-fit-panel')!;
+const fitPosX = document.getElementById('fit-pos-x') as HTMLInputElement;
+const fitPosY = document.getElementById('fit-pos-y') as HTMLInputElement;
+const fitPosZ = document.getElementById('fit-pos-z') as HTMLInputElement;
+const fitRotX = document.getElementById('fit-rot-x') as HTMLInputElement;
+const fitRotY = document.getElementById('fit-rot-y') as HTMLInputElement;
+const fitRotZ = document.getElementById('fit-rot-z') as HTMLInputElement;
+const fitScale = document.getElementById('fit-scale') as HTMLInputElement;
+const fitLoadSoldierBtn = document.getElementById('fit-load-soldier-btn') as HTMLButtonElement;
+const fitCopySnippetBtn = document.getElementById('fit-copy-snippet-btn') as HTMLButtonElement;
+
+let manualFit: ManualFitTransform = {
+  position: [0.05, 0.01, -0.08],
+  rotation: [0, -Math.PI * 0.5, 0],
+  scale: 0.1,
+};
+
+let fitSoldierRoot: THREE.Object3D | null = null;
+let fitSoldierHand: THREE.Bone | null = null;
+let fitSoldierMixer: THREE.AnimationMixer | null = null;
+let fitWeaponMount: THREE.Group | null = null;
+let fitWeaponObject: THREE.Object3D | null = null;
 
 // Material panel DOM refs
 const materialPanel = document.getElementById('material-panel')!;
@@ -506,6 +559,15 @@ function displayGLB(buffer: ArrayBuffer, filename: string) {
 
     if (weaponFitMode && currentObject) {
       const fit = autoArrangeWeaponModel(currentObject, glbFilename);
+      manualFit = {
+        position: [...fit.position],
+        rotation: [...fit.rotation],
+        scale: fit.scale,
+      };
+      syncFitInputs();
+      if (fitSoldierRoot) {
+        attachWeaponToFitMount(currentObject);
+      }
       showWeaponFitStatus(`Fitted as ${fit.type}`);
     }
   }, (err: unknown) => {
@@ -517,6 +579,7 @@ function displayGLB(buffer: ArrayBuffer, filename: string) {
 // --- Remove previous object ---
 
 function clearCurrentObject() {
+  detachWeaponFromFitMount();
   if (!currentObject) return;
   scene.remove(currentObject);
   currentObject.traverse((child) => {
@@ -728,6 +791,29 @@ function frameCameraToBounds(box: THREE.Box3) {
 // --- Fly controls (WASD + QE + right-click look) ---
 
 document.addEventListener('keydown', (e) => {
+  if (weaponFitMode && fitWeaponObject) {
+    if (e.code === 'KeyW') {
+      transformControls.setMode('translate');
+      showWeaponFitStatus('Gizmo: move (W)');
+      return;
+    }
+    if (e.code === 'KeyE') {
+      transformControls.setMode('rotate');
+      showWeaponFitStatus('Gizmo: rotate (E)');
+      return;
+    }
+    if (e.code === 'KeyR') {
+      transformControls.setMode('scale');
+      showWeaponFitStatus('Gizmo: scale (R)');
+      return;
+    }
+    if (e.code === 'KeyQ') {
+      transformControls.setSpace(transformControls.space === 'local' ? 'world' : 'local');
+      showWeaponFitStatus(`Gizmo space: ${transformControls.space}`);
+      return;
+    }
+  }
+
   keysDown.add(e.code);
   if (e.code === 'KeyF') {
     flyMode = !flyMode;
@@ -961,7 +1047,12 @@ saveMaterialsBtn.addEventListener('click', () => {
   if (!glbLoaded) return;
 
   if (weaponFitMode && currentObject) {
-    const fit = autoArrangeWeaponModel(currentObject, glbFilename);
+    const fit: WeaponFitConfig = {
+      type: inferWeaponType(glbFilename),
+      scale: Number(manualFit.scale.toFixed(6)),
+      position: manualFit.position.map((v) => Number(v.toFixed(6))) as [number, number, number],
+      rotation: manualFit.rotation.map((v) => Number(v.toFixed(6))) as [number, number, number],
+    };
     saveWeaponFitJson(glbFilename, fit);
     return;
   }
@@ -992,14 +1083,68 @@ loadMaterialsBtn.addEventListener('click', () => loadInput.click());
 
 weaponFitCb.addEventListener('change', () => {
   weaponFitMode = weaponFitCb.checked;
-  saveMaterialsBtn.textContent = weaponFitMode ? 'Auto Arrange + Save Fit' : 'Save JSON';
+  saveMaterialsBtn.textContent = weaponFitMode ? 'Save Fit JSON' : 'Save JSON';
+  weaponFitPanel.classList.toggle('visible', weaponFitMode);
+  setFitGizmoTarget(weaponFitMode ? fitWeaponObject : null);
+  if (weaponFitMode) syncFitInputs();
 
   if (weaponFitMode && currentObject && glbLoaded) {
     const fit = autoArrangeWeaponModel(currentObject, glbFilename);
+    manualFit = {
+      position: [...fit.position],
+      rotation: [...fit.rotation],
+      scale: fit.scale,
+    };
+    syncFitInputs();
+    if (fitSoldierRoot) {
+      attachWeaponToFitMount(currentObject);
+    }
     showWeaponFitStatus(`Fitted as ${fit.type}`);
   } else {
+    detachWeaponFromFitMount();
     showWeaponFitStatus('');
   }
+});
+
+fitLoadSoldierBtn.addEventListener('click', async () => {
+  await ensureFitSoldierReference();
+  if (currentObject) {
+    attachWeaponToFitMount(currentObject);
+    applyManualFitToWeapon();
+  }
+  showWeaponFitStatus('Soldier reference loaded');
+});
+
+fitCopySnippetBtn.addEventListener('click', () => {
+  if (!glbFilename) return;
+  const snippet =
+    `type: "${inferWeaponType(glbFilename)}", scale: ${manualFit.scale.toFixed(6)}, ` +
+    `position: [${manualFit.position.map((v) => Number(v.toFixed(6))).join(', ')}], ` +
+    `rotation: [${manualFit.rotation.map((v) => Number(v.toFixed(6))).join(', ')}]`;
+  void navigator.clipboard?.writeText(snippet).catch(() => undefined);
+  showWeaponFitStatus('Copied fit snippet');
+});
+
+for (const el of [fitPosX, fitPosY, fitPosZ, fitRotX, fitRotY, fitRotZ, fitScale]) {
+  el.addEventListener('input', () => {
+    const next: ManualFitTransform = {
+      position: [Number(fitPosX.value || 0), Number(fitPosY.value || 0), Number(fitPosZ.value || 0)],
+      rotation: [Number(fitRotX.value || 0), Number(fitRotY.value || 0), Number(fitRotZ.value || 0)],
+      scale: Number(fitScale.value || 0.1),
+    };
+    manualFit = next;
+    applyManualFitToWeapon();
+  });
+}
+
+transformControls.addEventListener('objectChange', () => {
+  if (!fitWeaponObject) return;
+  manualFit = {
+    position: [fitWeaponObject.position.x, fitWeaponObject.position.y, fitWeaponObject.position.z],
+    rotation: [fitWeaponObject.rotation.x, fitWeaponObject.rotation.y, fitWeaponObject.rotation.z],
+    scale: fitWeaponObject.scale.x,
+  };
+  syncFitInputs();
 });
 
 // --- Export GLB with material tags embedded as userData/extras ---
@@ -1076,6 +1221,122 @@ loadInput.addEventListener('change', () => {
   reader.readAsText(file);
   loadInput.value = ''; // reset so same file can be re-loaded
 });
+
+function findRightHandBone(root: THREE.Object3D): THREE.Bone | null {
+  const bones: THREE.Bone[] = [];
+  root.traverse((child) => {
+    if ((child as THREE.Bone).isBone) bones.push(child as THREE.Bone);
+  });
+  if (bones.length === 0) return null;
+
+  const names = ['mixamorigrighthand', 'righthand', 'hand_r', 'r_hand'];
+  for (const name of names) {
+    const exact = bones.find((b) => b.name.toLowerCase() === name);
+    if (exact) return exact;
+  }
+
+  return bones.find((b) => {
+    const n = b.name.toLowerCase();
+    return n.includes('right') && n.includes('hand') && !n.includes('thumb') && !n.includes('index');
+  }) ?? null;
+}
+
+function syncFitInputs(): void {
+  fitPosX.value = String(manualFit.position[0]);
+  fitPosY.value = String(manualFit.position[1]);
+  fitPosZ.value = String(manualFit.position[2]);
+  fitRotX.value = String(manualFit.rotation[0]);
+  fitRotY.value = String(manualFit.rotation[1]);
+  fitRotZ.value = String(manualFit.rotation[2]);
+  fitScale.value = String(manualFit.scale);
+}
+
+function setFitGizmoTarget(object: THREE.Object3D | null): void {
+  if (!weaponFitMode || !object) {
+    transformControls.detach();
+    transformControls.enabled = false;
+    transformHelper.visible = false;
+    return;
+  }
+
+  transformControls.enabled = true;
+  transformHelper.visible = true;
+  transformControls.attach(object);
+}
+
+function applyManualFitToWeapon(): void {
+  if (!fitWeaponObject) return;
+  fitWeaponObject.position.set(...manualFit.position);
+  fitWeaponObject.rotation.set(...manualFit.rotation);
+  fitWeaponObject.scale.setScalar(manualFit.scale);
+}
+
+function detachWeaponFromFitMount(): void {
+  if (fitWeaponObject) {
+    setFitGizmoTarget(null);
+    fitWeaponObject.removeFromParent();
+    fitWeaponObject = null;
+  }
+}
+
+function attachWeaponToFitMount(obj: THREE.Object3D): void {
+  if (!fitWeaponMount) return;
+  detachWeaponFromFitMount();
+  fitWeaponObject = obj;
+  fitWeaponMount.add(obj);
+  applyManualFitToWeapon();
+  setFitGizmoTarget(obj);
+}
+
+async function ensureFitSoldierReference(): Promise<void> {
+  if (fitSoldierRoot) return;
+
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync('/models/soldier-animated.glb');
+  fitSoldierRoot = gltf.scene;
+  scene.add(fitSoldierRoot);
+
+  fitSoldierRoot.position.set(0, 0, 0);
+  fitSoldierRoot.rotation.set(0, Math.PI, 0);
+  fitSoldierRoot.scale.set(1, 1, 1);
+
+  fitSoldierHand = findRightHandBone(fitSoldierRoot);
+
+  fitWeaponMount = new THREE.Group();
+  fitWeaponMount.name = 'fit_weapon_mount';
+  fitSoldierRoot.add(fitWeaponMount);
+
+  fitSoldierMixer = new THREE.AnimationMixer(fitSoldierRoot);
+  const idleClip =
+    gltf.animations.find((a) => a.name === 'rifle_idle') ??
+    gltf.animations.find((a) => a.name.toLowerCase().includes('rifle')) ??
+    gltf.animations[0];
+  if (idleClip) {
+    const action = fitSoldierMixer.clipAction(idleClip);
+    action.play();
+  }
+
+  const box = new THREE.Box3().setFromObject(fitSoldierRoot);
+  frameCameraToBounds(box);
+}
+
+function updateFitWeaponMountPose(): void {
+  if (!fitWeaponMount || !fitSoldierRoot || !fitSoldierHand) return;
+  const worldPos = new THREE.Vector3();
+  const worldQuat = new THREE.Quaternion();
+  const parentWorldQuat = new THREE.Quaternion();
+  const localQuat = new THREE.Quaternion();
+
+  fitSoldierHand.getWorldPosition(worldPos);
+  fitSoldierHand.getWorldQuaternion(worldQuat);
+  fitSoldierRoot.worldToLocal(worldPos);
+  fitSoldierRoot.getWorldQuaternion(parentWorldQuat);
+  localQuat.copy(parentWorldQuat).invert().multiply(worldQuat);
+
+  fitWeaponMount.position.copy(worldPos);
+  fitWeaponMount.quaternion.copy(localQuat);
+  fitWeaponMount.scale.set(1, 1, 1);
+}
 
 function showWeaponFitStatus(msg: string): void {
   weaponFitStatusEl.textContent = msg;
@@ -1210,7 +1471,10 @@ window.addEventListener('resize', () => {
 
 function animate() {
   requestAnimationFrame(animate);
+  const dt = Math.min(0.05, (performance.now() - prevTime) / 1000);
   updateFlyControls();
+  if (fitSoldierMixer) fitSoldierMixer.update(dt);
+  updateFitWeaponMountPose();
   if (!flyMode) controls.update();
   prevTime = performance.now();
   renderer.render(scene, camera);
