@@ -279,7 +279,7 @@ export const STREAM_CHECK_INTERVAL = 10; // every ~0.33s at 30Hz
 export const SERVER_PORT = 3000;
 
 /** Interpolation buffer time in ms */
-export const INTERPOLATION_DELAY = 85;
+export const INTERPOLATION_DELAY = 45;
 
 // --- Capture Point constants (ported from Ravenfield) ---
 

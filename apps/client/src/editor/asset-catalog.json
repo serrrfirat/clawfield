@@ -246,5 +246,133 @@
     "path": "/models/props/urban/Taxi.glb",
     "tags": ["vehicle", "cover", "urban"],
     "defaultScale": 1
+  },
+  {
+    "id": "church",
+    "name": "Church",
+    "category": "structures",
+    "path": "/models/props/france/Church of the Good Shepherd.glb",
+    "tags": ["france", "building", "landmark", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "square-tower",
+    "name": "Square Tower",
+    "category": "structures",
+    "path": "/models/props/france/Fougeres Square Tower 3D Model.glb",
+    "tags": ["france", "building", "landmark", "tower", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "guingamp-shop",
+    "name": "Guingamp Shop",
+    "category": "structures",
+    "path": "/models/props/france/Guingamp Shop 1 France.glb",
+    "tags": ["france", "building", "shop", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "tramain-house",
+    "name": "Tramain House",
+    "category": "structures",
+    "path": "/models/props/france/Tramain House 1 France.glb",
+    "tags": ["france", "building", "house", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "troyes-shop-7",
+    "name": "Troyes Shop 7",
+    "category": "structures",
+    "path": "/models/props/france/Troyes Shop 7 France.glb",
+    "tags": ["france", "building", "shop", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "troyes-shop-8",
+    "name": "Troyes Shop 8",
+    "category": "structures",
+    "path": "/models/props/france/Troyes Shop 8 France.glb",
+    "tags": ["france", "building", "shop", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "windmill",
+    "name": "Windmill",
+    "category": "structures",
+    "path": "/models/props/france/Windmill 3D Model by KIFIR.glb",
+    "tags": ["france", "building", "landmark", "cover"],
+    "defaultScale": 1
+  },
+  {
+    "id": "hay-bale",
+    "name": "Hay Bale",
+    "category": "props",
+    "path": "/models/props/france/Hay Bale 3D Model.glb",
+    "tags": ["france", "cover", "farm"],
+    "defaultScale": 1
+  },
+  {
+    "id": "lavender",
+    "name": "Lavender",
+    "category": "vegetation",
+    "path": "/models/props/france/Lavender 3D Model.glb",
+    "tags": ["france", "nature", "decorative", "flower"],
+    "defaultScale": 1
+  },
+  {
+    "id": "sunflower",
+    "name": "Sunflower",
+    "category": "vegetation",
+    "path": "/models/props/france/Sunflower 3D Model.glb",
+    "tags": ["france", "nature", "decorative", "flower"],
+    "defaultScale": 1
+  },
+  {
+    "id": "sunflower-small",
+    "name": "Sunflower (Small)",
+    "category": "vegetation",
+    "path": "/models/props/france/Sunflower 3D Model (1).glb",
+    "tags": ["france", "nature", "decorative", "flower"],
+    "defaultScale": 1
+  },
+  {
+    "id": "stone-bridge",
+    "name": "Stone Bridge",
+    "category": "structures",
+    "path": "/models/props/france/Stone Bridge 3D Model.glb",
+    "tags": ["france", "bridge", "landmark", "stone"],
+    "defaultScale": 1
+  },
+  {
+    "id": "fountain",
+    "name": "Fountain",
+    "category": "props",
+    "path": "/models/props/france/Simple Fountain 3D Model.glb",
+    "tags": ["france", "landmark", "water", "decorative"],
+    "defaultScale": 1
+  },
+  {
+    "id": "wooden-fence",
+    "name": "Wooden Fence",
+    "category": "props",
+    "path": "/models/props/france/Wooden Fence 3D Model.glb",
+    "tags": ["france", "fence", "cover", "farm"],
+    "defaultScale": 1
+  },
+  {
+    "id": "wooden-fence-simple",
+    "name": "Wooden Fence (Simple)",
+    "category": "props",
+    "path": "/models/props/france/Wooden Fence Simple.glb",
+    "tags": ["france", "fence", "cover", "farm"],
+    "defaultScale": 1
+  },
+  {
+    "id": "wood-planks",
+    "name": "Wood Planks",
+    "category": "props",
+    "path": "/models/props/france/Wood Planks Game Ready Asset.glb",
+    "tags": ["france", "detail", "wood", "debris"],
+    "defaultScale": 1
   }
 ]

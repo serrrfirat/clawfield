@@ -7,6 +7,10 @@ export interface FoliageType {
   weight: number
   minScale: number
   maxScale: number
+  /** If set, place a cluster of [min, max] instances around the chosen point */
+  cluster?: [number, number]
+  /** Spread radius for cluster members (default 0.5) */
+  clusterSpread?: number
 }
 
 export interface FoliageInstance {
@@ -23,6 +27,7 @@ const FOLIAGE_SEED_OFFSET = 0xF011A6E
 /**
  * Generate foliage placements for a chunk using noise-based distribution.
  * Avoids overlap with existing stones and trees.
+ * Supports cluster spawning for types with cluster property.
  */
 export function generateChunkFoliage(
   chunkX: number,
@@ -104,19 +109,37 @@ export function generateChunkFoliage(
     if (tooClose) continue
 
     const type = pickType()
-    const y = noise2D(worldX * terrainParams.scale, worldZ * terrainParams.scale) * terrainParams.amplitude
-    const scale = THREE.MathUtils.lerp(type.minScale, type.maxScale, rng())
-    const rotY = rng() * Math.PI * 2
-
     positions.push([localX, localZ])
-    placed.push({
-      typeId: type.id,
-      localX,
-      localZ,
-      y,
-      scale,
-      rotY,
-    })
+
+    if (type.cluster) {
+      // Spawn a cluster of instances around this point
+      const [minCount, maxCount] = type.cluster
+      const clusterCount = minCount + Math.floor(rng() * (maxCount - minCount + 1))
+      const spread = type.clusterSpread ?? 0.5
+
+      for (let c = 0; c < clusterCount; c++) {
+        // Random offset within cluster spread radius
+        const angle = rng() * Math.PI * 2
+        const dist = rng() * spread
+        const cx = localX + Math.cos(angle) * dist
+        const cz = localZ + Math.sin(angle) * dist
+
+        const cwx = cx + chunkX * size
+        const cwz = cz + chunkZ * size
+        const y = noise2D(cwx * terrainParams.scale, cwz * terrainParams.scale) * terrainParams.amplitude
+        const scale = THREE.MathUtils.lerp(type.minScale, type.maxScale, rng())
+        const rotY = rng() * Math.PI * 2
+
+        placed.push({ typeId: type.id, localX: cx, localZ: cz, y, scale, rotY })
+      }
+    } else {
+      // Single instance
+      const y = noise2D(worldX * terrainParams.scale, worldZ * terrainParams.scale) * terrainParams.amplitude
+      const scale = THREE.MathUtils.lerp(type.minScale, type.maxScale, rng())
+      const rotY = rng() * Math.PI * 2
+
+      placed.push({ typeId: type.id, localX, localZ, y, scale, rotY })
+    }
   }
 
   return placed

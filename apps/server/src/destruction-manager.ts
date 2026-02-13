@@ -81,7 +81,7 @@ export class DestructionManager {
   /**
    * Set the debris physics manager (call after construction if not provided)
    */
-  setDebrisPhysics(debrisPhysics: DebrisPhysicsManager): void {
+  setDebrisPhysics(debrisPhysics: DebrisPhysicsManager | null): void {
     this.debrisPhysics = debrisPhysics;
   }
 
@@ -520,20 +520,30 @@ export class DestructionManager {
    */
   processPendingDebrisBodies(): number[] {
     if (!this.debrisPhysics || this.pendingDebrisBodies.length === 0) {
+      if (!this.debrisPhysics && this.pendingDebrisBodies.length > 0) {
+        // Debris physics disabled: drop queued body creation requests.
+        this.pendingDebrisBodies = [];
+      }
       return [];
     }
     
     const createdIds: number[] = [];
     
     for (const pending of this.pendingDebrisBodies) {
-      const ids = this.debrisPhysics.spawnDebris(
-        pending.voxels,
-        pending.colors,
-        pending.materials,
-        pending.impactPos,
-        pending.impactDir
-      );
-      createdIds.push(...ids);
+      try {
+        const ids = this.debrisPhysics.spawnDebris(
+          pending.voxels,
+          pending.colors,
+          pending.materials,
+          pending.impactPos,
+          pending.impactDir
+        );
+        createdIds.push(...ids);
+      } catch (error) {
+        console.error('[DebrisPhysics] spawnDebris failed; disabling debris physics for this match:', error);
+        this.debrisPhysics = null;
+        break;
+      }
     }
     
     this.pendingDebrisBodies = [];

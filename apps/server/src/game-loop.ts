@@ -106,6 +106,8 @@ const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const SESSION_CLEANUP_INTERVAL = 20 * 30; // every 30 seconds
 const OUT_OF_BOUNDS_MARGIN = 8;
 const OUT_OF_BOUNDS_FALL_DEPTH = 24;
+const LAG_COMPENSATION_MS = 0;
+const POSITION_HISTORY_WINDOW_MS = 1500;
 
 /** Lobby player info passed to GameLoop at start */
 export interface LobbyPlayerInfo {
@@ -138,6 +140,9 @@ export class GameLoop {
 
   // --- Per-client chunk streaming ---
   private sentChunks = new Map<string, Set<string>>();
+
+  // --- Position history for lag compensation ---
+  private positionHistory = new Map<string, Array<{ time: number; position: Vec3 }>>();
 
   // --- Persistent sessions: sessionToken → PlayerSim ---
   private sessions = new Map<string, PlayerSim>();
@@ -177,6 +182,9 @@ export class GameLoop {
 
   // --- Debris physics initialization tracking ---
   private debrisPhysicsInitialized = false;
+  private debrisPhysicsInitPromise: Promise<boolean> | null = null;
+  // Debris physics enabled by default; set CLAWFIELD_DEBRIS_PHYSICS=0 to disable.
+  private readonly debrisPhysicsEnabled = process.env.CLAWFIELD_DEBRIS_PHYSICS !== '0';
 
   /** Optional map override from lobby selection */
   private mapOverride: string | undefined;
@@ -189,6 +197,12 @@ export class GameLoop {
   // --- AI Director (deterministic fallback) ---
   private directorCurrentWeather: WeatherState = 'clear';
   private directorNextCheckAt = 0;
+
+  // --- Colyseus Schema integration ---
+  /** When true, skip the per-client JSON 'state' broadcast (Schema handles it) */
+  suppressStateBroadcast = false;
+  /** Called at the end of each tick with the computed player states + tick number */
+  onStateComputed: ((players: import('@clawfield/shared').PlayerState[], tick: number) => void) | null = null;
 
   // --- Incursion mode state ---
   private incursionTimeRemaining = 0;
@@ -212,8 +226,8 @@ export class GameLoop {
     this.capturePointManager = new CapturePointManager(this.mapCapturePoints);
     this.gadgetManager.setChunks(this.chunks);
 
-    // Spawn dummy bots on Team Bravo for target practice
-    this.spawnBots();
+    // Bots disabled for testing
+    // this.spawnBots();
 
     // Send welcome to each lobby player
     for (const lp of lobbyPlayers) {
@@ -363,56 +377,14 @@ export class GameLoop {
     this.rocketManager = new RocketManager();
     this.gadgetManager = new GadgetManager();
     this.sentChunks.clear();
+    this.positionHistory.clear();
     this.gameOver = true;
     console.log('GameLoop destroyed');
   }
 
-  /** Attempt to load a configured binary map; fall back to Oasis, then test map if missing */
+  /** Always use procedural heightmap terrain — voxels are deprecated */
   private loadMap(): void {
-    // Heightmap mode: env var CLAWFIELD_HEIGHTMAP=1
-    if (process.env.CLAWFIELD_HEIGHTMAP === '1') {
-      this.activateHeightmapMode();
-      return;
-    }
-
-    // Incursion: try WFC-generated map first
-    if (this.gameMode === 'incursion') {
-      const seed = Date.now();
-      const mapName = generateIncursionMap(seed, INCURSION_WFC_WIDTH, INCURSION_WFC_DEPTH);
-      if (mapName && this.tryLoadMap(mapName)) {
-        console.log(`[Incursion] WFC map "${mapName}" loaded`);
-        return;
-      }
-      console.warn('[Incursion] WFC failed, falling back to selected map');
-    }
-
-    const configuredMap = this.mapOverride ?? getConfiguredMapName();
-
-    if (this.tryLoadMap(configuredMap)) {
-      return;
-    }
-
-    if (configuredMap !== 'oasis' && this.tryLoadMap('oasis')) {
-      console.warn(
-        `WARNING: Failed to load configured map "${configuredMap}", fell back to "oasis"`
-      );
-      return;
-    }
-
-    console.warn(
-      `WARNING: Binary map not found for "${configuredMap}" (and Oasis fallback unavailable), using test map`
-    );
-    this.generateTestMap();
-    this.worldBounds = this.getChunkWorldBounds();
-    void this.initializeDebrisPhysics();
-    this.mapCapturePoints = DEFAULT_CAPTURE_POINTS.map((cp) => ({
-      ...cp,
-      position: { ...cp.position },
-    }));
-    this.usingBinaryMap = false;
-    this.mapName = 'test';
-    this.mapDisplayName = 'Test';
-    this.mapObjectives = [];
+    this.activateHeightmapMode();
   }
 
   /** Activate heightmap mode using the default match config */
@@ -473,51 +445,72 @@ export class GameLoop {
       return true;
     }
 
-    // Check if module is loaded
-    if (!rapierModuleLoaded || !DebrisPhysicsManager || !initRapier) {
-      // Module not loaded yet - create destruction manager without physics for now
+    if (!this.debrisPhysicsEnabled) {
       if (!this.destructionManager) {
         this.destructionManager = new DestructionManager(this.chunks, null as any);
-        console.log('⏳ Debris physics module not loaded yet...');
       }
-      return false;
-    }
-
-    // Cleanup existing if any
-    if (this.debrisPhysicsManager) {
-      this.debrisPhysicsManager.dispose();
-    }
-
-    // Try to create debris physics manager
-    try {
-      // Initialize Rapier WASM first
-      await initRapier();
-      
-      // Now create the physics manager
-      this.debrisPhysicsManager = new DebrisPhysicsManager((x, y, z) =>
-        getVoxel(this.chunks, x, y, z)
-      );
-      
-      // If we already have a destruction manager, just update it with the physics manager
-      // This preserves any pending debris bodies
-      if (this.destructionManager) {
-        this.destructionManager.setDebrisPhysics(this.debrisPhysicsManager);
-        console.log('✓ Debris physics system initialized (linked to existing destruction manager)');
-      } else {
-        this.destructionManager = new DestructionManager(this.chunks, this.debrisPhysicsManager);
-        console.log('✓ Debris physics system initialized');
-      }
-      
       this.debrisPhysicsInitialized = true;
       return true;
-    } catch (e) {
-      console.error('✗ Failed to initialize debris physics:', e);
-      this.debrisPhysicsManager = null;
-      if (!this.destructionManager) {
-        this.destructionManager = new DestructionManager(this.chunks, null as any);
+    }
+
+    if (this.debrisPhysicsInitPromise) {
+      return this.debrisPhysicsInitPromise;
+    }
+
+    this.debrisPhysicsInitPromise = (async () => {
+
+      // Check if module is loaded
+      if (!rapierModuleLoaded || !DebrisPhysicsManager || !initRapier) {
+        // Module not loaded yet - create destruction manager without physics for now
+        if (!this.destructionManager) {
+          this.destructionManager = new DestructionManager(this.chunks, null as any);
+          console.log('⏳ Debris physics module not loaded yet...');
+        }
+        return false;
       }
-      this.debrisPhysicsInitialized = true; // Don't keep retrying on error
-      return true;
+
+      // Cleanup existing if any
+      if (this.debrisPhysicsManager) {
+        this.debrisPhysicsManager.dispose();
+      }
+
+      // Try to create debris physics manager
+      try {
+        // Initialize Rapier WASM first
+        await initRapier();
+      
+        // Now create the physics manager
+        this.debrisPhysicsManager = new DebrisPhysicsManager((x, y, z) =>
+          getVoxel(this.chunks, x, y, z)
+        );
+      
+        // If we already have a destruction manager, just update it with the physics manager
+        // This preserves any pending debris bodies
+        if (this.destructionManager) {
+          this.destructionManager.setDebrisPhysics(this.debrisPhysicsManager);
+          console.log('✓ Debris physics system initialized (linked to existing destruction manager)');
+        } else {
+          this.destructionManager = new DestructionManager(this.chunks, this.debrisPhysicsManager);
+          console.log('✓ Debris physics system initialized');
+        }
+      
+        this.debrisPhysicsInitialized = true;
+        return true;
+      } catch (e) {
+        console.error('✗ Failed to initialize debris physics:', e);
+        this.debrisPhysicsManager = null;
+        if (!this.destructionManager) {
+          this.destructionManager = new DestructionManager(this.chunks, null as any);
+        }
+        this.debrisPhysicsInitialized = true; // Don't keep retrying on error
+        return true;
+      }
+    })();
+
+    try {
+      return await this.debrisPhysicsInitPromise;
+    } finally {
+      this.debrisPhysicsInitPromise = null;
     }
   }
 
@@ -895,36 +888,10 @@ export class GameLoop {
     return team;
   }
 
-  private getSpawnPoint(team: Team): Vec3 {
-    // Try capture point spawns first
-    const captureSpawns = this.capturePointManager.getSpawnPoints(team);
-    if (captureSpawns.length > 0) {
-      const idx = Math.floor(Math.random() * captureSpawns.length);
-      return { ...captureSpawns[idx] };
-    }
-
-    // Heightmap mode: use match config spawns (Y already resolved)
-    if (this.heightmapMode) {
-      const spawns = team === Team.Alpha ? this.mapSpawnsAlpha : this.mapSpawnsBravo;
-      if (spawns.length > 0) {
-        const idx = Math.floor(Math.random() * spawns.length);
-        return { ...spawns[idx] };
-      }
-    }
-
-    // Use map-defined/discovered spawn points when a binary map is loaded.
-    if (this.usingBinaryMap) {
-      const spawns = team === Team.Alpha ? this.mapSpawnsAlpha : this.mapSpawnsBravo;
-      if (spawns.length > 0) {
-        const idx = Math.floor(Math.random() * spawns.length);
-        return { ...spawns[idx] };
-      }
-    }
-
-    // Fall back to default test map spawns
-    const spawns = SPAWN_POINTS[team];
-    const idx = Math.floor(Math.random() * spawns.length);
-    return { ...spawns[idx] };
+  private getSpawnPoint(_team: Team): Vec3 {
+    // DEV: force all players to same spot for testing visibility
+    const y = this.heightmapMode ? this.terrainHeightGetter(22, 12) + 0.5 : 2;
+    return { x: 22, y, z: 12 };
   }
 
   /** Get all available spawn points for a team as options for the deploy screen */
@@ -973,15 +940,9 @@ export class GameLoop {
   /** Resolve a spawn point ID to a position */
   private resolveSpawnPoint(team: Team, spawnPointId: string): Vec3 {
     if (spawnPointId === 'base') {
-      // Use base spawn
-      if (this.usingBinaryMap) {
-        const spawns = team === Team.Alpha ? this.mapSpawnsAlpha : this.mapSpawnsBravo;
-        if (spawns.length > 0) {
-          return { ...spawns[Math.floor(Math.random() * spawns.length)] };
-        }
-      }
-      const fallback = SPAWN_POINTS[team];
-      return { ...fallback[Math.floor(Math.random() * fallback.length)] };
+      // DEV: force all players to same spot for testing visibility
+      const y = this.heightmapMode ? this.terrainHeightGetter(22, 12) + 0.5 : 2;
+      return { x: 22, y, z: 12 };
     }
 
     // Try capture point
@@ -1007,6 +968,26 @@ export class GameLoop {
   hotJoinPlayer(client: Client, name: string, team: number): void {
     client.name = name;
     this.welcomePlayer(client, team);
+  }
+
+  /** Get a PlayerSim by client ID (used by BattleRoom for ack seq) */
+  getPlayerSim(clientId: string): PlayerSim | undefined {
+    return this.players.get(clientId);
+  }
+
+  /** Get current capture point states */
+  getCapturePoints() {
+    return this.capturePointManager.getStates();
+  }
+
+  /** Get current conquest scores */
+  getConquestScores() {
+    return this.capturePointManager.getScores();
+  }
+
+  /** Get current ticket counts */
+  getTickets() {
+    return { alpha: this.ticketsAlpha, bravo: this.ticketsBravo };
   }
 
   handleMessage(client: Client, msg: ClientMessage): void {
@@ -1046,6 +1027,12 @@ export class GameLoop {
         const sim = this.players.get(client.id);
         if (sim) {
           sim.queueInput(msg.seq, msg.input, msg.dt);
+          // DEV: log first few inputs + position every 100 ticks
+          if (msg.seq <= 3 || msg.seq % 100 === 0) {
+            console.log(`[INPUT] ${sim.name} seq=${msg.seq} alive=${sim.alive} pos=(${sim.position.x.toFixed(1)},${sim.position.y.toFixed(1)},${sim.position.z.toFixed(1)}) fwd=${msg.input.forward}`);
+          }
+        } else {
+          console.warn(`[INPUT] No sim for client ${client.id}`);
         }
         break;
       }
@@ -1111,6 +1098,7 @@ export class GameLoop {
 
     // Clean up chunk streaming state
     this.sentChunks.delete(client.id);
+    this.positionHistory.delete(client.id);
 
     this.network.broadcast({
       type: 'player_left',
@@ -1225,6 +1213,48 @@ export class GameLoop {
 
   // --- Main update loop ---
 
+  private recordPositionHistory(now: number): void {
+    const cutoff = now - POSITION_HISTORY_WINDOW_MS;
+
+    for (const sim of this.players.values()) {
+      let history = this.positionHistory.get(sim.id);
+      if (!history) {
+        history = [];
+        this.positionHistory.set(sim.id, history);
+      }
+
+      history.push({ time: now, position: { ...sim.position } });
+
+      while (history.length > 2 && history[0].time < cutoff) {
+        history.shift();
+      }
+    }
+
+    // Cleanup for players no longer tracked.
+    for (const playerId of this.positionHistory.keys()) {
+      if (!this.players.has(playerId)) {
+        this.positionHistory.delete(playerId);
+      }
+    }
+  }
+
+  private getPlayerPositionAt(playerId: string, targetTimeMs: number): Vec3 | undefined {
+    const history = this.positionHistory.get(playerId);
+    if (!history || history.length === 0) return undefined;
+
+    let best = history[0];
+    for (let i = 1; i < history.length; i++) {
+      const sample = history[i];
+      if (sample.time <= targetTimeMs) {
+        best = sample;
+      } else {
+        break;
+      }
+    }
+
+    return best.position;
+  }
+
   private update(): void {
     if (this.gameOver) return;
 
@@ -1264,6 +1294,9 @@ export class GameLoop {
       }
     }
 
+    // Record a rolling position history after movement simulation.
+    this.recordPositionHistory(now);
+
     // Kill players who leave the loaded world bounds or fall into the void.
     this.processOutOfBounds();
 
@@ -1278,8 +1311,22 @@ export class GameLoop {
     // Advance projectiles and collect hits
     const { playerHits: projectileHits, voxelHits: projectileVoxelHits } =
       this.heightmapMode
-        ? this.projectileManager.updateHeightmap(TICK_INTERVAL / 1000, this.terrainHeightGetter, this.players)
-        : this.projectileManager.update(TICK_INTERVAL / 1000, voxelGetter, this.players);
+        ? this.projectileManager.updateHeightmap(
+            TICK_INTERVAL / 1000,
+            this.terrainHeightGetter,
+            this.players,
+            undefined,
+            LAG_COMPENSATION_MS,
+            undefined,
+          )
+        : this.projectileManager.update(
+            TICK_INTERVAL / 1000,
+            voxelGetter,
+            this.players,
+            undefined,
+            LAG_COMPENSATION_MS,
+            undefined,
+          );
 
     // Advance pending rubble drops (delayed voxel placement for falling sections)
     this.destructionManager.update(now);
@@ -1291,7 +1338,14 @@ export class GameLoop {
     // Step debris physics simulation
     let debrisStates: import('./debris-physics-manager.js').DebrisState[] = [];
     if (this.debrisPhysicsManager) {
-      debrisStates = this.debrisPhysicsManager.update(TICK_INTERVAL / 1000);
+      try {
+        debrisStates = this.debrisPhysicsManager.update(TICK_INTERVAL / 1000);
+      } catch (error) {
+        console.error('[DebrisPhysics] Disabled after runtime error:', error);
+        this.debrisPhysicsManager.dispose();
+        this.debrisPhysicsManager = null;
+        this.destructionManager.setDebrisPhysics(null);
+      }
     }
 
     // Bullet voxel destruction disabled — only explosions destroy terrain for now
@@ -1568,16 +1622,24 @@ export class GameLoop {
     // Get projectile states for broadcasting
     const projectileStates = this.projectileManager.getStates();
 
+    // Notify Schema layer (BattleRoom) if registered
+    if (this.onStateComputed) {
+      this.onStateComputed(players, this.tickCount);
+    }
+
     // Send personalized state to each client (with their specific ack seq)
-    for (const client of this.network.getClients().values()) {
-      const sim = this.players.get(client.id);
-      if (sim) {
-        this.network.send(client, {
-          type: 'state',
-          tick: this.tickCount,
-          players,
-          ack: sim.lastAckedSeq,
-        });
+    // Skip when Colyseus Schema handles state sync
+    if (!this.suppressStateBroadcast) {
+      for (const client of this.network.getClients().values()) {
+        const sim = this.players.get(client.id);
+        if (sim) {
+          this.network.send(client, {
+            type: 'state',
+            tick: this.tickCount,
+            players,
+            ack: sim.lastAckedSeq,
+          });
+        }
       }
     }
 

@@ -14,6 +14,7 @@ import { combatSystems } from '../combat/CombatEffects'
 import { soundManager, SoundId } from '../audio/sound-manager'
 import SoldierModel from './SoldierModel'
 import type { SoldierModelHandle } from './SoldierModel'
+import { SOLDIER_MODEL_Y_OFFSET } from './model-offset'
 import { AnimState, deriveAnimState } from './animation-state'
 import AimCursor from './AimCursor'
 
@@ -72,33 +73,20 @@ export default function PlayerController() {
     }
 
     // Reconcile local predicted position to server-authoritative position.
-    // Keep this gentle to avoid camera/terrain jitter from over-correction.
+    // Only snap on massive divergence (teleport/respawn). Gentle correction is
+    // disabled until proper ack-based reconciliation is wired up — without it
+    // the server position (which lags by one RTT) fights local prediction and
+    // causes rubberbanding.
     const authoritativePos = (useStore.getState() as any).authoritativePosition as Vec3 | null
     if (authoritativePos) {
       const current = rb.translation()
-      const targetX = authoritativePos.x
-      const targetZ = authoritativePos.z
-      const dx = targetX - current.x
-      const dz = targetZ - current.z
+      const dx = authoritativePos.x - current.x
+      const dz = authoritativePos.z - current.z
       const horizontalDistSq = dx * dx + dz * dz
-      const horizontalDist = Math.sqrt(horizontalDistSq)
 
-      // Big divergence: snap immediately.
+      // Big divergence only (>8m): snap immediately (teleport/respawn).
       if (horizontalDistSq > 64) {
-        rb.setTranslation({ x: targetX, y: current.y, z: targetZ }, true)
-      } else if (horizontalDistSq > 0.16) {
-        // Small divergence: correct with capped step so we don't oscillate.
-        const alpha = Math.min(1, clamped * 5)
-        const correction = Math.min(horizontalDist * alpha, 0.12)
-        const inv = horizontalDist > 1e-5 ? 1 / horizontalDist : 0
-        rb.setTranslation(
-          {
-            x: current.x + dx * inv * correction,
-            y: current.y,
-            z: current.z + dz * inv * correction,
-          },
-          true
-        )
+        rb.setTranslation({ x: authoritativePos.x, y: current.y, z: authoritativePos.z }, true)
       }
     }
 
@@ -264,7 +252,7 @@ export default function PlayerController() {
         ccd
       >
         <BallCollider args={[0.4]} />
-        <group ref={meshRef}>
+        <group ref={meshRef} position={[0, SOLDIER_MODEL_Y_OFFSET, 0]}>
           <SoldierModel ref={soldierRef} />
         </group>
       </RigidBody>

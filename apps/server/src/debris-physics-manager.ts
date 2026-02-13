@@ -49,6 +49,7 @@ export class DebrisPhysicsManager {
   private bodies = new Map<number, DebrisBody>();
   private nextId = 1;
   private initialized = false;
+  private disposed = false;
   private getVoxel: (x: number, y: number, z: number) => number;
   
   // Constants
@@ -73,7 +74,7 @@ export class DebrisPhysicsManager {
    * Check if the physics manager is ready.
    */
   isReady(): boolean {
-    return this.initialized && this.world !== null;
+    return this.initialized && !this.disposed && this.world !== null;
   }
   
   /**
@@ -87,6 +88,8 @@ export class DebrisPhysicsManager {
     impactPos: Vec3,
     impactDir: Vec3
   ): number[] {
+    if (!this.world || this.disposed) return [];
+
     const spawnedIds: number[] = [];
     
     // Clean up old bodies if we're at capacity
@@ -174,7 +177,7 @@ export class DebrisPhysicsManager {
     playerRadius: number,
     playerHeight: number
   ): { collision: boolean; normal?: Vec3; penetration?: number } {
-    if (!this.world) return { collision: false };
+    if (!this.world || this.disposed) return { collision: false };
 
     // Iterate all debris AABBs (fast enough for current body budget)
     for (const debris of this.bodies.values()) {
@@ -222,11 +225,17 @@ export class DebrisPhysicsManager {
    * Update all debris bodies - step physics and check for settled bodies.
    */
   update(dt: number): DebrisState[] {
-    if (!this.world) return [];
+    if (!this.world || this.disposed) return [];
     
     // Step the physics world
     this.world.timestep = Math.min(dt, 0.05);
-    this.world.step();
+    try {
+      this.world.step();
+    } catch (error) {
+      // Mark manager unusable so callers can switch to fallback behavior.
+      this.dispose();
+      throw error;
+    }
     
     const states: DebrisState[] = [];
     
@@ -298,10 +307,14 @@ export class DebrisPhysicsManager {
    * Remove a specific debris body by ID.
    */
   removeDebris(id: number): void {
-    if (!this.world) return;
+    if (!this.world || this.disposed) return;
     const debris = this.bodies.get(id);
     if (debris) {
-      this.world.removeRigidBody(debris.body);
+      try {
+        this.world.removeRigidBody(debris.body);
+      } catch {
+        // Ignore stale-handle removals during recovery.
+      }
       this.bodies.delete(id);
     }
   }
@@ -431,9 +444,14 @@ export class DebrisPhysicsManager {
    * Clean up all bodies and free resources.
    */
   dispose(): void {
-    if (!this.world) return;
+    if (!this.world || this.disposed) return;
+    this.disposed = true;
     for (const debris of this.bodies.values()) {
-      this.world.removeRigidBody(debris.body);
+      try {
+        this.world.removeRigidBody(debris.body);
+      } catch {
+        // Ignore stale-handle removals during disposal.
+      }
     }
     this.bodies.clear();
     this.world.free();

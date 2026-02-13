@@ -67,6 +67,20 @@ export class ProjectileManager {
   private projectiles: Projectile[] = [];
   private nextId = 1;
 
+  /** Optional resolver for lag-compensated target positions. */
+  private resolveTargetPosition(
+    target: PlayerSim,
+    nowMs: number | undefined,
+    lagCompMs: number,
+    getHistoricalPosition?: (playerId: string, targetTimeMs: number) => Vec3 | undefined,
+  ): Vec3 {
+    if (!getHistoricalPosition || nowMs === undefined || lagCompMs <= 0) {
+      return target.position;
+    }
+
+    return getHistoricalPosition(target.id, nowMs - lagCompMs) ?? target.position;
+  }
+
   /** Spawn a new projectile. Direction must be normalized (with spread already applied). */
   spawn(
     ownerId: string,
@@ -104,7 +118,10 @@ export class ProjectileManager {
   update(
     dt: number,
     getVoxel: VoxelGetter,
-    players: Map<string, PlayerSim>
+    players: Map<string, PlayerSim>,
+    nowMs?: number,
+    lagCompMs: number = 0,
+    getHistoricalPosition?: (playerId: string, targetTimeMs: number) => Vec3 | undefined,
   ): { playerHits: ProjectileHit[]; voxelHits: ProjectileVoxelHit[] } {
     const playerHits: ProjectileHit[] = [];
     const voxelHits: ProjectileVoxelHit[] = [];
@@ -150,7 +167,8 @@ export class ProjectileManager {
         // Skip teammates
         if (target.team === proj.ownerTeam) continue;
 
-        const aabb = playerAABB(target.position);
+        const targetPos = this.resolveTargetPosition(target, nowMs, lagCompMs, getHistoricalPosition);
+        const aabb = playerAABB(targetPos);
         const hit = rayIntersectAABB(oldPos, dir, aabb, stepDist);
 
         if (hit && hit.t < closestPlayerDist) {
@@ -219,7 +237,10 @@ export class ProjectileManager {
   updateHeightmap(
     dt: number,
     getHeight: HeightGetter,
-    players: Map<string, PlayerSim>
+    players: Map<string, PlayerSim>,
+    nowMs?: number,
+    lagCompMs: number = 0,
+    getHistoricalPosition?: (playerId: string, targetTimeMs: number) => Vec3 | undefined,
   ): { playerHits: ProjectileHit[]; voxelHits: ProjectileVoxelHit[] } {
     const playerHits: ProjectileHit[] = [];
     const voxelHits: ProjectileVoxelHit[] = [];
@@ -259,7 +280,8 @@ export class ProjectileManager {
         if (!target.alive) continue;
         if (target.team === proj.ownerTeam) continue;
 
-        const aabb = playerAABB(target.position);
+        const targetPos = this.resolveTargetPosition(target, nowMs, lagCompMs, getHistoricalPosition);
+        const aabb = playerAABB(targetPos);
         const hit = rayIntersectAABB(oldPos, dir, aabb, stepDist);
 
         if (hit && hit.t < closestPlayerDist) {

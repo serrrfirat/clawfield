@@ -6,6 +6,7 @@ import SoldierModel from './SoldierModel'
 import type { SoldierModelHandle } from './SoldierModel'
 import { AnimState, deriveRemoteAnimState } from './animation-state'
 import { StateInterpolator } from './interpolation'
+import { SOLDIER_MODEL_Y_OFFSET } from './model-offset'
 
 interface RemotePlayerEntityProps {
   state: PlayerState
@@ -13,7 +14,6 @@ interface RemotePlayerEntityProps {
 }
 
 const TEAM_COLORS = [0x4488ff, 0xff6644] // Alpha=blue, Bravo=red
-const REMOTE_MODEL_Y_OFFSET = 0.4
 
 export default function RemotePlayerEntity({ state, team }: RemotePlayerEntityProps) {
   const color = TEAM_COLORS[team] ?? 0x888888
@@ -30,9 +30,12 @@ export default function RemotePlayerEntity({ state, team }: RemotePlayerEntityPr
   useFrame(() => {
     const interp = interpolatorRef.current.getInterpolated()
     if (!interp || !groupRef.current) return
+
+    // StateInterpolator already buffers and smooths network snapshots.
+    // Keep transform authoritative to avoid extra render-lag when aiming at targets.
     groupRef.current.position.set(
       interp.position.x,
-      interp.position.y + REMOTE_MODEL_Y_OFFSET,
+      interp.position.y,
       interp.position.z,
     )
     groupRef.current.rotation.set(0, -interp.yaw, 0)
@@ -68,11 +71,13 @@ export default function RemotePlayerEntity({ state, team }: RemotePlayerEntityPr
 
   return (
     <group ref={groupRef}>
-      <SoldierModel
-        ref={soldierRef}
-        initialAnimState={AnimState.Idle}
-        teamColor={color}
-      />
+      <group position={[0, SOLDIER_MODEL_Y_OFFSET, 0]}>
+        <SoldierModel
+          ref={soldierRef}
+          initialAnimState={AnimState.Idle}
+          teamColor={color}
+        />
+      </group>
     </group>
   )
 }

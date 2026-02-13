@@ -241,9 +241,56 @@ export class RoomManager {
         break;
       }
 
-      // Ignore join (legacy) during room-managed mode
-      case 'join':
+      // Auto-join: create room or join existing one, then auto-start
+      case 'join': {
+        client.name = msg.name;
+
+        if (this.phase === 'idle') {
+          // No room — create one and become host
+          this.roomCode = this.generateRoomCode();
+          this.phase = 'lobby';
+          this.hostId = client.id;
+          this.gameMode = msg.gameMode;
+
+          this.roomPlayers.set(client.id, {
+            clientId: client.id,
+            name: msg.name,
+            team: Team.Alpha,
+            isHost: true,
+          });
+
+          console.log(`[auto-join] Room ${this.roomCode} created by ${msg.name}`);
+          // Auto-start after a short delay to allow other clients to join
+          setTimeout(() => {
+            if (this.phase === 'lobby' && this.hostId === client.id) {
+              this.startGame();
+            }
+          }, 1500);
+        } else if (this.phase === 'lobby') {
+          // Room exists in lobby — join it
+          if (this.roomPlayers.size >= MAX_PLAYERS) break;
+          const team = this.getBalancedTeam();
+          this.roomPlayers.set(client.id, {
+            clientId: client.id,
+            name: msg.name,
+            team,
+            isHost: false,
+          });
+          console.log(`[auto-join] ${msg.name} joined room ${this.roomCode} (team ${team})`);
+        } else if (this.phase === 'in_game' && this.gameLoop) {
+          // Game already running — hot-join: add player directly to game loop
+          const team = this.getBalancedTeam();
+          this.roomPlayers.set(client.id, {
+            clientId: client.id,
+            name: msg.name,
+            team,
+            isHost: false,
+          });
+          this.gameLoop.hotJoinPlayer(client, msg.name, team);
+          console.log(`[auto-join] ${msg.name} hot-joined in-progress game (team ${team})`);
+        }
         break;
+      }
     }
   }
 
