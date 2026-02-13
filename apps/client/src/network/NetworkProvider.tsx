@@ -1,28 +1,45 @@
 import React, { createContext, useContext, useRef, useEffect } from 'react'
 import { NetworkClient } from './network-client'
+import { ColyseusNetworkClient } from './colyseus-network-client'
 import useStore from '../stores/useStore'
 
-const NetworkContext = createContext<NetworkClient | null>(null)
+type TransportClient = {
+  connect: () => void | Promise<void>
+  disconnect: () => void
+  join: (name: string, gameMode: 'tdm' | 'conquest' | 'incursion') => void
+  send: (msg: any) => void
+  onConnected: (() => void) | null
+}
 
-export function useNetwork(): NetworkClient | null {
+const NetworkContext = createContext<TransportClient | null>(null)
+
+const NETCODE_BACKEND = (import.meta.env.VITE_NETCODE_BACKEND ?? 'ws').toLowerCase()
+
+export function useNetwork(): TransportClient | null {
   return useContext(NetworkContext)
 }
 
 export function NetworkProvider({ children }: { children: React.ReactNode }) {
   const handleServerMessage = useStore((s) => s.handleServerMessage)
-  const clientRef = useRef<NetworkClient | null>(null)
+  const clientRef = useRef<TransportClient | null>(null)
 
   if (!clientRef.current) {
-    clientRef.current = new NetworkClient(handleServerMessage)
+    clientRef.current = NETCODE_BACKEND === 'colyseus'
+      ? new ColyseusNetworkClient(handleServerMessage)
+      : new NetworkClient(handleServerMessage)
   }
 
   useEffect(() => {
     const client = clientRef.current!
-    // Auto-join on connect
+    // Auto-join on connect — server handles room creation/joining
     client.onConnected = () => {
       client.join('Player', 'tdm')
     }
-    client.connect()
+    void client.connect()
+
+    return () => {
+      client.disconnect()
+    }
   }, [])
 
   // Auto-deploy when connected (welcome received)

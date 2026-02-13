@@ -1,11 +1,11 @@
-import { useRef, useMemo } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { PlayerState } from '@clawfield/shared'
-import { StateInterpolator } from './interpolation'
 import SoldierModel from './SoldierModel'
 import type { SoldierModelHandle } from './SoldierModel'
-import { deriveRemoteAnimState } from './animation-state'
+import { AnimState, deriveRemoteAnimState } from './animation-state'
+import { StateInterpolator } from './interpolation'
 
 interface RemotePlayerEntityProps {
   state: PlayerState
@@ -13,56 +13,66 @@ interface RemotePlayerEntityProps {
 }
 
 const TEAM_COLORS = [0x4488ff, 0xff6644] // Alpha=blue, Bravo=red
+const REMOTE_MODEL_Y_OFFSET = 0.4
 
 export default function RemotePlayerEntity({ state, team }: RemotePlayerEntityProps) {
-  const groupRef = useRef<THREE.Group>(null!)
-  const soldierRef = useRef<SoldierModelHandle>(null!)
-  const interpolator = useMemo(() => new StateInterpolator(), [])
-  const lastKey = useRef('')
-  const prevPosRef = useRef<THREE.Vector3>(new THREE.Vector3())
-  const prevTimeRef = useRef(0)
+  const color = TEAM_COLORS[team] ?? 0x888888
+  const soldierRef = useRef<SoldierModelHandle>(null)
+  const groupRef = useRef<THREE.Group>(null)
+  const interpolatorRef = useRef(new StateInterpolator())
+  const prevPosRef = useRef({ ...state.position })
+  const prevTimeRef = useRef(performance.now())
 
-  // Push state into interpolator only when position actually changes
-  const stateKey = `${state.position.x},${state.position.y},${state.position.z}`
-  if (stateKey !== lastKey.current) {
-    lastKey.current = stateKey
-    interpolator.push(state)
-  }
+  useEffect(() => {
+    interpolatorRef.current.push(state)
+  }, [state])
 
   useFrame(() => {
-    const result = interpolator.getInterpolated()
-    if (!result || !groupRef.current) return
-
-    groupRef.current.position.set(result.position.x, result.position.y, result.position.z)
-    groupRef.current.rotation.y = -result.yaw
-    groupRef.current.visible = state.alive || state.downed
-
-    // Compute velocity from position deltas for animation derivation
-    const now = performance.now()
-    const dtMs = now - prevTimeRef.current
-    let speed = 0
-    let moveAngle: number | undefined
-    if (dtMs > 0 && dtMs < 500) {
-      const dtSec = dtMs / 1000
-      const dx = result.position.x - prevPosRef.current.x
-      const dz = result.position.z - prevPosRef.current.z
-      speed = Math.sqrt(dx * dx + dz * dz) / dtSec
-      if (speed > 0.5) {
-        moveAngle = Math.atan2(dx, dz)
-      }
-    }
-    prevPosRef.current.set(result.position.x, result.position.y, result.position.z)
-    prevTimeRef.current = now
-
-    // Derive and set animation state
-    soldierRef.current?.setAnimState(deriveRemoteAnimState(state, speed, moveAngle))
+    const interp = interpolatorRef.current.getInterpolated()
+    if (!interp || !groupRef.current) return
+    groupRef.current.position.set(
+      interp.position.x,
+      interp.position.y + REMOTE_MODEL_Y_OFFSET,
+      interp.position.z,
+    )
+    groupRef.current.rotation.set(0, -interp.yaw, 0)
   })
 
-  const color = TEAM_COLORS[team] ?? 0x888888
+  useEffect(() => {
+    const latest = interpolatorRef.current.latestState ?? state
+    const now = performance.now()
+    const prev = prevPosRef.current
+    const dt = Math.max((now - prevTimeRef.current) / 1000, 1 / 120)
+
+    const dx = latest.position.x - prev.x
+    const dz = latest.position.z - prev.z
+    const speed = Math.sqrt(dx * dx + dz * dz) / dt
+    const moveAngle = speed > 0.01 ? Math.atan2(dx, dz) : undefined
+
+    soldierRef.current?.setAnimState(deriveRemoteAnimState(latest, speed, moveAngle))
+
+    prevPosRef.current = { ...latest.position }
+    prevTimeRef.current = now
+  }, [
+    state.position.x,
+    state.position.y,
+    state.position.z,
+    state.yaw,
+    state.alive,
+    state.downed,
+    state.reloading,
+    state.shooting,
+  ])
+
+  if (!state.alive && !state.downed) return null
 
   return (
     <group ref={groupRef}>
-      <SoldierModel ref={soldierRef} teamColor={color} />
+      <SoldierModel
+        ref={soldierRef}
+        initialAnimState={AnimState.Idle}
+        teamColor={color}
+      />
     </group>
   )
 }

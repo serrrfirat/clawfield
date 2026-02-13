@@ -242,6 +242,13 @@ const createStore = () =>
             sessionToken: null as string | null,
             scoreboard: [] as ScoreboardEntry[],
             matchConfig: null as MatchConfig | null,
+            pendingRespawnPosition: null as Vec3 | null,
+            authoritativePosition: null as Vec3 | null,
+            consumeRespawnPosition: () => {
+                const pos = (useStore.getState() as any).pendingRespawnPosition as Vec3 | null
+                if (pos) set({ pendingRespawnPosition: null })
+                return pos
+            },
 
             // ── Hit Confirm State ──────────────────────────────────
             /** Pending hit confirmations for sound/visual feedback */
@@ -294,6 +301,7 @@ const createStore = () =>
                                     downed: p.downed,
                                     weaponSlot: p.weaponSlot,
                                     weaponName: p.weaponName,
+                                    authoritativePosition: p.position,
                                 }
                             } else {
                                 remote.set(p.id, p)
@@ -331,7 +339,12 @@ const createStore = () =>
                         break
 
                     case 'respawn':
-                        set({ alive: true, downed: false, health: 100 })
+                        set({
+                            alive: true,
+                            downed: false,
+                            health: 100,
+                            pendingRespawnPosition: msg.position,
+                        })
                         break
 
                     case 'tickets':
@@ -372,5 +385,8 @@ const useStore = (import.meta as any)?.hot?.data?.store ?? createStore()
 if ((import.meta as any)?.hot) {
     ;(import.meta as any).hot.data.store = useStore
 }
+
+// Expose for Playwright/debug access
+;(window as any).__ZUSTAND_STORE__ = useStore
 
 export default useStore

@@ -47,6 +47,7 @@ export default function PlayerController() {
   const setBallPosition = useStore((s) => s.setBallPosition)
   const setSmoothedCircleCenter = useStore((s) => s.setSmoothedCircleCenter)
   const setLandBallDistance = useStore((s) => s.setLandBallDistance)
+  const consumeRespawnPosition = useStore((s: any) => s.consumeRespawnPosition)
   const alive = useStore((s) => s.alive)
   const downed = useStore((s) => s.downed)
   const reloading = useStore((s) => s.reloading)
@@ -56,6 +57,50 @@ export default function PlayerController() {
 
     const clamped = Math.min(dt, 0.1)
     const rb = rigidBodyRef.current
+
+    // Apply server-authoritative spawn position on respawn.
+    const respawnPos = consumeRespawnPosition?.()
+    if (respawnPos) {
+      rb.setTranslation(
+        { x: respawnPos.x, y: respawnPos.y + BALL_RADIUS, z: respawnPos.z },
+        true
+      )
+      rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      vyRef.current = 0
+      groundedRef.current = false
+      posRef.current = { ...respawnPos }
+    }
+
+    // Reconcile local predicted position to server-authoritative position.
+    // Keep this gentle to avoid camera/terrain jitter from over-correction.
+    const authoritativePos = (useStore.getState() as any).authoritativePosition as Vec3 | null
+    if (authoritativePos) {
+      const current = rb.translation()
+      const targetX = authoritativePos.x
+      const targetZ = authoritativePos.z
+      const dx = targetX - current.x
+      const dz = targetZ - current.z
+      const horizontalDistSq = dx * dx + dz * dz
+      const horizontalDist = Math.sqrt(horizontalDistSq)
+
+      // Big divergence: snap immediately.
+      if (horizontalDistSq > 64) {
+        rb.setTranslation({ x: targetX, y: current.y, z: targetZ }, true)
+      } else if (horizontalDistSq > 0.16) {
+        // Small divergence: correct with capped step so we don't oscillate.
+        const alpha = Math.min(1, clamped * 5)
+        const correction = Math.min(horizontalDist * alpha, 0.12)
+        const inv = horizontalDist > 1e-5 ? 1 / horizontalDist : 0
+        rb.setTranslation(
+          {
+            x: current.x + dx * inv * correction,
+            y: current.y,
+            z: current.z + dz * inv * correction,
+          },
+          true
+        )
+      }
+    }
 
     // ── 1. Read collision-resolved position from last physics step ──
     const resolved = rb.translation()

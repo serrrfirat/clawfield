@@ -13,7 +13,7 @@ const FLAG_LZ4 = 0x01;
 export interface Client {
   id: string;
   name: string;
-  ws: WebSocket;
+  ws?: WebSocket;
   alive: boolean;
 }
 
@@ -118,7 +118,7 @@ export class NetworkServer {
 
   /** Send a message to a specific client */
   send(client: Client, msg: ServerMessage): void {
-    if (client.ws.readyState === WebSocket.OPEN) {
+    if (client.ws && client.ws.readyState === WebSocket.OPEN) {
       client.ws.send(encodeMessage(msg));
     }
   }
@@ -127,7 +127,7 @@ export class NetworkServer {
   broadcast(msg: ServerMessage): void {
     const data = encodeMessage(msg);
     for (const client of this.clients.values()) {
-      if (client.ws.readyState === WebSocket.OPEN) {
+      if (client.ws && client.ws.readyState === WebSocket.OPEN) {
         client.ws.send(data);
       }
     }
@@ -137,7 +137,7 @@ export class NetworkServer {
   broadcastExcept(excludeId: string, msg: ServerMessage): void {
     const data = encodeMessage(msg);
     for (const client of this.clients.values()) {
-      if (client.id !== excludeId && client.ws.readyState === WebSocket.OPEN) {
+      if (client.id !== excludeId && client.ws && client.ws.readyState === WebSocket.OPEN) {
         client.ws.send(data);
       }
     }
@@ -147,7 +147,7 @@ export class NetworkServer {
   broadcastToTeam(team: number, msg: ServerMessage, getTeam: (clientId: string) => number | undefined): void {
     const data = encodeMessage(msg);
     for (const client of this.clients.values()) {
-      if (client.ws.readyState === WebSocket.OPEN && getTeam(client.id) === team) {
+      if (client.ws && client.ws.readyState === WebSocket.OPEN && getTeam(client.id) === team) {
         client.ws.send(data);
       }
     }

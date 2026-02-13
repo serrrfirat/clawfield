@@ -51,6 +51,7 @@ export class NetworkClient {
   private _onConnected: (() => void) | null = null;
   private _onConnectionFailed: (() => void) | null = null;
   private _autoReconnect = false;
+  private _manualClose = false;
 
   /** Session token for reconnection (set after welcome) */
   sessionToken: string | null = null;
@@ -74,6 +75,12 @@ export class NetworkClient {
   }
 
   connect(): void {
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    this._manualClose = false;
+
     // VITE_SERVER_URL can be set to e.g. "wss://clawfield-server.up.railway.app"
     const serverUrl = import.meta.env.VITE_SERVER_URL;
     let wsUrl: string;
@@ -116,6 +123,11 @@ export class NetworkClient {
       const wasConnected = this._connected;
       this._connected = false;
 
+      if (this._manualClose) {
+        this.ws = null;
+        return;
+      }
+
       if (!wasConnected) {
         // Connection attempt failed (never opened)
         console.log('Failed to connect to server');
@@ -129,11 +141,23 @@ export class NetworkClient {
       if (this._autoReconnect) {
         setTimeout(() => this.connect(), 2000);
       }
+
+      this.ws = null;
     };
 
     this.ws.onerror = (_err) => {
       // onerror always fires before onclose; onclose handles the logic
     };
+  }
+
+  disconnect(): void {
+    this._autoReconnect = false;
+    this._manualClose = true;
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      this.ws.close();
+    }
+    this.ws = null;
+    this._connected = false;
   }
 
   /** Send a join message to the server with the chosen name and game mode. */
