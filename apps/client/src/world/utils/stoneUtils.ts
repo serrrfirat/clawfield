@@ -15,7 +15,7 @@ export function smoothstep(edge0, edge1, x) {
 const placementCache = new Map()
 let lastPlacementSettings = ''
 
-function getCachedPlacements(chunkX, chunkZ, size, noise2D, stoneParameters) {
+function getCachedPlacements(chunkX, chunkZ, size, noise2D, stoneParameters, worldSeed = 1337) {
     // Parameters that affect the *selection* of stones
     // Note: We don't include visual params like scale/color/yOffset here, only placement logic.
     const maxCount = Math.max(0, Math.floor(stoneParameters.count))
@@ -24,6 +24,7 @@ function getCachedPlacements(chunkX, chunkZ, size, noise2D, stoneParameters) {
     // Create a signature for parameters that affect placement
     const settings = {
         seedPrefix: 'v1',
+        worldSeed,
         count: maxCount,
         noiseScale: stoneParameters.noiseScale,
         noiseThreshold: stoneParameters.noiseThreshold,
@@ -56,7 +57,7 @@ function getCachedPlacements(chunkX, chunkZ, size, noise2D, stoneParameters) {
 
     for (let ix = 0; ix < cells; ix++) {
         for (let iz = 0; iz < cells; iz++) {
-            const seed = ((chunkX * 73856093) ^ (chunkZ * 19349663) ^ (ix * 83492791) ^ (iz * 2971215073)) >>> 0
+            const seed = ((chunkX * 73856093) ^ (chunkZ * 19349663) ^ (ix * 83492791) ^ (iz * 2971215073) ^ worldSeed) >>> 0
             const rng = mulberry32(seed)
 
             const cx = -size * 0.5 + (ix + 0.5) * cellSize
@@ -99,6 +100,7 @@ export function generateChunkStones(
     noise2D,
     stoneParameters,
     terrainParameters,
+    worldSeed = 1337,
     skipMatrices = false,
     minimalData = false // New flag: skip expensive noise/y calculations if we only need x/z/scale
 ) {
@@ -106,7 +108,7 @@ export function generateChunkStones(
     if (!stoneParameters.enabled || !noise2D) return { instances: [], stones: [] }
 
     // 1. Get Placements (Cached)
-    const chosen = getCachedPlacements(chunkX, chunkZ, size, noise2D, stoneParameters)
+    const chosen = getCachedPlacements(chunkX, chunkZ, size, noise2D, stoneParameters, worldSeed)
     if (!chosen || chosen.length === 0) return { instances: [], stones: [] }
 
     const chunkWorldX = chunkX * size

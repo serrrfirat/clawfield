@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import type { GrenadeState, SmokeGrenadeState, Vec3 } from '@clawfield/shared';
 import { GRAVITY, GRENADE_FUSE_TIME, GRENADE_DAMAGE_RADIUS, SMOKE_GRENADE_FUSE_TIME } from '@clawfield/shared';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { soundManager, SoundId } from '../audio/sound-manager';
 import type { ParticleSystem } from './particle-system';
+import { FRAG_GRENADE_VISUAL, SMOKE_GRENADE_VISUAL, type WeaponVisualDef } from '../player/weapon-visuals';
 
 /** Maximum number of point lights for grenades (performance cap) */
 const MAX_GRENADE_LIGHTS = 4;
@@ -37,11 +39,42 @@ const EXPLOSION_DEBRIS_COLORS: [number, number, number][] = [
 
 /** Tracked grenade with mesh and interpolation data */
 interface TrackedGrenade {
-  mesh: THREE.Mesh;
+  mesh: THREE.Object3D;
   light: THREE.PointLight | null;
   velocity: Vec3;
   fuseRemaining: number;
   lastUpdate: number;
+}
+
+const modelLoader = new GLTFLoader();
+const modelTemplateCache = new Map<string, Promise<THREE.Object3D | null>>();
+
+function centerObject(root: THREE.Object3D): void {
+  const box = new THREE.Box3().setFromObject(root);
+  if (box.isEmpty()) return;
+  const center = new THREE.Vector3();
+  box.getCenter(center);
+  root.position.sub(center);
+}
+
+function loadModelTemplate(visual: WeaponVisualDef): Promise<THREE.Object3D | null> {
+  const existing = modelTemplateCache.get(visual.path);
+  if (existing) return existing;
+
+  const promise = modelLoader
+    .loadAsync(visual.path)
+    .then((gltf) => {
+      const root = gltf.scene.clone(true);
+      centerObject(root);
+      root.scale.setScalar(visual.scale);
+      root.rotation.set(...visual.rotation);
+      root.position.set(...visual.position);
+      return root;
+    })
+    .catch(() => null);
+
+  modelTemplateCache.set(visual.path, promise);
+  return promise;
 }
 
 /** Tracked explosion animation */
@@ -76,6 +109,8 @@ export class GrenadeRenderer {
   private readonly grenadeGeometry: THREE.BoxGeometry;
   private readonly grenadeMaterial: THREE.MeshStandardMaterial;
   private readonly smokeGrenadeMaterial: THREE.MeshStandardMaterial;
+  private fragGrenadeTemplate: THREE.Object3D | null = null;
+  private smokeGrenadeTemplate: THREE.Object3D | null = null;
 
   /** Count of currently active grenade lights */
   private activeGrenadeLightCount = 0;
@@ -90,6 +125,17 @@ export class GrenadeRenderer {
     this.grenadeGeometry = new THREE.BoxGeometry(GRENADE_SIZE, GRENADE_SIZE, GRENADE_SIZE);
     this.grenadeMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
     this.smokeGrenadeMaterial = new THREE.MeshStandardMaterial({ color: 0x556b2f }); // olive green for smoke
+
+    void this.loadGrenadeModelTemplates();
+  }
+
+  private async loadGrenadeModelTemplates(): Promise<void> {
+    const [fragModel, smokeModel] = await Promise.all([
+      loadModelTemplate(FRAG_GRENADE_VISUAL),
+      loadModelTemplate(SMOKE_GRENADE_VISUAL),
+    ]);
+    this.fragGrenadeTemplate = fragModel;
+    this.smokeGrenadeTemplate = smokeModel;
   }
 
   /** Set the particle system used for explosion effects */
@@ -396,7 +442,7 @@ export class GrenadeRenderer {
     velocity: Vec3,
     fuseRemaining: number,
   ): void {
-    const mesh = new THREE.Mesh(this.grenadeGeometry, this.grenadeMaterial);
+    const mesh = this.createThrowableObject(this.fragGrenadeTemplate, this.grenadeMaterial);
     mesh.position.set(position.x, position.y, position.z);
     this.scene.add(mesh);
 
@@ -439,7 +485,7 @@ export class GrenadeRenderer {
     velocity: Vec3,
     fuseRemaining: number,
   ): void {
-    const mesh = new THREE.Mesh(this.grenadeGeometry, this.smokeGrenadeMaterial);
+    const mesh = this.createThrowableObject(this.smokeGrenadeTemplate, this.smokeGrenadeMaterial);
     mesh.position.set(position.x, position.y, position.z);
     this.scene.add(mesh);
 
@@ -472,5 +518,12 @@ export class GrenadeRenderer {
     }
 
     this.smokeGrenades.delete(id);
+  }
+
+  private createThrowableObject(template: THREE.Object3D | null, fallbackMaterial: THREE.Material): THREE.Object3D {
+    if (template) {
+      return template.clone(true);
+    }
+    return new THREE.Mesh(this.grenadeGeometry, fallbackMaterial);
   }
 }

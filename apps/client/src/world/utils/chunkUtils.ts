@@ -11,16 +11,16 @@ const TREE_RADIUS = 0.9
 const TREE_ATTEMPTS = 12
 const STONE_RADIUS_MULTIPLIER = 1.1
 
-function buildStoneField(x, z, size, noise2D, stoneParameters, terrainParameters) {
+function buildStoneField(x, z, size, noise2D, stoneParameters, terrainParameters, worldSeed = 1337) {
     const capacity = 500
-    const current = generateChunkStones(x, z, size, noise2D, stoneParameters, terrainParameters)
+    const current = generateChunkStones(x, z, size, noise2D, stoneParameters, terrainParameters, worldSeed)
     const neighbors = []
 
     for (let dx = -1; dx <= 1; dx++) {
         for (let dz = -1; dz <= 1; dz++) {
             if (dx === 0 && dz === 0) continue
 
-            const neighborStones = generateChunkStones(x + dx, z + dz, size, noise2D, stoneParameters, terrainParameters, true, true).stones
+            const neighborStones = generateChunkStones(x + dx, z + dz, size, noise2D, stoneParameters, terrainParameters, worldSeed, true, true).stones
             for (const s of neighborStones) {
                 neighbors.push({ ...s, x: s.x + dx * size, z: s.z + dz * size })
             }
@@ -35,10 +35,10 @@ function buildStoneField(x, z, size, noise2D, stoneParameters, terrainParameters
     }
 }
 
-function buildTreeInstances(x, z, size, noise2D, terrainParameters, stoneField) {
+function buildTreeInstances(x, z, size, noise2D, terrainParameters, stoneField, worldSeed = 1337) {
     if (!noise2D) return []
 
-    const seed = ((x * 73856093) ^ (z * 19349663) ^ 0x9e3779b9) >>> 0
+    const seed = ((x * 73856093) ^ (z * 19349663) ^ 0x9e3779b9 ^ worldSeed) >>> 0
     const rng = mulberry32(seed)
     const count = TREE_COUNT_MIN + Math.floor(rng() * (TREE_COUNT_MAX - TREE_COUNT_MIN + 1))
     const padding = size * TREE_PADDING_FRACTION
@@ -84,8 +84,8 @@ function buildTreeInstances(x, z, size, noise2D, terrainParameters, stoneField) 
     return trees
 }
 
-export function generateChunkData(x, z, size, noise2D, stoneParameters, terrainParameters) {
-    const stoneField = buildStoneField(x, z, size, noise2D, stoneParameters, terrainParameters)
-    const treeInstances = buildTreeInstances(x, z, size, noise2D, terrainParameters, stoneField)
+export function generateChunkData(x, z, size, noise2D, stoneParameters, terrainParameters, worldSeed = 1337) {
+    const stoneField = buildStoneField(x, z, size, noise2D, stoneParameters, terrainParameters, worldSeed)
+    const treeInstances = buildTreeInstances(x, z, size, noise2D, terrainParameters, stoneField, worldSeed)
     return { stoneField, treeInstances }
 }

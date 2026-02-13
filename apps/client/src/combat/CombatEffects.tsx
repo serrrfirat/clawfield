@@ -3,6 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber'
 import { ProjectileRenderer } from './projectile-renderer'
 import { ParticleSystem } from './particle-system'
 import { GrenadeRenderer } from './grenade-renderer'
+import SmokeClouds from './SmokeClouds'
 import { soundManager, SoundId } from '../audio/sound-manager'
 import useStore from '../stores/useStore'
 
@@ -169,5 +170,5 @@ export default function CombatEffects() {
     )
   })
 
-  return null // All rendering is imperative
+  return <SmokeClouds />
 }

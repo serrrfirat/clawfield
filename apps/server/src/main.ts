@@ -11,7 +11,8 @@ console.log('Clawfield server starting...');
 if (useColyseus) {
   const gameServer = new ColyseusServer({});
 
-  gameServer.define('battle', BattleRoom);
+  gameServer.define('battle_quick', BattleRoom);
+  gameServer.define('battle_lobby', BattleRoom);
   gameServer.listen(port);
   console.log(`[Colyseus] Server running on port ${port}`);
 } else {

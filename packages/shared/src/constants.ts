@@ -14,7 +14,7 @@ export const TICK_INTERVAL = 1000 / TICK_RATE;
 export const GRAVITY = -20;
 
 /** Jump initial velocity in m/s */
-export const JUMP_VELOCITY = 8;
+export const JUMP_VELOCITY = 2;
 
 /** Walk speed in m/s (default movement) */
 export const WALK_SPEED = 3;

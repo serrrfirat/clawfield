@@ -3,3 +3,7 @@ import { mulberry32 } from './randomUtils'
 
 export const WORLD_NOISE_SEED = 1337
 export const sharedNoise2D = createNoise2D(mulberry32(WORLD_NOISE_SEED))
+
+export function createSeededNoise2D(seed = WORLD_NOISE_SEED) {
+    return createNoise2D(mulberry32(seed))
+}

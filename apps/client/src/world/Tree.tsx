@@ -121,6 +121,12 @@ export function Tree(props) {
         }
     }, [clonedScene])
 
+    useEffect(() => {
+        if (props.enableColliders === false) {
+            trunkBodiesRef.current = null
+        }
+    }, [props.enableColliders])
+
     useFrame((state) => {
         if (!boneRoot) return
 
@@ -179,6 +185,10 @@ export function Tree(props) {
             }
         })
 
+        if (props.enableColliders === false || !props.visible) {
+            return
+        }
+
         const bodies = trunkBodiesRef.current
         if (bodies && trunkEntries.length > 0) {
             const { pos, quat } = trunkTmpRef.current
@@ -186,6 +196,7 @@ export function Tree(props) {
                 const bone = trunkEntries[i]?.bone
                 const body = bodies[i]
                 if (!bone || !body) continue
+                if (typeof body.isValid === 'function' && !body.isValid()) continue
                 bone.getWorldPosition(pos)
                 bone.getWorldQuaternion(quat)
                 body.setNextKinematicTranslation({ x: pos.x, y: pos.y, z: pos.z })
@@ -204,7 +215,7 @@ export function Tree(props) {
                     <primitive object={boneRoot} />
                 </group>
             </group>
-            {trunkColliderGeometry && trunkInstances.length > 0 && (
+            {props.enableColliders !== false && trunkColliderGeometry && trunkInstances.length > 0 && (
                 <InstancedRigidBodies ref={trunkBodiesRef} instances={trunkInstances} type="kinematicPosition" colliders="trimesh">
                     <instancedMesh
                         args={[trunkColliderGeometry, colliderMaterial, trunkInstances.length]}

@@ -3,7 +3,18 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { RigidBody, BallCollider } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
-import { inputToVelocity, createTerrainHeight, WEAPONS, WeaponId, JUMP_VELOCITY, GRAVITY, PLAYER_HEIGHT } from '@clawfield/shared'
+import {
+  inputToVelocity,
+  createTerrainHeight,
+  WEAPONS,
+  WeaponId,
+  JUMP_VELOCITY,
+  GRAVITY,
+  PLAYER_HEIGHT,
+  buildHeightmapObstacleDiscs,
+  resolveDiscObstacleCollision,
+  DEFAULT_HEIGHTMAP_CONFIG,
+} from '@clawfield/shared'
 import type { Vec3 } from '@clawfield/shared'
 
 import { TopDownInputCapture } from './TopDownInput'
@@ -18,7 +29,6 @@ import { SOLDIER_MODEL_Y_OFFSET } from './model-offset'
 import { AnimState, deriveAnimState } from './animation-state'
 import AimCursor from './AimCursor'
 
-const heightGetter = createTerrainHeight()
 const BALL_RADIUS = 0.4
 
 /** Default weapon for client-predicted projectiles */
@@ -49,9 +59,37 @@ export default function PlayerController() {
   const setSmoothedCircleCenter = useStore((s) => s.setSmoothedCircleCenter)
   const setLandBallDistance = useStore((s) => s.setLandBallDistance)
   const consumeRespawnPosition = useStore((s: any) => s.consumeRespawnPosition)
+  const matchConfig = useStore((s: any) => s.matchConfig)
+  const connected = useStore((s: any) => s.connected)
+  const placementColliders = useStore((s: any) => s.placementColliders)
+  const obstacleDiscsFromServer = useStore((s: any) => s.obstacleDiscs)
   const alive = useStore((s) => s.alive)
   const downed = useStore((s) => s.downed)
   const reloading = useStore((s) => s.reloading)
+
+  const heightGetter = useMemo(
+    () => createTerrainHeight(matchConfig?.terrain?.scale, matchConfig?.terrain?.amplitude, matchConfig?.seed),
+    [matchConfig?.terrain?.scale, matchConfig?.terrain?.amplitude, matchConfig?.seed],
+  )
+
+  const obstacleDiscs = useMemo(() => {
+    if (connected) {
+      return obstacleDiscsFromServer ?? []
+    }
+    const cfg = matchConfig ?? DEFAULT_HEIGHTMAP_CONFIG
+    return [...buildHeightmapObstacleDiscs(cfg), ...(placementColliders ?? [])]
+  }, [
+    connected,
+    obstacleDiscsFromServer,
+    matchConfig?.seed,
+    matchConfig?.terrain?.scale,
+    matchConfig?.terrain?.amplitude,
+    matchConfig?.bounds?.minX,
+    matchConfig?.bounds?.maxX,
+    matchConfig?.bounds?.minZ,
+    matchConfig?.bounds?.maxZ,
+    placementColliders,
+  ])
 
   useFrame((_, dt) => {
     if (!rigidBodyRef.current) return
@@ -73,10 +111,8 @@ export default function PlayerController() {
     }
 
     // Reconcile local predicted position to server-authoritative position.
-    // Only snap on massive divergence (teleport/respawn). Gentle correction is
-    // disabled until proper ack-based reconciliation is wired up — without it
-    // the server position (which lags by one RTT) fights local prediction and
-    // causes rubberbanding.
+    // Keep this aggressive enough to avoid cross-client drift while still
+    // smoothing small jitter from network cadence.
     const authoritativePos = (useStore.getState() as any).authoritativePosition as Vec3 | null
     if (authoritativePos) {
       const current = rb.translation()
@@ -84,9 +120,25 @@ export default function PlayerController() {
       const dz = authoritativePos.z - current.z
       const horizontalDistSq = dx * dx + dz * dz
 
-      // Big divergence only (>8m): snap immediately (teleport/respawn).
-      if (horizontalDistSq > 64) {
+      // Large divergence: snap now.
+      if (horizontalDistSq > 2.25) {
         rb.setTranslation({ x: authoritativePos.x, y: current.y, z: authoritativePos.z }, true)
+      } else if (horizontalDistSq > 0.0004) {
+        // Small/medium divergence: move toward server each frame, capped.
+        const horizontalDist = Math.sqrt(horizontalDistSq)
+        const alpha = 0.6
+        const maxStep = 12 * clamped
+        const desiredStep = horizontalDist * alpha
+        const step = Math.min(maxStep, desiredStep)
+        const invDist = 1 / Math.max(horizontalDist, 1e-6)
+        rb.setTranslation(
+          {
+            x: current.x + dx * invDist * step,
+            y: current.y,
+            z: current.z + dz * invDist * step,
+          },
+          true,
+        )
       }
     }
 
@@ -112,11 +164,24 @@ export default function PlayerController() {
       groundedRef.current = false
     }
 
-    rb.setTranslation({ x: resolved.x, y: newBodyY, z: resolved.z }, true)
+    let resolvedX = resolved.x
+    let resolvedZ = resolved.z
+    const playerY = newBodyY - BALL_RADIUS
+
+    if (connected && obstacleDiscs.length > 0) {
+      const corrected = resolveDiscObstacleCollision(
+        { x: resolvedX, y: playerY, z: resolvedZ },
+        BALL_RADIUS,
+        obstacleDiscs,
+      )
+      resolvedX = corrected.x
+      resolvedZ = corrected.z
+    }
+
+    rb.setTranslation({ x: resolvedX, y: newBodyY, z: resolvedZ }, true)
 
     // ── 3. Update posRef (ball-center Y for camera/shooting/store) ──
-    const playerY = newBodyY - BALL_RADIUS
-    posRef.current = { x: resolved.x, y: playerY, z: resolved.z }
+    posRef.current = { x: resolvedX, y: playerY, z: resolvedZ }
 
     // ── 4. Camera + input ──
     camera.update(posRef.current, clamped)
@@ -127,11 +192,11 @@ export default function PlayerController() {
 
     // Update mutable positions for AimCursor (must mutate in-place, not reassign)
     cursorWorldPosRef.current.copy(camera.getCursorWorldPos())
-    playerWorldPosRef.current.set(resolved.x, playerY, resolved.z)
+    playerWorldPosRef.current.set(resolvedX, playerY, resolvedZ)
 
     if (!alive) {
       // Still update camera/store but skip movement
-      const pos3 = new THREE.Vector3(resolved.x, playerY, resolved.z)
+      const pos3 = new THREE.Vector3(resolvedX, playerY, resolvedZ)
       setBallPosition(pos3)
       setSmoothedCircleCenter(pos3)
       setLandBallDistance(Math.abs(playerY - terrainY))
@@ -171,8 +236,8 @@ export default function PlayerController() {
       const cursorWP = cursorWorldPosRef.current
 
       // Direction from muzzle origin to cursor ground position
-      const muzzleOriginX = resolved.x
-      const muzzleOriginZ = resolved.z
+      const muzzleOriginX = resolvedX
+      const muzzleOriginZ = resolvedZ
       const muzzleY = playerY + eyeOffset
 
       const dx = cursorWP.x - muzzleOriginX
@@ -223,7 +288,7 @@ export default function PlayerController() {
     soldierRef.current?.setAnimState(deriveAnimState(input, alive, downed, reloading, shootingRef.current, speed))
 
     // Update store for terrain chunks to follow
-    const pos3 = new THREE.Vector3(resolved.x, playerY, resolved.z)
+    const pos3 = new THREE.Vector3(resolvedX, playerY, resolvedZ)
     setBallPosition(pos3)
     setSmoothedCircleCenter(pos3)
     setLandBallDistance(Math.abs(playerY - terrainY))

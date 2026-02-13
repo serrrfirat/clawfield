@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import { AnimState, CROSSFADE_DURATIONS, DEFAULT_CROSSFADE } from './animation-state'
 import useStore from '../stores/useStore'
 import noiseTextureUrl from '../assets/textures/noiseTexture.png'
+import { ALL_WEAPON_MODEL_PATHS, getWeaponVisualForName } from './weapon-visuals'
 import {
   createDitherUniforms,
   patchMaterialWithDither,
@@ -24,16 +25,49 @@ interface SoldierModelProps {
   /** Initial animation state */
   initialAnimState?: AnimState
   teamColor?: number
+  weaponName?: string
+}
+
+function findRightHandBone(root: THREE.Object3D): THREE.Bone | null {
+  const preferredNames = ['mixamorigrighthand', 'righthand', 'hand_r', 'r_hand']
+  let fallback: THREE.Bone | null = null
+
+  root.traverse((child) => {
+    if (!(child as THREE.Bone).isBone) return
+    const bone = child as THREE.Bone
+    const name = bone.name.toLowerCase()
+    if (preferredNames.some((token) => name.includes(token))) {
+      fallback = bone
+      return
+    }
+    if (!fallback && name.includes('hand') && name.includes('right')) {
+      fallback = bone
+    }
+  })
+
+  return fallback
+}
+
+function centerObject(root: THREE.Object3D): void {
+  const box = new THREE.Box3().setFromObject(root)
+  if (box.isEmpty()) return
+  const center = new THREE.Vector3()
+  box.getCenter(center)
+  root.position.sub(center)
 }
 
 const SoldierModel = forwardRef<SoldierModelHandle, SoldierModelProps>(
-  function SoldierModel({ initialAnimState = AnimState.Idle, teamColor }, ref) {
+  function SoldierModel({ initialAnimState = AnimState.Idle, teamColor, weaponName }, ref) {
+    const activeWeaponVisual = useMemo(() => getWeaponVisualForName(weaponName), [weaponName])
     const { scene, animations } = useGLTF(MODEL_PATH)
+    const weaponGLTF = useGLTF(activeWeaponVisual.path) as { scene: THREE.Group }
     const baseColorTex = useTexture(TEXTURE_PATH)
     const noiseTexture = useTexture(noiseTextureUrl)
     const groupRef = useRef<THREE.Group>(null!)
     const currentAnimRef = useRef<AnimState>(initialAnimState)
     const activeAnimRef = useRef<AnimState | null>(null)
+    const weaponMountRef = useRef<THREE.Group | null>(null)
+    const weaponObjectRef = useRef<THREE.Object3D | null>(null)
 
     const chunkSize = useStore((s) => s.terrainParameters.chunkSize)
     const borderParams = useStore((s) => s.borderParameters)
@@ -58,6 +92,47 @@ const SoldierModel = forwardRef<SoldierModelHandle, SoldierModelProps>(
 
     // Clone scene per instance so each player has its own skeleton
     const cloned = useMemo(() => SkeletonUtils.clone(scene), [scene])
+
+    useEffect(() => {
+      const handBone = findRightHandBone(cloned)
+      const mount = new THREE.Group()
+      mount.name = 'weapon_mount'
+      if (handBone) {
+        handBone.add(mount)
+      } else {
+        cloned.add(mount)
+      }
+      weaponMountRef.current = mount
+
+      return () => {
+        weaponObjectRef.current?.removeFromParent()
+        weaponObjectRef.current = null
+        mount.removeFromParent()
+        weaponMountRef.current = null
+      }
+    }, [cloned])
+
+    useEffect(() => {
+      const mount = weaponMountRef.current
+      if (!mount) return
+
+      weaponObjectRef.current?.removeFromParent()
+
+      const weaponObject = SkeletonUtils.clone(weaponGLTF.scene) as THREE.Object3D
+      centerObject(weaponObject)
+      weaponObject.scale.setScalar(activeWeaponVisual.scale)
+      weaponObject.position.set(...activeWeaponVisual.position)
+      weaponObject.rotation.set(...activeWeaponVisual.rotation)
+      mount.add(weaponObject)
+      weaponObjectRef.current = weaponObject
+
+      return () => {
+        if (weaponObjectRef.current === weaponObject) {
+          weaponObjectRef.current = null
+        }
+        weaponObject.removeFromParent()
+      }
+    }, [weaponGLTF.scene, activeWeaponVisual])
 
     // Apply base color texture to all meshes
     useEffect(() => {
@@ -180,5 +255,8 @@ export default SoldierModel
 
 // Preload model + texture eagerly
 useGLTF.preload(MODEL_PATH)
+for (const path of ALL_WEAPON_MODEL_PATHS) {
+  useGLTF.preload(path)
+}
 useTexture.preload(TEXTURE_PATH)
 useTexture.preload(noiseTextureUrl)

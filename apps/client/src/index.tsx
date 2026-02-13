@@ -7,6 +7,7 @@ import { Leva } from 'leva'
 import Loader from './loader/Loader'
 import { NetworkProvider } from './network/NetworkProvider'
 import usePhases, { PHASES } from './stores/usePhases'
+import GameHud from './ui/GameHud'
 
 const params = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search)
@@ -62,6 +63,7 @@ if (EDITOR_MODE) {
                     </Canvas>
                 </CanvasWrapper>
                 <Leva collapsed hidden={!DEBUG} />
+                <GameHud />
             </KeyboardControls>
             <Loader />
         </NetworkProvider>

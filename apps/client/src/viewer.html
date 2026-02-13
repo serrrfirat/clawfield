@@ -24,6 +24,8 @@
       #file-btn:hover { background: #4a4a7c; }
       #model-name { font-size: 14px; color: #aaa; }
       #wireframe-toggle { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+      #weapon-fit-toggle { display: flex; align-items: center; gap: 6px; }
+      #weapon-fit-status { font-size: 12px; color: #8fb5ff; min-width: 180px; text-align: right; }
       #bottom-bar {
         position: fixed; bottom: 0; left: 0; right: 0;
         height: 28px; background: rgba(20, 20, 40, 0.9);
@@ -114,6 +116,10 @@
       <div id="wireframe-toggle">
         <label><input type="checkbox" id="wireframe-cb" /> Wireframe</label>
       </div>
+      <div id="weapon-fit-toggle">
+        <label><input type="checkbox" id="weapon-fit-cb" /> Weapon fit mode</label>
+      </div>
+      <span id="weapon-fit-status"></span>
     </div>
     <div id="bottom-bar">
       <span id="info-dims">--</span>

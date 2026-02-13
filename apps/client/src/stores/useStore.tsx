@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import * as THREE from 'three'
-import type { GameMode, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, ExplosionEvent, MatchConfig, Vec3 } from '@clawfield/shared'
+import type { CollisionDisc, GameMode, PlacementCollider, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, ExplosionEvent, SmokeDeployEvent, MatchConfig, Vec3, LobbyPlayer, ServerPhase } from '@clawfield/shared'
 import type { MapdefPlacement } from '../editor/editor-types'
 
 const THEMES = {
@@ -238,10 +238,22 @@ const createStore = () =>
             kills: [] as KillEntry[],
             ticketsAlpha: 0,
             ticketsBravo: 0,
+            conquestScoreAlpha: 0,
+            conquestScoreBravo: 0,
             capturePoints: [] as CapturePointState[],
             sessionToken: null as string | null,
             scoreboard: [] as ScoreboardEntry[],
             matchConfig: null as MatchConfig | null,
+            lobbyPlayers: [] as LobbyPlayer[],
+            lobbyHostId: '' as string,
+            lobbyRoomCode: '' as string,
+            lobbyPhase: 'idle' as ServerPhase,
+            lobbyMapName: '' as string,
+            lobbyAvailableMaps: [] as { id: string; name: string }[],
+            lobbySeed: 1337,
+            placementColliders: [] as PlacementCollider[],
+            obstacleDiscs: [] as CollisionDisc[],
+            lobbyError: '' as string,
             pendingRespawnPosition: null as Vec3 | null,
             authoritativePosition: null as Vec3 | null,
             consumeRespawnPosition: () => {
@@ -265,11 +277,18 @@ const createStore = () =>
             serverGrenades: [] as GrenadeState[],
             serverSmokeGrenades: [] as SmokeGrenadeState[],
             pendingExplosions: [] as ExplosionEvent[],
+            pendingSmokeDeploys: [] as SmokeDeployEvent[],
             /** Consume pending explosions (called by CombatEffects each frame) */
             consumeExplosions: () => {
                 const exps = (useStore.getState() as any).pendingExplosions
                 if (exps.length > 0) set({ pendingExplosions: [] })
                 return exps as ExplosionEvent[]
+            },
+            /** Consume pending smoke deploy events (called by smoke renderer each frame) */
+            consumeSmokeDeploys: () => {
+                const deploys = (useStore.getState() as any).pendingSmokeDeploys
+                if (deploys.length > 0) set({ pendingSmokeDeploys: [] })
+                return deploys as SmokeDeployEvent[]
             },
 
             // ── Server Message Handler ─────────────────────────────
@@ -282,7 +301,83 @@ const createStore = () =>
                             gameMode: msg.gameMode,
                             sessionToken: msg.sessionToken ?? null,
                             matchConfig: msg.matchConfig ?? null,
+                            placementColliders: msg.placementColliders ?? [],
+                            obstacleDiscs: msg.obstacleDiscs ?? [],
                             connected: true,
+                            lobbyPhase: 'in_game',
+                            lobbyError: '',
+                        })
+                        break
+
+                    case 'room_created':
+                        set({
+                            myId: msg.playerId,
+                            lobbyHostId: msg.playerId,
+                            lobbyRoomCode: msg.roomCode,
+                            connected: false,
+                            lobbyPhase: 'lobby',
+                            placementColliders: [],
+                            obstacleDiscs: [],
+                            lobbyError: '',
+                        })
+                        break
+
+                    case 'room_joined':
+                        set({
+                            myId: msg.playerId,
+                            lobbyRoomCode: msg.roomCode,
+                            lobbyHostId: msg.hostId,
+                            connected: false,
+                            lobbyPhase: 'lobby',
+                            lobbyError: '',
+                        })
+                        break
+
+                    case 'lobby_state':
+                        set({
+                            lobbyPlayers: msg.players,
+                            lobbyHostId: msg.hostId,
+                            lobbyRoomCode: msg.roomCode,
+                            lobbyPhase: msg.phase,
+                            gameMode: msg.gameMode,
+                            lobbyMapName: msg.mapName,
+                            lobbyAvailableMaps: msg.availableMaps,
+                            lobbySeed: msg.seed ?? 1337,
+                            lobbyError: '',
+                        })
+                        break
+
+                    case 'room_error':
+                        set({ lobbyError: msg.message })
+                        break
+
+                    case 'placement_colliders':
+                        set({ placementColliders: msg.colliders })
+                        break
+
+                    case 'return_to_lobby':
+                        set({
+                            connected: false,
+                            myId: null,
+                            remotePlayers: new Map<string, PlayerState>(),
+                            lobbyPhase: 'lobby',
+                            placementColliders: [],
+                            obstacleDiscs: [],
+                        })
+                        break
+
+                    case 'room_closed':
+                        set({
+                            connected: false,
+                            myId: null,
+                            remotePlayers: new Map<string, PlayerState>(),
+                            lobbyPlayers: [],
+                            lobbyHostId: '',
+                            lobbyRoomCode: '',
+                            lobbyPhase: 'idle',
+                            placementColliders: [],
+                            obstacleDiscs: [],
+                            lobbyError: 'Room closed by host.',
                         })
                         break
 
@@ -355,6 +450,10 @@ const createStore = () =>
                         set({ capturePoints: msg.points })
                         break
 
+                    case 'conquest_score':
+                        set({ conquestScoreAlpha: msg.alpha, conquestScoreBravo: msg.bravo })
+                        break
+
                     case 'scoreboard':
                         set({ scoreboard: msg.players })
                         break
@@ -369,6 +468,12 @@ const createStore = () =>
 
                     case 'smoke_grenades':
                         set({ serverSmokeGrenades: msg.grenades })
+                        break
+
+                    case 'smoke_deploy':
+                        set((state: any) => ({
+                            pendingSmokeDeploys: [...state.pendingSmokeDeploys, msg.event],
+                        }))
                         break
 
                     case 'explosion':

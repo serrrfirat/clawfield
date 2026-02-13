@@ -1,7 +1,9 @@
 import { Client as ColyseusClient, Room } from 'colyseus.js'
-import type { ClientMessage, GameMode, ServerMessage, PlayerState } from '@clawfield/shared'
+import type { ClientMessage, GameMode, PlacementCollider, ServerMessage, PlayerState } from '@clawfield/shared'
 import { SERVER_PORT } from '@clawfield/shared'
 import type { MessageHandler } from './network-client'
+
+const USE_SCHEMA_SYNC = (import.meta.env.VITE_USE_SCHEMA_SYNC ?? '0') === '1'
 
 /**
  * Colyseus network client with Schema delta sync.
@@ -22,6 +24,7 @@ export class ColyseusNetworkClient {
   private _mySessionId: string | null = null
   /** Last ack seq received from the server (for future reconciliation) */
   private _lastAck = 0
+  private _pendingJoin: { name: string; gameMode: GameMode } | null = null
 
   constructor(handler: MessageHandler) {
     this.handler = handler
@@ -40,7 +43,7 @@ export class ColyseusNetworkClient {
   }
 
   async connect(): Promise<void> {
-    if (this.room) return
+    if (this.client) return
 
     const serverUrl = import.meta.env.VITE_SERVER_URL
     const endpoint = serverUrl
@@ -49,37 +52,6 @@ export class ColyseusNetworkClient {
 
     try {
       this.client = new ColyseusClient(endpoint)
-      this.room = await this.client.joinOrCreate('battle')
-      this._mySessionId = this.room.sessionId
-
-      // --- Schema state sync (replaces JSON 'state' message) ---
-      // Fires after every server patch (~20Hz). Convert Schema → PlayerState[]
-      // and dispatch the same 'state' message format so the store works unchanged.
-      this.room.onStateChange((state: any) => {
-        const playerCount = state?.players?.size ?? 0
-        if (playerCount > 0) {
-          console.log(`[Schema] onStateChange: ${playerCount} players, tick=${state?.tick}`)
-        }
-        this.synthesizeStateMessage()
-      })
-
-      // --- Per-client ack (sent as Room message, not in Schema) ---
-      this.room.onMessage('ack', (seq: number) => {
-        this._lastAck = seq
-      })
-
-      // --- Event messages (unchanged — still Room messages) ---
-      // The server's ColyseusNetworkAdapter sends these via client.send('server_message', ...)
-      this.room.onMessage('server_message', (msg: ServerMessage) => {
-        this.handler(msg)
-      })
-
-      this.room.onLeave(() => {
-        this._connected = false
-        this.room = null
-        this._mySessionId = null
-      })
-
       this._connected = true
       const cb = this._onConnected
       this._onConnected = null
@@ -98,10 +70,18 @@ export class ColyseusNetworkClient {
     this.room = null
     this._connected = false
     this._mySessionId = null
+    this._pendingJoin = null
   }
 
   join(name: string, gameMode: GameMode): void {
-    this.send({ type: 'join', name, classId: 'assault', gameMode })
+    this._pendingJoin = { name, gameMode }
+
+    if (this.room) {
+      this.send({ type: 'join', name, classId: 'assault', gameMode })
+      return
+    }
+
+    void this.joinQuickPlayRoom(gameMode)
   }
 
   rejoin(token: string): void {
@@ -110,6 +90,127 @@ export class ColyseusNetworkClient {
 
   send(msg: ClientMessage): void {
     this.room?.send('client_message', msg)
+  }
+
+  async createRoom(name: string, gameMode: GameMode = 'tdm'): Promise<void> {
+    try {
+      if (!this.client) await this.connect()
+      if (!this.client) return
+
+      if (this.room) {
+        await this.room.leave()
+        this.room = null
+        this._mySessionId = null
+      }
+
+      const room = await this.client.create('battle_lobby', { auto: false, gameMode })
+      this.attachRoom(room)
+      this.send({ type: 'create_room', name })
+    } catch (error) {
+      console.error('[Colyseus] createRoom failed', error)
+      this.handler({ type: 'room_error', message: 'Failed to create room. Check server and retry.' })
+    }
+  }
+
+  async joinRoom(name: string, roomCode: string): Promise<void> {
+    try {
+      if (!this.client) await this.connect()
+      if (!this.client) return
+
+      if (this.room) {
+        await this.room.leave()
+        this.room = null
+        this._mySessionId = null
+      }
+
+      const rooms = await (this.client as any).getAvailableRooms('battle_lobby')
+      const target = rooms.find((r: any) => (r.metadata?.roomCode ?? '').toUpperCase() === roomCode.toUpperCase())
+      if (!target?.roomId) {
+        this.handler({ type: 'room_error', message: 'Invalid room code.' })
+        return
+      }
+
+      const room = await this.client.joinById(target.roomId)
+      this.attachRoom(room)
+      this.send({ type: 'join_room', name, roomCode })
+    } catch (error) {
+      console.error('[Colyseus] joinRoom failed', error)
+      this.handler({ type: 'room_error', message: 'Failed to join room. Check code/server and retry.' })
+    }
+  }
+
+  startGame(): void {
+    this.send({ type: 'start_game' })
+  }
+
+  setLobbyTeam(team: number): void {
+    this.send({ type: 'lobby_set_team', team })
+  }
+
+  setLobbyMode(gameMode: GameMode): void {
+    this.send({ type: 'lobby_set_mode', gameMode })
+  }
+
+  setLobbyMap(mapName: string): void {
+    this.send({ type: 'lobby_set_map', mapName })
+  }
+
+  setLobbySeed(seed: number): void {
+    this.send({ type: 'lobby_set_seed', seed })
+  }
+
+  setLobbyPlacementColliders(colliders: PlacementCollider[]): void {
+    this.send({ type: 'lobby_set_placement_colliders', colliders })
+  }
+
+  returnToMenu(): void {
+    this.send({ type: 'return_to_menu' })
+  }
+
+  private async joinQuickPlayRoom(gameMode: GameMode): Promise<void> {
+    try {
+      if (!this.client) return
+      if (this.room) return
+
+      const room = await this.client.joinOrCreate('battle_quick', { auto: true, gameMode })
+      this.attachRoom(room)
+
+      if (this._pendingJoin) {
+        const { name, gameMode: pendingMode } = this._pendingJoin
+        this.send({ type: 'join', name, classId: 'assault', gameMode: pendingMode })
+      }
+    } catch (error) {
+      console.error('[Colyseus] quickplay join failed', error)
+      this.handler({ type: 'room_error', message: 'Quick play failed. Check server and retry.' })
+    }
+  }
+
+  private attachRoom(room: Room): void {
+    this.room = room
+    this._mySessionId = room.sessionId
+
+    if (USE_SCHEMA_SYNC) {
+      room.onStateChange((state: any) => {
+        const playerCount = state?.players?.size ?? 0
+        if (playerCount > 0) {
+          console.log(`[Schema] onStateChange: ${playerCount} players, tick=${state?.tick}`)
+        }
+        this.synthesizeStateMessage()
+      })
+
+      room.onMessage('ack', (seq: number) => {
+        this._lastAck = seq
+      })
+    }
+
+    room.onMessage('server_message', (msg: ServerMessage) => {
+      this.handler(msg)
+    })
+
+    room.onLeave(() => {
+      this.room = null
+      this._mySessionId = null
+    })
   }
 
   /**

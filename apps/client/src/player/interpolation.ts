@@ -1,61 +1,76 @@
 import { INTERPOLATION_DELAY } from '@clawfield/shared'
 import type { PlayerState, Vec3 } from '@clawfield/shared'
+import { SnapshotInterpolation } from '@geckos.io/snapshot-interpolation'
 
-interface BufferedState {
+type SnapshotEntity = {
+  id: string
+  x: number
+  y: number
+  z: number
+  yaw: number
+}
+
+type SnapshotPacket = {
+  id: string
   time: number
-  state: PlayerState
+  state: SnapshotEntity[]
 }
 
 export class StateInterpolator {
-  private states: BufferedState[] = []
+  private si = new SnapshotInterpolation(30)
+  private latest: PlayerState | null = null
+  private seq = 0
+
+  constructor() {
+    // Keep interpolation latency aligned with the project's reveal/sync tuning.
+    this.si.interpolationBuffer.set(INTERPOLATION_DELAY)
+  }
 
   push(state: PlayerState): void {
-    this.states.push({ time: performance.now(), state })
-    // Keep only last 1 second
-    const cutoff = performance.now() - 1000
-    while (this.states.length > 2 && this.states[0].time < cutoff) {
-      this.states.shift()
+    this.latest = state
+    this.seq++
+
+    const snapshot: SnapshotPacket = {
+      id: String(this.seq),
+      time: Date.now(),
+      state: [
+        {
+          id: state.id,
+          x: state.position.x,
+          y: state.position.y,
+          z: state.position.z,
+          yaw: state.yaw,
+        },
+      ],
     }
+
+    this.si.snapshot.add(snapshot as any)
   }
 
   /** Get interpolated position and yaw at current render time */
   getInterpolated(): { position: Vec3; yaw: number } | null {
-    if (this.states.length === 0) return null
+    const interpolated = this.si.calcInterpolation('x y z yaw') as any
+    const entity = interpolated?.state?.[0]
 
-    const now = performance.now() - INTERPOLATION_DELAY
-
-    if (this.states.length < 2) {
-      const s = this.states[0].state
-      return { position: s.position, yaw: s.yaw }
-    }
-
-    let from = this.states[0]
-    let to = this.states[1]
-
-    for (let i = 1; i < this.states.length; i++) {
-      if (this.states[i].time >= now) {
-        to = this.states[i]
-        from = this.states[i - 1]
-        break
+    if (entity) {
+      return {
+        position: {
+          x: entity.x,
+          y: entity.y,
+          z: entity.z,
+        },
+        yaw: entity.yaw,
       }
-      from = this.states[i]
-      to = this.states[Math.min(i + 1, this.states.length - 1)]
     }
 
-    const range = to.time - from.time
-    const t = range > 0 ? Math.max(0, Math.min(1, (now - from.time) / range)) : 1
-
-    return {
-      position: {
-        x: from.state.position.x + (to.state.position.x - from.state.position.x) * t,
-        y: from.state.position.y + (to.state.position.y - from.state.position.y) * t,
-        z: from.state.position.z + (to.state.position.z - from.state.position.z) * t,
-      },
-      yaw: from.state.yaw + (to.state.yaw - from.state.yaw) * t,
+    if (this.latest) {
+      return { position: this.latest.position, yaw: this.latest.yaw }
     }
+
+    return null
   }
 
   get latestState(): PlayerState | null {
-    return this.states.length > 0 ? this.states[this.states.length - 1].state : null
+    return this.latest
   }
 }

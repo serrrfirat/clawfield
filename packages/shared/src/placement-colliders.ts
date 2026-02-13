@@ -1,0 +1,39 @@
+import type { PlacementCollider } from './types.js';
+
+export interface PlacementLike {
+  componentId: string;
+  position: [number, number, number];
+  scale: [number, number, number];
+}
+
+function inferBaseRadius(componentId: string): number {
+  const id = componentId.toLowerCase();
+  if (id.includes('flower') || id.includes('grass') || id.includes('fern') || id.includes('bush')) return 0;
+  if (id.includes('tree') || id.includes('pine') || id.includes('birch') || id.includes('maple')) return 0.9;
+  if (id.includes('rock') || id.includes('stone') || id.includes('boulder')) return 0.8;
+  if (id.includes('building') || id.includes('house') || id.includes('wall')) return 1.2;
+  return 0.7;
+}
+
+export function buildPlacementColliders(placements: PlacementLike[]): PlacementCollider[] {
+  const out: PlacementCollider[] = [];
+
+  for (let i = 0; i < placements.length; i++) {
+    const p = placements[i];
+    const base = inferBaseRadius(p.componentId);
+    if (base <= 0) continue;
+
+    const sx = Math.abs(p.scale?.[0] ?? 1);
+    const sz = Math.abs(p.scale?.[2] ?? 1);
+    const r = base * Math.max(0.5, Math.max(sx, sz));
+
+    out.push({
+      id: `${p.componentId}-${i}`,
+      x: p.position[0],
+      z: p.position[2],
+      r,
+    });
+  }
+
+  return out;
+}

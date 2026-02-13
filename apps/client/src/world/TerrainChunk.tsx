@@ -23,11 +23,15 @@ export default function TerrainChunk({
     windLineParameters,
     windDirection,
     windEnabled,
+    obstacleCollisionsEnabled = true,
+    worldSeed = 1337,
+    terrainScaleOverride,
+    terrainAmplitudeOverride,
 }) {
     const terrainParameters = useStore((s) => s.terrainParameters)
     const stoneParameters = useStore((s) => s.stoneParameters)
-    const terrainScale = terrainParameters.scale
-    const terrainAmplitude = terrainParameters.amplitude
+    const terrainScale = terrainScaleOverride ?? terrainParameters.scale
+    const terrainAmplitude = terrainAmplitudeOverride ?? terrainParameters.amplitude
     const terrainSegments = terrainParameters.segments
 
     const stonesKey = useMemo(
@@ -37,8 +41,8 @@ export default function TerrainChunk({
     )
 
     const { stoneField } = useMemo(() => {
-        return generateChunkData(x, z, size, noise2D, stoneParameters, { scale: terrainScale, amplitude: terrainAmplitude })
-    }, [x, z, size, noise2D, stoneParameters, terrainScale, terrainAmplitude])
+        return generateChunkData(x, z, size, noise2D, stoneParameters, { scale: terrainScale, amplitude: terrainAmplitude }, worldSeed)
+    }, [x, z, size, noise2D, stoneParameters, terrainScale, terrainAmplitude, worldSeed])
 
     const geometry = useMemo(() => {
         const geo = new THREE.PlaneGeometry(size, size, terrainSegments, terrainSegments)
@@ -58,9 +62,13 @@ export default function TerrainChunk({
 
     return (
         <group position={[x * size, 0, z * size]}>
-            <RigidBody type="fixed" colliders="trimesh" userData={{ name: 'terrain' }}>
+            {obstacleCollisionsEnabled ? (
+                <RigidBody type="fixed" colliders="trimesh" userData={{ name: 'terrain' }}>
+                    <mesh geometry={geometry} material={terrainMaterial} rotation-x={-Math.PI / 2} />
+                </RigidBody>
+            ) : (
                 <mesh geometry={geometry} material={terrainMaterial} rotation-x={-Math.PI / 2} />
-            </RigidBody>
+            )}
 
             <Grass
                 size={size}
@@ -76,7 +84,14 @@ export default function TerrainChunk({
                 grassMaterial={grassMaterial}
             />
 
-            <Stones key={stonesKey} stones={stoneField.currentStones} maxCount={stoneField.capacity} stoneMaterial={stoneMaterial} stoneGeometry={stoneGeometry} />
+            <Stones
+                key={stonesKey}
+                stones={stoneField.currentStones}
+                maxCount={stoneField.capacity}
+                stoneMaterial={stoneMaterial}
+                stoneGeometry={stoneGeometry}
+                enableColliders={obstacleCollisionsEnabled}
+            />
 
             {windEnabled && (
                 <WindChunk

@@ -41,6 +41,9 @@ importers:
       '@clawfield/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@geckos.io/snapshot-interpolation':
+        specifier: ^1.1.1
+        version: 1.1.1
       '@react-three/drei':
         specifier: ^10.0.4
         version: 10.7.7(@react-three/fiber@9.5.0(@types/react@19.2.14)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)(three@0.174.0))(@types/react@19.2.14)(@types/three@0.174.0)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)(three@0.174.0)
@@ -77,6 +80,9 @@ importers:
       react-dom:
         specifier: '19.0'
         version: 19.0.4(react@19.0.4)
+      react-smoke:
+        specifier: ^1.2.0
+        version: 1.2.0(@react-three/fiber@9.5.0(@types/react@19.2.14)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)(three@0.174.0))(react-dom@19.0.4(react@19.0.4))(react@19.0.4)(three@0.174.0)
       simplex-noise:
         specifier: ^4.0.3
         version: 4.0.3
@@ -670,6 +676,9 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+
+  '@geckos.io/snapshot-interpolation@1.1.1':
+    resolution: {integrity: sha512-jdB0oIr8UL7/dgl3DIaggIInfcfv5nKwnSdQ6QT83uwJu9B+9T0/kM/8zqJ9Q2eon52S8ynCxLoyZnCAetrwcg==}
 
   '@img/colour@1.0.0':
     resolution: {integrity: sha512-A5P/LfWGFSl6nsckYtjw9da+19jB8hkJ6ACTGcDfEJ0aE+l2n2El7dsVM7UVHZQ9s2lmYMWlrS21YLy2IR1LUw==}
@@ -2400,6 +2409,14 @@ packages:
     resolution: {integrity: sha512-jCvmsr+1IUSMUyzOkRcvnVbX3ZYC6g9TDrDbFuFmRDq7PD4yaGbLKNQL6k2jnArV8hjYxh7hVhAZB6s9HDGpZA==}
     engines: {node: '>=0.10.0'}
 
+  react-smoke@1.2.0:
+    resolution: {integrity: sha512-3Kb3Ic5BB1dxLKpbIT9g08lkqcHjaNn+/tK4acCq+ornxqJKfqadPHUXwlTpQax0p08U7FLwDUJYRgqHRtiChQ==}
+    peerDependencies:
+      '@react-three/fiber': '>=8.16.1'
+      react: '>=18.2.0'
+      react-dom: '>=18.2.0'
+      three: '>=0.163.0'
+
   react-use-measure@2.1.7:
     resolution: {integrity: sha512-KrvcAo13I/60HpwGO5jpW7E9DfusKyLPLvuHlUyP5zqnmAPhNc6qTRjUQrdTADl0lpPpDVU2/Gg51UlOGHXbdg==}
     peerDependencies:
@@ -3274,6 +3291,8 @@ snapshots:
       react-dom: 19.0.4(react@19.0.4)
 
   '@floating-ui/utils@0.2.10': {}
+
+  '@geckos.io/snapshot-interpolation@1.1.1': {}
 
   '@img/colour@1.0.0': {}
 
@@ -4949,6 +4968,13 @@ snapshots:
   react-is@16.13.1: {}
 
   react-refresh@0.14.2: {}
+
+  react-smoke@1.2.0(@react-three/fiber@9.5.0(@types/react@19.2.14)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)(three@0.174.0))(react-dom@19.0.4(react@19.0.4))(react@19.0.4)(three@0.174.0):
+    dependencies:
+      '@react-three/fiber': 9.5.0(@types/react@19.2.14)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)(three@0.174.0)
+      react: 19.0.4
+      react-dom: 19.0.4(react@19.0.4)
+      three: 0.174.0
 
   react-use-measure@2.1.7(react-dom@19.0.4(react@19.0.4))(react@19.0.4):
     dependencies:

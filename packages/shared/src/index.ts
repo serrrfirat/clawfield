@@ -10,3 +10,5 @@ export * from './attachments.js';
 export * from './voxel-object.js';
 export * from './terrain-noise.js';
 export * from './match-config.js';
+export * from './heightmap-obstacles.js';
+export * from './placement-colliders.js';

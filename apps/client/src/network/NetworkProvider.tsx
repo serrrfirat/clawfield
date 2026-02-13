@@ -2,11 +2,21 @@ import React, { createContext, useContext, useRef, useEffect } from 'react'
 import { NetworkClient } from './network-client'
 import { ColyseusNetworkClient } from './colyseus-network-client'
 import useStore from '../stores/useStore'
+import type { PlacementCollider } from '@clawfield/shared'
 
 type TransportClient = {
   connect: () => void | Promise<void>
   disconnect: () => void
   join: (name: string, gameMode: 'tdm' | 'conquest' | 'incursion') => void
+  createRoom?: (name: string, gameMode?: 'tdm' | 'conquest' | 'incursion') => Promise<void>
+  joinRoom?: (name: string, roomCode: string) => Promise<void>
+  startGame?: () => void
+  setLobbyTeam?: (team: number) => void
+  setLobbyMode?: (gameMode: 'tdm' | 'conquest' | 'incursion') => void
+  setLobbyMap?: (mapName: string) => void
+  setLobbySeed?: (seed: number) => void
+  setLobbyPlacementColliders?: (colliders: PlacementCollider[]) => void
+  returnToMenu?: () => void
   send: (msg: any) => void
   onConnected: (() => void) | null
 }
@@ -31,10 +41,9 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const client = clientRef.current!
-    // Auto-join on connect — server handles room creation/joining
-    client.onConnected = () => {
-      client.join('Player', 'tdm')
-    }
+    // No implicit matchmaking join on connection.
+    // Loader UI actions (quick play / create room / join room) drive room flow.
+    client.onConnected = () => {}
     void client.connect()
 
     return () => {

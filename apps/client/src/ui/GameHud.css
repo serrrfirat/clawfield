@@ -1,0 +1,184 @@
+.game-hud {
+    --hud-paper: rgba(246, 246, 244, 0.96);
+    --hud-ink: #151515;
+    --hud-muted: rgba(12, 14, 18, 0.5);
+    --hud-track: rgba(236, 236, 236, 0.76);
+    --hud-accent: #3ea45f;
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 80;
+    color: var(--hud-ink);
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.game-hud__orders {
+    position: absolute;
+    top: 1.1rem;
+    left: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.game-hud__orders-avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: radial-gradient(circle at 35% 30%, #fff 0 16%, #b1b7bc 20% 40%, #39434d 44% 70%, #212a32 74%);
+    border: 0.12rem solid #0f1419;
+    box-shadow: 0 0.12rem 0 rgba(0, 0, 0, 0.35);
+}
+
+.game-hud__orders-text {
+    padding: 0.34rem 0.65rem 0.26rem;
+    background: var(--hud-paper);
+    border: 0.12rem solid #10151b;
+    box-shadow: 0 0.16rem 0 rgba(0, 0, 0, 0.25);
+    font-size: 1.08rem;
+    line-height: 1;
+    transform: skewX(-6deg);
+}
+
+.game-hud__bottom-left {
+    position: absolute;
+    left: 1.1rem;
+    bottom: 0.9rem;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.65rem;
+    color: #f8f8f8;
+    text-shadow: 0 0.1rem 0.12rem rgba(0, 0, 0, 0.6);
+}
+
+.game-hud__weapon-stack {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+}
+
+.game-hud__weapon-silhouette {
+    width: 0.25rem;
+    height: 2.5rem;
+    background: linear-gradient(180deg, #bdc8d2 0%, #76818a 100%);
+    border-radius: 0.25rem;
+    box-shadow: 0 0 0 0.09rem rgba(8, 11, 16, 0.7);
+}
+
+.game-hud__gear-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.95rem;
+    background: rgba(24, 29, 37, 0.7);
+    border: 0.09rem solid rgba(240, 240, 240, 0.65);
+    border-radius: 0.28rem;
+}
+
+.game-hud__ammo-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.game-hud__ammo-main {
+    font-size: 1.85rem;
+    line-height: 0.9;
+}
+
+.game-hud__ammo-sub {
+    font-size: 0.84rem;
+    letter-spacing: 0.1em;
+    color: rgba(248, 248, 248, 0.82);
+}
+
+.game-hud__objective {
+    position: absolute;
+    bottom: 0.9rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 26rem;
+}
+
+.game-hud__objective-label {
+    color: #f0f0f0;
+    font-size: 1rem;
+    text-shadow: 0 0.1rem 0.12rem rgba(0, 0, 0, 0.55);
+}
+
+.game-hud__objective-track {
+    position: relative;
+    height: 0.78rem;
+    flex: 1;
+    border-radius: 999px;
+    background: rgba(13, 17, 21, 0.5);
+    border: 0.09rem solid rgba(8, 11, 16, 0.45);
+    overflow: hidden;
+}
+
+.game-hud__objective-half {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+}
+
+.game-hud__objective-half--alpha {
+    left: 0;
+    width: 50%;
+    background: linear-gradient(90deg, #2a71bd, #4f9ceb);
+}
+
+.game-hud__objective-half--bravo {
+    right: 0;
+    width: 50%;
+    background: linear-gradient(90deg, #d25a5a, #a43030);
+}
+
+.game-hud__objective-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0.16rem;
+    background: rgba(255, 255, 255, 0.9);
+    transform: translateX(-50%);
+    box-shadow: 0 0 0.2rem rgba(0, 0, 0, 0.35);
+    z-index: 2;
+}
+
+.game-hud__score {
+    min-width: 2.2rem;
+    text-align: center;
+    color: #f0f0f0;
+    font-size: 1.1rem;
+    text-shadow: 0 0.1rem 0.12rem rgba(0, 0, 0, 0.6);
+}
+
+.game-hud__score--alpha { color: #96cbff; }
+.game-hud__score--bravo { color: #ff9f9f; }
+
+.game-hud__bottom-right {
+    position: absolute;
+    right: 1.1rem;
+    bottom: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1rem;
+    color: #f0f0f0;
+    font-size: 1rem;
+    text-shadow: 0 0.1rem 0.12rem rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 900px) {
+    .game-hud__orders-text { font-size: 0.85rem; }
+    .game-hud__objective { min-width: 16rem; }
+    .game-hud__ammo-main { font-size: 1.45rem; }
+    .game-hud__score { font-size: 0.95rem; }
+}

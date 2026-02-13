@@ -1,7 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useTexture } from '@react-three/drei'
-import { sharedNoise2D } from './utils/worldNoise'
 import { gsap } from 'gsap'
 import * as THREE from 'three'
 
@@ -15,14 +14,23 @@ import useTreeMaterial from '../materials/TreeMaterial'
 import useWindMaterial from '../materials/WindMaterial'
 import useStore from '../stores/useStore'
 import usePhases, { PHASES } from '../stores/usePhases'
+import { DEFAULT_HEIGHTMAP_CONFIG } from '@clawfield/shared'
 
 import noiseTextureUrl from '../assets/textures/noiseTexture.png'
 import alphaLeavesUrl from '../assets/textures/alpha_leaves.png'
+import { createSeededNoise2D } from './utils/worldNoise'
 
 const START_CIRCLE_RADIUS = 0.07
 const START_RADIUS_DELAY = 1.1
 
-export default function Terrain() {
+interface TerrainProps {
+    uniformsRef?: React.MutableRefObject<{
+        treeMaterialUniforms?: Record<string, { value: any }>
+        noiseTexture?: THREE.Texture
+    }>
+}
+
+export default function Terrain({ uniformsRef }: TerrainProps) {
     const [activeChunks, setActiveChunks] = useState([])
 
     const currentChunk = useRef({ x: 0, z: 0 })
@@ -35,6 +43,7 @@ export default function Terrain() {
     const chunkSize = useStore((s) => s.terrainParameters.chunkSize)
     const terrainScale = useStore((s) => s.terrainParameters.scale)
     const terrainAmplitude = useStore((s) => s.terrainParameters.amplitude)
+    const matchConfig = useStore((s: any) => s.matchConfig)
     const borderCircleRadius = useStore((s) => s.borderParameters.circleRadiusFactor)
     const windParameters = useStore((s) => s.windParameters)
     const windLineParameters = useStore((s) => s.windLineParameters)
@@ -44,8 +53,12 @@ export default function Terrain() {
     const treesEnabled = useStore((s) => s.generalParameters.trees)
     const foliageEnabled = useStore((s) => s.generalParameters.foliage)
     const windEnabled = useStore((s) => s.generalParameters.wind)
+    const obstacleCollisionsEnabled = false
 
-    const noise2D = sharedNoise2D
+    const worldSeed = matchConfig?.seed ?? DEFAULT_HEIGHTMAP_CONFIG.seed
+    const effectiveTerrainScale = matchConfig?.terrain?.scale ?? terrainScale
+    const effectiveTerrainAmplitude = matchConfig?.terrain?.amplitude ?? terrainAmplitude
+    const noise2D = useMemo(() => createSeededNoise2D(worldSeed), [worldSeed])
 
     // Textures
     const noiseTexture = useTexture(
@@ -90,6 +103,13 @@ export default function Terrain() {
         noiseTexture,
         alphaMap,
     })
+
+    useEffect(() => {
+        if (uniformsRef && treeMaterial.uniforms) {
+            uniformsRef.current.treeMaterialUniforms = treeMaterial.uniforms
+            uniformsRef.current.noiseTexture = noiseTexture
+        }
+    }, [uniformsRef, treeMaterial.uniforms, noiseTexture])
 
     const windMaterial = useWindMaterial({
         chunkSize,
@@ -243,6 +263,10 @@ export default function Terrain() {
                     windLineParameters={windLineParameters}
                     windDirection={windDirection}
                     windEnabled={windEnabled}
+                    obstacleCollisionsEnabled={obstacleCollisionsEnabled}
+                    worldSeed={worldSeed}
+                    terrainScaleOverride={effectiveTerrainScale}
+                    terrainAmplitudeOverride={effectiveTerrainAmplitude}
                 />
             ))}
             {treesEnabled && (
@@ -252,10 +276,12 @@ export default function Terrain() {
                         chunkSize={chunkSize}
                         noise2D={noise2D}
                         stoneParameters={stoneParameters}
-                        terrainScale={terrainScale}
-                        terrainAmplitude={terrainAmplitude}
+                        terrainScale={effectiveTerrainScale}
+                        terrainAmplitude={effectiveTerrainAmplitude}
+                        worldSeed={worldSeed}
                         treeMaterial={treeMaterial}
                         rigidBodyMaterial={rigidBodyMaterial}
+                        enableColliders={obstacleCollisionsEnabled}
                     />
                     {foliageEnabled && (
                         <Foliage

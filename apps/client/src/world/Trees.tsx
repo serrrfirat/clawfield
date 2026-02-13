@@ -7,7 +7,7 @@ import treeUrl from '../assets/models/tree.glb'
 
 const TREE_POOL_SIZE = 18
 
-export default function Trees({ activeChunks, chunkSize, noise2D, stoneParameters, terrainScale, terrainAmplitude, treeMaterial, rigidBodyMaterial }) {
+export default function Trees({ activeChunks, chunkSize, noise2D, stoneParameters, terrainScale, terrainAmplitude, worldSeed = 1337, treeMaterial, rigidBodyMaterial, enableColliders = true }) {
     const treeModel = useGLTF(treeUrl)
     const treePoolStateRef = useRef({
         slots: Array.from({ length: TREE_POOL_SIZE }, () => ({ id: null, data: null })),
@@ -19,7 +19,7 @@ export default function Trees({ activeChunks, chunkSize, noise2D, stoneParameter
 
         const targets = []
         for (const chunk of activeChunks) {
-            const { treeInstances } = generateChunkData(chunk.x, chunk.z, chunkSize, noise2D, stoneParameters, { scale: terrainScale, amplitude: terrainAmplitude })
+            const { treeInstances } = generateChunkData(chunk.x, chunk.z, chunkSize, noise2D, stoneParameters, { scale: terrainScale, amplitude: terrainAmplitude }, worldSeed)
             const originX = chunk.x * chunkSize
             const originZ = chunk.z * chunkSize
 
@@ -35,7 +35,7 @@ export default function Trees({ activeChunks, chunkSize, noise2D, stoneParameter
         }
 
         return targets
-    }, [activeChunks, chunkSize, noise2D, stoneParameters, terrainScale, terrainAmplitude])
+    }, [activeChunks, chunkSize, noise2D, stoneParameters, terrainScale, terrainAmplitude, worldSeed])
 
     const treePoolSlots = useMemo(() => {
         const pool = treePoolStateRef.current
@@ -86,6 +86,7 @@ export default function Trees({ activeChunks, chunkSize, noise2D, stoneParameter
                         treeMaterial={treeMaterial}
                         rigidBodyMaterial={rigidBodyMaterial}
                         treeScene={treeModel.scene}
+                        enableColliders={enableColliders}
                     />
                 )
             })}

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { InstancedRigidBodies } from '@react-three/rapier'
 
-export default function Stones({ stones, maxCount, stoneMaterial, stoneGeometry }) {
+export default function Stones({ stones, maxCount, stoneMaterial, stoneGeometry, enableColliders = true }) {
     const instances = useMemo(() => {
         if (!stones) return []
         return stones.map((stone, i) => ({
@@ -17,7 +17,7 @@ export default function Stones({ stones, maxCount, stoneMaterial, stoneGeometry 
     }
 
     return (
-        <InstancedRigidBodies instances={instances} type="fixed" colliders="hull">
+        <InstancedRigidBodies instances={instances} type="fixed" colliders={enableColliders ? 'hull' : false}>
             <instancedMesh args={[stoneGeometry, stoneMaterial, maxCount]} count={instances.length} frustumCulled={false} />
         </InstancedRigidBodies>
     )

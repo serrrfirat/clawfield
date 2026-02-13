@@ -19,6 +19,19 @@ export interface MatchConfig {
   };
 }
 
+export interface PlacementCollider {
+  id: string;
+  x: number;
+  z: number;
+  r: number;
+}
+
+export interface CollisionDisc {
+  x: number;
+  z: number;
+  r: number;
+}
+
 /** Player state sent from server to clients */
 export interface PlayerState {
   id: string;
@@ -296,6 +309,8 @@ export type ClientMessage =
   | { type: 'lobby_set_team'; team: number }
   | { type: 'lobby_set_mode'; gameMode: GameMode }
   | { type: 'lobby_set_map'; mapName: string }
+  | { type: 'lobby_set_seed'; seed: number }
+  | { type: 'lobby_set_placement_colliders'; colliders: PlacementCollider[] }
   | { type: 'start_game' }
   | { type: 'return_to_menu' };
 
@@ -315,6 +330,8 @@ export type ServerMessage =
       objectPlacements?: import('./voxel-object.js').MapObjectPlacement[];
       glbBuildings?: { glbPath: string; position: { x: number; y: number; z: number }; rotation?: number }[];
       matchConfig?: MatchConfig;
+      placementColliders?: PlacementCollider[];
+      obstacleDiscs?: CollisionDisc[];
       gameMode: GameMode;
     }
   | { type: 'player_joined'; id: string; name: string; team: number }
@@ -352,7 +369,8 @@ export type ServerMessage =
   | { type: 'room_created'; roomCode: string; playerId: string }
   | { type: 'room_joined'; roomCode: string; playerId: string; hostId: string }
   | { type: 'room_error'; message: string }
-  | { type: 'lobby_state'; players: LobbyPlayer[]; gameMode: GameMode; hostId: string; roomCode: string; phase: ServerPhase; mapName: string; availableMaps: { id: string; name: string }[] }
+  | { type: 'placement_colliders'; colliders: PlacementCollider[] }
+  | { type: 'lobby_state'; players: LobbyPlayer[]; gameMode: GameMode; hostId: string; roomCode: string; phase: ServerPhase; mapName: string; availableMaps: { id: string; name: string }[]; seed?: number; placementColliderCount?: number }
   | { type: 'game_starting'; countdown: number }
   | { type: 'return_to_lobby' }
   | { type: 'room_closed' };

@@ -55,6 +55,72 @@
     flex-direction: column;
     gap: 12px;
     margin-top: 24px;
+    width: 360px;
+}
+
+.loader-input,
+.loader-select {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.12em;
+    color: #ffffff;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    padding: 8px 14px;
+    outline: none;
+}
+
+.loader-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.loader-select option {
+    color: #111;
+}
+
+.loader-room-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.loader-input-code {
+    flex: 1;
+}
+
+.loader-btn-compact {
+    font-size: 22px;
+    padding: 8px 16px;
+}
+
+.loader-lobby-meta {
+    color: #fff;
+    letter-spacing: 0.12em;
+    font-size: 22px;
+    text-align: center;
+}
+
+.loader-lobby-list {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    padding: 8px;
+    max-height: 180px;
+    overflow: auto;
+}
+
+.loader-lobby-item {
+    display: flex;
+    justify-content: space-between;
+    color: #fff;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    padding: 4px 2px;
+}
+
+.loader-error {
+    color: #ffd6d6;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    text-align: center;
 }
 
 .loader-btn {

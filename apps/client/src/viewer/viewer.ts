@@ -144,6 +144,28 @@ let currentObject: THREE.Object3D | null = null;
 let flyMode = false;
 const flySpeed = 50; // units per second
 const keysDown = new Set<string>();
+let weaponFitMode = false;
+let weaponFitStatusTimer: number | null = null;
+
+type WeaponFitType =
+  | 'assault_rifle'
+  | 'smg'
+  | 'shotgun'
+  | 'carbine'
+  | 'pdw'
+  | 'sniper'
+  | 'dmr'
+  | 'pistol'
+  | 'rocket_launcher'
+  | 'frag_grenade'
+  | 'smoke_grenade';
+
+interface WeaponFitConfig {
+  type: WeaponFitType;
+  scale: number;
+  position: [number, number, number];
+  rotation: [number, number, number];
+}
 
 // --- DOM refs ---
 
@@ -156,6 +178,8 @@ const infoVoxels = document.getElementById('info-voxels')!;
 const infoPalette = document.getElementById('info-palette')!;
 const infoWorld = document.getElementById('info-world')!;
 const dropOverlay = document.getElementById('drop-overlay')!;
+const weaponFitCb = document.getElementById('weapon-fit-cb') as HTMLInputElement;
+const weaponFitStatusEl = document.getElementById('weapon-fit-status')!;
 
 // Material panel DOM refs
 const materialPanel = document.getElementById('material-panel')!;
@@ -479,6 +503,11 @@ function displayGLB(buffer: ArrayBuffer, filename: string) {
 
     // Show material panel and populate mesh list
     showMaterialPanel();
+
+    if (weaponFitMode && currentObject) {
+      const fit = autoArrangeWeaponModel(currentObject, glbFilename);
+      showWeaponFitStatus(`Fitted as ${fit.type}`);
+    }
   }, (err: unknown) => {
     console.error('GLB parse error:', err);
     modelNameEl.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
@@ -507,6 +536,7 @@ function clearCurrentObject() {
   meshRegistry = [];
   selectedMeshIndex = -1;
   glbLoaded = false;
+  showWeaponFitStatus('');
   hideMaterialPanel();
 }
 
@@ -930,6 +960,12 @@ renderer.domElement.addEventListener('click', (e) => {
 saveMaterialsBtn.addEventListener('click', () => {
   if (!glbLoaded) return;
 
+  if (weaponFitMode && currentObject) {
+    const fit = autoArrangeWeaponModel(currentObject, glbFilename);
+    saveWeaponFitJson(glbFilename, fit);
+    return;
+  }
+
   const overrides: { meshName: string; materialType: MaterialType }[] = [];
   for (const info of meshRegistry) {
     if (info.taggedType !== null) {
@@ -953,6 +989,18 @@ saveMaterialsBtn.addEventListener('click', () => {
 });
 
 loadMaterialsBtn.addEventListener('click', () => loadInput.click());
+
+weaponFitCb.addEventListener('change', () => {
+  weaponFitMode = weaponFitCb.checked;
+  saveMaterialsBtn.textContent = weaponFitMode ? 'Auto Arrange + Save Fit' : 'Save JSON';
+
+  if (weaponFitMode && currentObject && glbLoaded) {
+    const fit = autoArrangeWeaponModel(currentObject, glbFilename);
+    showWeaponFitStatus(`Fitted as ${fit.type}`);
+  } else {
+    showWeaponFitStatus('');
+  }
+});
 
 // --- Export GLB with material tags embedded as userData/extras ---
 
@@ -1028,6 +1076,129 @@ loadInput.addEventListener('change', () => {
   reader.readAsText(file);
   loadInput.value = ''; // reset so same file can be re-loaded
 });
+
+function showWeaponFitStatus(msg: string): void {
+  weaponFitStatusEl.textContent = msg;
+  if (weaponFitStatusTimer !== null) {
+    window.clearTimeout(weaponFitStatusTimer);
+    weaponFitStatusTimer = null;
+  }
+  if (!msg) return;
+  weaponFitStatusTimer = window.setTimeout(() => {
+    weaponFitStatusEl.textContent = '';
+    weaponFitStatusTimer = null;
+  }, 3000);
+}
+
+function inferWeaponType(filename: string): WeaponFitType {
+  const n = filename.toLowerCase();
+  if (n.includes('smoke') && n.includes('grenade')) return 'smoke_grenade';
+  if (n.includes('frag') && n.includes('grenade')) return 'frag_grenade';
+  if (n.includes('rocket') || n.includes('launcher')) return 'rocket_launcher';
+  if (n.includes('pistol') || n.includes('revolver')) return 'pistol';
+  if (n.includes('shotgun')) return 'shotgun';
+  if (n.includes('sniper')) return 'sniper';
+  if (n.includes('dmr')) return 'dmr';
+  if (n.includes('carbine')) return 'carbine';
+  if (n.includes('pdw')) return 'pdw';
+  if (n.includes('smg') || n.includes('submachine')) return 'smg';
+  return 'assault_rifle';
+}
+
+function defaultHandTransform(type: WeaponFitType): { position: [number, number, number]; rotation: [number, number, number] } {
+  if (type === 'pistol') {
+    return { position: [0.04, 0.01, -0.03], rotation: [0, -Math.PI * 0.5, 0] };
+  }
+  if (type === 'frag_grenade' || type === 'smoke_grenade') {
+    return { position: [0.025, 0.02, -0.035], rotation: [0, -Math.PI * 0.5, 0] };
+  }
+  if (type === 'rocket_launcher') {
+    return { position: [0.04, 0.02, -0.1], rotation: [0, -Math.PI * 0.5, 0] };
+  }
+  return { position: [0.03, 0.02, -0.09], rotation: [0, -Math.PI * 0.5, 0] };
+}
+
+function desiredWeaponLength(type: WeaponFitType): number {
+  switch (type) {
+    case 'pistol': return 0.28;
+    case 'frag_grenade': return 0.12;
+    case 'smoke_grenade': return 0.13;
+    case 'pdw': return 0.55;
+    case 'smg': return 0.62;
+    case 'carbine': return 0.72;
+    case 'shotgun': return 0.82;
+    case 'sniper': return 0.95;
+    case 'dmr': return 0.78;
+    case 'rocket_launcher': return 1.0;
+    case 'assault_rifle':
+    default:
+      return 0.75;
+  }
+}
+
+function autoArrangeWeaponModel(object: THREE.Object3D, filename: string): WeaponFitConfig {
+  const type = inferWeaponType(filename);
+
+  object.position.set(0, 0, 0);
+  object.rotation.set(0, 0, 0);
+  object.scale.set(1, 1, 1);
+  object.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(object);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  const center = new THREE.Vector3();
+  box.getCenter(center);
+
+  object.position.sub(center);
+
+  const longest = Math.max(size.x, size.y, size.z, 1e-5);
+  const baseScale = desiredWeaponLength(type) / longest;
+  object.scale.setScalar(baseScale);
+
+  const hand = defaultHandTransform(type);
+  object.rotation.set(...hand.rotation);
+  object.position.add(new THREE.Vector3(...hand.position));
+
+  frameCameraToBounds(new THREE.Box3().setFromObject(object));
+
+  return {
+    type,
+    scale: Number(baseScale.toFixed(6)),
+    position: [
+      Number(object.position.x.toFixed(6)),
+      Number(object.position.y.toFixed(6)),
+      Number(object.position.z.toFixed(6)),
+    ],
+    rotation: [
+      Number(object.rotation.x.toFixed(6)),
+      Number(object.rotation.y.toFixed(6)),
+      Number(object.rotation.z.toFixed(6)),
+    ],
+  };
+}
+
+function saveWeaponFitJson(filename: string, fit: WeaponFitConfig): void {
+  const baseName = filename.replace(/\.(glb|gltf)$/i, '');
+  const payload = {
+    filename,
+    suggested: fit,
+    generatedAt: new Date().toISOString(),
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${baseName}.weapon-fit.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  const snippet =
+    `type: "${fit.type}", scale: ${fit.scale}, position: [${fit.position.join(', ')}], rotation: [${fit.rotation.join(', ')}]`;
+  void navigator.clipboard?.writeText(snippet).catch(() => undefined);
+  showWeaponFitStatus(`Saved fit for ${fit.type} (copied)`);
+}
 
 // --- Resize ---
 

@@ -76,6 +76,7 @@ export default function RemotePlayerEntity({ state, team }: RemotePlayerEntityPr
           ref={soldierRef}
           initialAnimState={AnimState.Idle}
           teamColor={color}
+          weaponName={state.weaponName}
         />
       </group>
     </group>

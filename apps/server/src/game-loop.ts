@@ -48,8 +48,9 @@ import {
   INCURSION_WFC_WIDTH,
   INCURSION_WFC_DEPTH,
 } from '@clawfield/shared';
-import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode, DirectorEvent, WeatherState, DynamicObjective, HeightGetter, MatchConfig } from '@clawfield/shared';
+import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode, DirectorEvent, WeatherState, DynamicObjective, HeightGetter, MatchConfig, PlacementCollider, CollisionDisc } from '@clawfield/shared';
 import { createTerrainHeight, DEFAULT_HEIGHTMAP_CONFIG } from '@clawfield/shared';
+import { buildHeightmapObstacleDiscs, resolveDiscObstacleCollision } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
 import { PlayerSim } from './player-sim.js';
 import { DummyBot } from './bot.js';
@@ -188,11 +189,15 @@ export class GameLoop {
 
   /** Optional map override from lobby selection */
   private mapOverride: string | undefined;
+  /** Optional match seed override from lobby */
+  private matchSeedOverride: number | undefined;
 
   // --- Heightmap mode (for terrain-only maps without voxel chunks) ---
   heightmapMode = false;
   private terrainHeightGetter: HeightGetter = createTerrainHeight();
   private matchConfig: MatchConfig | null = null;
+  private heightmapObstacles: CollisionDisc[] = [];
+  private placementColliders: PlacementCollider[] = [];
 
   // --- AI Director (deterministic fallback) ---
   private directorCurrentWeather: WeatherState = 'clear';
@@ -214,12 +219,16 @@ export class GameLoop {
     lobbyPlayers: LobbyPlayerInfo[],
     gameMode: GameMode,
     onGameOver: (winner: number) => void,
-    mapOverride?: string
+    mapOverride?: string,
+    matchSeedOverride?: number,
+    placementColliders?: PlacementCollider[]
   ) {
     this.network = network;
     this.gameMode = gameMode;
     this.onGameOverCallback = onGameOver;
     this.mapOverride = mapOverride;
+    this.matchSeedOverride = matchSeedOverride;
+    this.placementColliders = placementColliders ?? [];
 
     // Try to load the configured binary map; fall back to test map
     this.loadMap();
@@ -297,6 +306,8 @@ export class GameLoop {
       objectPlacements: this.objectPlacements.length > 0 ? this.objectPlacements : undefined,
       glbBuildings: this.glbBuildings.length > 0 ? this.glbBuildings : undefined,
       matchConfig: this.heightmapMode ? (this.matchConfig ?? undefined) : undefined,
+      placementColliders: this.placementColliders.length > 0 ? this.placementColliders : undefined,
+      obstacleDiscs: this.heightmapMode ? this.heightmapObstacles : undefined,
       gameMode: this.gameMode,
     });
 
@@ -389,7 +400,10 @@ export class GameLoop {
 
   /** Activate heightmap mode using the default match config */
   private activateHeightmapMode(): void {
-    const cfg = DEFAULT_HEIGHTMAP_CONFIG;
+    const cfg: MatchConfig = {
+      ...DEFAULT_HEIGHTMAP_CONFIG,
+      seed: this.matchSeedOverride ?? DEFAULT_HEIGHTMAP_CONFIG.seed,
+    };
     this.matchConfig = cfg;
     this.heightmapMode = true;
     this.terrainHeightGetter = createTerrainHeight(
@@ -397,6 +411,10 @@ export class GameLoop {
       cfg.terrain.amplitude,
       cfg.seed,
     );
+    this.heightmapObstacles = [
+      ...buildHeightmapObstacleDiscs(cfg),
+      ...this.placementColliders,
+    ];
 
     // Resolve spawn Y values from terrain height
     this.mapSpawnsAlpha = cfg.spawns.alpha.map((s) => ({
@@ -434,6 +452,8 @@ export class GameLoop {
 
     console.log('[GameLoop] Heightmap mode activated');
   }
+
+
 
   /**
    * Initialize the debris physics system.
@@ -1146,6 +1166,9 @@ export class GameLoop {
       objectives: this.mapObjectives,
       objectPlacements: this.objectPlacements.length > 0 ? this.objectPlacements : undefined,
       glbBuildings: this.glbBuildings.length > 0 ? this.glbBuildings : undefined,
+      matchConfig: this.heightmapMode ? (this.matchConfig ?? undefined) : undefined,
+      placementColliders: this.placementColliders.length > 0 ? this.placementColliders : undefined,
+      obstacleDiscs: this.heightmapMode ? this.heightmapObstacles : undefined,
       gameMode: this.gameMode,
     });
 
@@ -1289,6 +1312,7 @@ export class GameLoop {
     for (const sim of this.players.values()) {
       if (this.heightmapMode) {
         sim.tickHeightmap(this.terrainHeightGetter);
+        sim.position = resolveDiscObstacleCollision(sim.position, 0.4, this.heightmapObstacles);
       } else {
         sim.tick(voxelGetter, this.debrisPhysicsManager ?? undefined);
       }
@@ -2105,7 +2129,7 @@ export class GameLoop {
 
         // Base aim direction: use aimYaw (top-down mode) or yaw (FPS mode)
         const shootYaw = shooter.aimYaw ?? shooter.yaw;
-        const shootPitch = this.heightmapMode ? 0 : shooter.pitch;
+        const shootPitch = shooter.pitch;
         const baseDir = aimDirection(shootYaw, shootPitch);
 
         const weapon = shooter.activeWeapon;
