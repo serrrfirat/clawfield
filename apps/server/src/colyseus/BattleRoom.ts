@@ -241,6 +241,8 @@ export class BattleRoom extends Room<GameState> {
         schema.maxAmmo = Number.isFinite(p.maxAmmo) ? p.maxAmmo : 30;
         schema.weaponSlot = Number.isFinite(p.weaponSlot) ? p.weaponSlot : 0;
         schema.weaponName = p.weaponName ?? '';
+        schema.suppression = Number.isFinite(p.suppression) ? p.suppression : 0;
+        schema.flash = Number.isFinite(p.flash) ? p.flash : 0;
       }
 
       // Update capture points

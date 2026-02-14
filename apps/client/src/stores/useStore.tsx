@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import * as THREE from 'three'
-import type { CollisionDisc, GameMode, PlacementCollider, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, ExplosionEvent, SmokeDeployEvent, MatchConfig, Vec3, LobbyPlayer, ServerPhase } from '@clawfield/shared'
+import type { CollisionDisc, GameMode, PlacementCollider, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, FlashGrenadeState, ExplosionEvent, SmokeDeployEvent, FlashDetonateEvent, MatchConfig, Vec3, LobbyPlayer, ServerPhase } from '@clawfield/shared'
 import type { MapdefPlacement } from '../editor/editor-types'
 import type { TerrainHeightmap } from '../editor/editor-types'
 
@@ -245,6 +245,9 @@ const createStore = () =>
             reloading: false,
             weaponSlot: 0,
             weaponName: 'Rifle',
+            suppression: 0,
+            flash: 0,
+            selectedGrenadeIndex: 0,
             remotePlayers: new Map<string, PlayerState>(),
             kills: [] as KillEntry[],
             ticketsAlpha: 0,
@@ -287,8 +290,10 @@ const createStore = () =>
             serverProjectiles: [] as ProjectileState[],
             serverGrenades: [] as GrenadeState[],
             serverSmokeGrenades: [] as SmokeGrenadeState[],
+            serverFlashGrenades: [] as FlashGrenadeState[],
             pendingExplosions: [] as ExplosionEvent[],
             pendingSmokeDeploys: [] as SmokeDeployEvent[],
+            pendingFlashDetonations: [] as FlashDetonateEvent[],
             /** Consume pending explosions (called by CombatEffects each frame) */
             consumeExplosions: () => {
                 const exps = (useStore.getState() as any).pendingExplosions
@@ -300,6 +305,11 @@ const createStore = () =>
                 const deploys = (useStore.getState() as any).pendingSmokeDeploys
                 if (deploys.length > 0) set({ pendingSmokeDeploys: [] })
                 return deploys as SmokeDeployEvent[]
+            },
+            consumeFlashDetonations: () => {
+                const flashes = (useStore.getState() as any).pendingFlashDetonations
+                if (flashes.length > 0) set({ pendingFlashDetonations: [] })
+                return flashes as FlashDetonateEvent[]
             },
 
             // ── Server Message Handler ─────────────────────────────
@@ -407,6 +417,8 @@ const createStore = () =>
                                     downed: p.downed,
                                     weaponSlot: p.weaponSlot,
                                     weaponName: p.weaponName,
+                                    suppression: p.suppression ?? 0,
+                                    flash: p.flash ?? 0,
                                     authoritativePosition: p.position,
                                 }
                             } else {
@@ -481,9 +493,19 @@ const createStore = () =>
                         set({ serverSmokeGrenades: msg.grenades })
                         break
 
+                    case 'flash_grenades':
+                        set({ serverFlashGrenades: msg.grenades })
+                        break
+
                     case 'smoke_deploy':
                         set((state: any) => ({
                             pendingSmokeDeploys: [...state.pendingSmokeDeploys, msg.event],
+                        }))
+                        break
+
+                    case 'flash_detonate':
+                        set((state: any) => ({
+                            pendingFlashDetonations: [...state.pendingFlashDetonations, msg.event],
                         }))
                         break
 

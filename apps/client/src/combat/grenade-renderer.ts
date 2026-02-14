@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { GrenadeState, SmokeGrenadeState, Vec3 } from '@clawfield/shared';
+import type { GrenadeState, SmokeGrenadeState, FlashGrenadeState, Vec3 } from '@clawfield/shared';
 import { GRAVITY, GRENADE_FUSE_TIME, GRENADE_DAMAGE_RADIUS, SMOKE_GRENADE_FUSE_TIME } from '@clawfield/shared';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { soundManager, SoundId } from '../audio/sound-manager';
@@ -99,6 +99,7 @@ export class GrenadeRenderer {
   private scene: THREE.Scene;
   private grenades = new Map<number, TrackedGrenade>();
   private smokeGrenades = new Map<number, TrackedGrenade>();
+  private flashGrenades = new Map<number, TrackedGrenade>();
   private explosions: TrackedExplosion[] = [];
   private particles: ParticleSystem | null = null;
 
@@ -109,6 +110,7 @@ export class GrenadeRenderer {
   private readonly grenadeGeometry: THREE.BoxGeometry;
   private readonly grenadeMaterial: THREE.MeshStandardMaterial;
   private readonly smokeGrenadeMaterial: THREE.MeshStandardMaterial;
+  private readonly flashGrenadeMaterial: THREE.MeshStandardMaterial;
   private fragGrenadeTemplate: THREE.Object3D | null = null;
   private smokeGrenadeTemplate: THREE.Object3D | null = null;
 
@@ -125,6 +127,7 @@ export class GrenadeRenderer {
     this.grenadeGeometry = new THREE.BoxGeometry(GRENADE_SIZE, GRENADE_SIZE, GRENADE_SIZE);
     this.grenadeMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
     this.smokeGrenadeMaterial = new THREE.MeshStandardMaterial({ color: 0x556b2f }); // olive green for smoke
+    this.flashGrenadeMaterial = new THREE.MeshStandardMaterial({ color: 0xa8a8a8 });
 
     void this.loadGrenadeModelTemplates();
   }
@@ -224,6 +227,33 @@ export class GrenadeRenderer {
     for (const [id, tracked] of this.smokeGrenades) {
       if (id > 0 && !serverIds.has(id)) {
         this.removeSmokeGrenade(id, tracked);
+      }
+    }
+  }
+
+  updateFlashGrenadesFromServer(grenades: FlashGrenadeState[]): void {
+    const serverIds = new Set<number>();
+
+    for (const sg of grenades) {
+      serverIds.add(sg.id);
+
+      const existing = this.flashGrenades.get(sg.id);
+      if (existing) {
+        existing.mesh.position.set(sg.position.x, sg.position.y, sg.position.z);
+        existing.velocity = { ...sg.velocity };
+        existing.fuseRemaining = sg.fuseRemaining;
+        existing.lastUpdate = performance.now();
+        if (existing.light) {
+          existing.light.position.copy(existing.mesh.position);
+        }
+      } else {
+        this.createFlashGrenade(sg.id, sg.position, sg.velocity, sg.fuseRemaining);
+      }
+    }
+
+    for (const [id, tracked] of this.flashGrenades) {
+      if (id > 0 && !serverIds.has(id)) {
+        this.removeFlashGrenade(id, tracked);
       }
     }
   }
@@ -361,6 +391,22 @@ export class GrenadeRenderer {
       }
     }
 
+    for (const [id, tracked] of this.flashGrenades) {
+      tracked.velocity.y += GRAVITY * dt;
+      tracked.mesh.position.x += tracked.velocity.x * dt;
+      tracked.mesh.position.y += tracked.velocity.y * dt;
+      tracked.mesh.position.z += tracked.velocity.z * dt;
+      if (tracked.light) {
+        tracked.light.position.copy(tracked.mesh.position);
+      }
+      if (id < 0) {
+        tracked.fuseRemaining -= dt;
+        if (tracked.fuseRemaining <= 0) {
+          this.removeFlashGrenade(id, tracked);
+        }
+      }
+    }
+
     // --- Update explosions ---
     for (let i = this.explosions.length - 1; i >= 0; i--) {
       const exp = this.explosions[i]!;
@@ -415,6 +461,10 @@ export class GrenadeRenderer {
       this.removeSmokeGrenade(id, tracked);
     }
 
+    for (const [id, tracked] of this.flashGrenades) {
+      this.removeFlashGrenade(id, tracked);
+    }
+
     for (const exp of this.explosions) {
       this.scene.remove(exp.mesh);
       exp.mesh.geometry.dispose();
@@ -431,6 +481,7 @@ export class GrenadeRenderer {
     this.grenadeGeometry.dispose();
     this.grenadeMaterial.dispose();
     this.smokeGrenadeMaterial.dispose();
+    this.flashGrenadeMaterial.dispose();
   }
 
   // ── Private helpers ─────────────────────────────────────────────
@@ -518,6 +569,45 @@ export class GrenadeRenderer {
     }
 
     this.smokeGrenades.delete(id);
+  }
+
+  private createFlashGrenade(
+    id: number,
+    position: Vec3,
+    velocity: Vec3,
+    fuseRemaining: number,
+  ): void {
+    const mesh = this.createThrowableObject(this.fragGrenadeTemplate, this.flashGrenadeMaterial);
+    mesh.position.set(position.x, position.y, position.z);
+    this.scene.add(mesh);
+
+    let light: THREE.PointLight | null = null;
+    if (this.activeGrenadeLightCount < MAX_GRENADE_LIGHTS) {
+      light = new THREE.PointLight(0xc9e3ff, 0.35, 3.2);
+      light.position.copy(mesh.position);
+      this.scene.add(light);
+      this.activeGrenadeLightCount++;
+    }
+
+    this.flashGrenades.set(id, {
+      mesh,
+      light,
+      velocity: { ...velocity },
+      fuseRemaining,
+      lastUpdate: performance.now(),
+    });
+  }
+
+  private removeFlashGrenade(id: number, tracked: TrackedGrenade): void {
+    this.scene.remove(tracked.mesh);
+
+    if (tracked.light) {
+      this.scene.remove(tracked.light);
+      tracked.light.dispose();
+      this.activeGrenadeLightCount--;
+    }
+
+    this.flashGrenades.delete(id);
   }
 
   private createThrowableObject(template: THREE.Object3D | null, fallbackMaterial: THREE.Material): THREE.Object3D {

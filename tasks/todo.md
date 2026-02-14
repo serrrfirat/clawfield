@@ -63,6 +63,42 @@ Verification:
 ### Review
 - [x] Smoke grenades bounce against server obstacle discs (placements + terrain-derived blockers).
 
+## Active Task: Integrate vendored stylized water into map flows
+
+### Checklist
+- [x] Build a modular adapter component that imports vendored water shaders unchanged.
+- [x] Add stylized water plane to runtime terrain using map/match `waterLevel`.
+- [x] Add stylized water plane to editor terrain so map creation shows water directly.
+- [x] Verify touched files compile without introducing new targeted errors.
+
+### Review
+- Water shader source remains untouched under vendored path and is used through an adapter component.
+- Runtime and editor now render stylized water as a map element controlled by map `waterLevel`.
+
+## Active Task: Implement all 'Now' combat features
+
+### Checklist
+- [x] Iron sights + hip-fire randomness: bind RMB to ADS, keep hip-fire spread random, and reduce spread when ADS.
+- [x] Suppression (server-authoritative): apply suppression on near misses and expose suppression state to clients for feedback.
+- [ ] Ammo economy: add reserve ammo pool + strict reload consumption from reserve, resupply via authoritative sources. (Deferred for now)
+- [x] Grenade variety: keep frag/smoke and add flashbang with proper throw/select/effect flow.
+- [x] HUD updates: display reserve ammo, grenade type, and suppression indicator.
+- [x] Validation: run targeted gameplay checks + compile checks to confirm authority path and no regression.
+
+### Implementation plan
+- [x] Phase 1 (Input/ADS): move sprint to Shift, use RMB as ADS (`scope=true`) and wire cursor/crosshair behavior.
+- [x] Phase 2 (Server firing model): tune `getEffectiveSpread()` and bloom so hip-fire is intentionally less accurate.
+- [x] Phase 3 (Suppression): on server shot traces, detect near-miss radius and set `suppressedUntil` on targets.
+- [x] Phase 4 (Grenades): add flashbang grenade state/effect pipeline and include in grenade radial selection.
+- [x] Phase 5 (Client feedback): camera/HUD suppression response and grenade label/icon update.
+- [x] Follow-up planning: AI Game Master architecture and activation plan immediately after these phases.
+
+### Review
+- [x] Confirm all collision and gameplay outcomes remain server-authoritative.
+- [ ] Confirm ADS/hip-fire feel and suppression intensity are tuned for top-down readability.
+- [x] Local projectile visualization now applies spread (with bloom/recovery) instead of always tracing straight to cursor.
+- [x] AI Game Master activation architecture documented in `docs/ai-game-master-activation-plan.md` with phased rollout and guardrails.
+
 ## Completed: BattleBit-Style Visual Enhancement (5 Phases)
 - [x] Phase 1: Per-Vertex Ambient Occlusion (mesher.ts, chunk-mesh.ts, world-renderer.ts, viewer.ts, voxel-object-renderer.ts)
 - [x] Phase 2: Hi-Res Texture Atlas — 16→32px tiles, LinearFilter + mipmaps (texture-atlas.ts, build-atlas.ts)

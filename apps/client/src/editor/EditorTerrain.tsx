@@ -2,8 +2,11 @@ import { useState, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { createSeededNoise2D } from '../world/utils/worldNoise'
+import StylizedWaterPlane from '../world/StylizedWaterPlane'
 import useEditorStore from './useEditorStore'
 import { sampleHeightDelta } from './heightmap-utils'
+
+const ENABLE_STYLIZED_WATER = (import.meta.env.VITE_ENABLE_STYLIZED_WATER ?? '0') === '1'
 
 const CHUNK_SIZE = 10
 const SEGMENTS = 16
@@ -68,6 +71,7 @@ function EditorTerrainChunk({ cx, cz }: { cx: number; cz: number }) {
 }
 
 export default function EditorTerrain() {
+  const waterLevel = useEditorStore((s) => s.waterLevel)
   const [chunks, setChunks] = useState(() => {
     const list: { cx: number; cz: number; key: string }[] = []
     for (let x = -GRID_RADIUS; x <= GRID_RADIUS; x++) {
@@ -101,6 +105,7 @@ export default function EditorTerrain() {
 
   return (
     <group>
+      {ENABLE_STYLIZED_WATER && <StylizedWaterPlane waterLevel={waterLevel} size={1400} />}
       {chunks.map((c) => (
         <EditorTerrainChunk key={c.key} cx={c.cx} cz={c.cz} />
       ))}

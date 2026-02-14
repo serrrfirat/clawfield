@@ -95,6 +95,10 @@ export default function CombatEffects() {
         (s: any) => s.serverSmokeGrenades,
         (sg: any) => { grenades.current?.updateSmokeGrenadesFromServer(sg) },
       ),
+      useStore.subscribe(
+        (s: any) => s.serverFlashGrenades,
+        (sg: any) => { grenades.current?.updateFlashGrenadesFromServer(sg) },
+      ),
     ]
     return () => unsubs.forEach((u) => u())
   }, [])
@@ -108,6 +112,25 @@ export default function CombatEffects() {
     const explosions = store.consumeExplosions()
     for (const exp of explosions) {
       grenades.current?.addExplosion(exp.position, exp.radius)
+    }
+
+    const flashes = store.consumeFlashDetonations ? store.consumeFlashDetonations() : []
+    for (const flash of flashes) {
+      if (particles.current) {
+        particles.current.emit({
+          position: flash.position,
+          count: 34,
+          speedMin: 1.5,
+          speedMax: 6,
+          spread: Math.PI * 2,
+          lifetimeMin: 0.08,
+          lifetimeMax: 0.28,
+          sizeMin: 0.08,
+          sizeMax: 0.26,
+          colors: [[1, 1, 1], [1, 0.98, 0.82], [0.85, 0.95, 1]],
+          gravityScale: 0,
+        })
+      }
     }
 
     // Process hit confirmations: play ding sound + emit hit particles at target

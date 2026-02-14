@@ -139,6 +139,9 @@ export function getWeaponVisualForName(weaponName?: string): WeaponVisualDef {
   if (normalized === 'smoke grenade' || normalized === 'smoke_grenade') {
     return SMOKE_GRENADE_VISUAL
   }
+  if (normalized === 'flash grenade' || normalized === 'flash_grenade') {
+    return FRAG_GRENADE_VISUAL
+  }
   const id = WEAPON_NAME_TO_ID[normalized]
   if (!id) return DEFAULT_HAND_WEAPON
   return WEAPON_VISUALS_BY_ID[id] ?? DEFAULT_HAND_WEAPON

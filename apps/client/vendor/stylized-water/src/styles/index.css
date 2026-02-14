@@ -1,0 +1,54 @@
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+body,
+canvas {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src:
+    url("/fonts/jetbrainsmono-regular.woff2") format("woff2"),
+    url("/fonts/jetbrainsmono-regular.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  --base-font: 14px;
+  --bg-color: #fff;
+  --button-color: #93cb43;
+  --font-color: #486051;
+  --font-color-light: #48605160;
+  --font-background: #fefffade;
+  --font-backgound-solid: #fefffa;
+
+  --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-time: 0.15s;
+
+  --font-family: "JetBrains Mono", "Courier New", Courier, "Lucida Console",
+    monospace;
+}
+
+html {
+  font-size: 16px;
+}
+body {
+  font-family: var(--font-family);
+  font-optical-sizing: auto;
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: -0.01em;
+  color: var(--font-color);
+  background-color: var(--bg-color);
+
+  cursor: var(--cursor), auto;
+}

@@ -12,7 +12,7 @@ export class TopDownInputCapture {
 
   /** Left mouse button = shoot */
   private mouseDown = false;
-  /** Right mouse button = sprint/ability */
+  /** Right mouse button = iron sights (ADS) */
   private rightMouseDown = false;
 
   /** Reload pressed this frame */
@@ -94,7 +94,14 @@ export class TopDownInputCapture {
           this.weaponSlot = 1;
         }
       }
-      if (e.code === 'Digit3' && !e.repeat) this.weaponSlot = 2;
+      if (e.code === 'Digit3' && !e.repeat) {
+        if (this._grenadeRadialMenuOpen) {
+          this.selectedGrenadeIndex = 2;
+          this._grenadeRadialMenuOpen = false;
+        } else {
+          this.weaponSlot = 2;
+        }
+      }
       if (e.code === 'Tab') {
         e.preventDefault();
         this.scoreboardVisible = true;
@@ -130,14 +137,14 @@ export class TopDownInputCapture {
         if (this._grenadeRadialMenuOpen) {
           this._grenadeRadialMenuOpen = false;
           if (held >= TopDownInputCapture.GRENADE_HOLD_TOGGLE_MS) {
-            this.selectedGrenadeIndex = this.selectedGrenadeIndex === 0 ? 1 : 0;
+            this.selectedGrenadeIndex = (this.selectedGrenadeIndex + 1) % 3;
           } else {
             this.grenadePressed = true;
           }
         } else if (held < 200) {
           this.grenadePressed = true;
         } else if (held >= TopDownInputCapture.GRENADE_HOLD_TOGGLE_MS) {
-          this.selectedGrenadeIndex = this.selectedGrenadeIndex === 0 ? 1 : 0;
+          this.selectedGrenadeIndex = (this.selectedGrenadeIndex + 1) % 3;
         }
         this.gKeyDownTime = 0;
       }
@@ -207,7 +214,7 @@ export class TopDownInputCapture {
     const throwGrenade = this.grenadePressed;
     this.grenadePressed = false;
 
-    const sprint = this.rightMouseDown || this.keys.has('ShiftLeft');
+    const sprint = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
     const walk = this.keys.has('AltLeft') || this.keys.has('AltRight');
     const crouch = this.crouchToggle;
 
@@ -264,7 +271,7 @@ export class TopDownInputCapture {
       useGadget,
       gadgetIndex: this.selectedGadgetIndex,
       grenadeIndex: this.selectedGrenadeIndex,
-      scope: false, // no ADS in top-down
+      scope: this.rightMouseDown,
       interact: this.keys.has('KeyE'),
       weaponSlot: this.weaponSlot,
       yaw: this.yaw,

@@ -14,6 +14,15 @@
     text-transform: uppercase;
 }
 
+.game-hud__flash {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.55) 48%, rgba(255, 255, 255, 0.12) 100%);
+    mix-blend-mode: screen;
+    z-index: 120;
+}
+
 .game-hud__orders {
     position: absolute;
     top: 1.1rem;
@@ -176,9 +185,139 @@
     text-shadow: 0 0.1rem 0.12rem rgba(0, 0, 0, 0.6);
 }
 
+.game-hud__map-hint {
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.09em;
+    color: rgba(226, 232, 240, 0.75);
+}
+
+.game-hud__warning {
+    margin-top: 0.1rem;
+    color: #ffd4d4;
+    font-size: 0.88rem;
+    letter-spacing: 0.08em;
+}
+
+.game-hud__map-overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(8, 10, 14, 0.55);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+}
+
+.game-hud__map-sheet {
+    width: min(78vw, 58rem);
+    background: rgba(237, 234, 224, 0.96);
+    border: 0.18rem solid rgba(34, 34, 30, 0.92);
+    box-shadow: 0 1.1rem 2.3rem rgba(0, 0, 0, 0.5);
+    padding: 0.7rem;
+}
+
+.game-hud__map-title {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.08em;
+    color: rgba(20, 20, 19, 0.9);
+}
+
+.game-hud__map-board {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: #d8d4c5;
+    border: 0.12rem solid rgba(30, 30, 26, 0.58);
+    overflow: hidden;
+}
+
+.game-hud__map-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(37, 37, 34, 0.14) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37, 37, 34, 0.14) 1px, transparent 1px),
+        linear-gradient(rgba(37, 37, 34, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37, 37, 34, 0.08) 1px, transparent 1px);
+    background-size: 10% 10%, 10% 10%, 2% 2%, 2% 2%;
+}
+
+.game-hud__map-cp {
+    position: absolute;
+    width: 1.2rem;
+    height: 1.2rem;
+    transform: translate(-50%, -50%);
+    border: 0.14rem solid #aaa28b;
+    border-radius: 999px;
+    background: rgba(250, 249, 244, 0.85);
+    color: #1e1d1b;
+    display: grid;
+    place-items: center;
+    font-size: 0.72rem;
+    box-shadow: 0 0 0 0.08rem rgba(0, 0, 0, 0.1);
+}
+
+.game-hud__map-cp.is-contested {
+    animation: cpPulse 0.9s ease-in-out infinite alternate;
+}
+
+.game-hud__map-player {
+    position: absolute;
+    width: 0.46rem;
+    height: 0.46rem;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    border: 0.08rem solid rgba(10, 10, 10, 0.6);
+    box-shadow: 0 0 0.16rem rgba(0, 0, 0, 0.34);
+}
+
+.game-hud__map-player--self {
+    width: 0.74rem;
+    height: 0.74rem;
+    background: #ffe97a;
+    border-color: rgba(22, 18, 8, 0.78);
+}
+
+.game-hud__map-legend {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    color: rgba(16, 16, 14, 0.92);
+    font-size: 0.8rem;
+}
+
+.game-hud__map-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+}
+
+.game-hud__map-legend i {
+    width: 0.58rem;
+    height: 0.58rem;
+    border-radius: 999px;
+    border: 0.08rem solid rgba(0, 0, 0, 0.5);
+}
+
+.game-hud__map-legend i.self { background: #ffe97a; }
+.game-hud__map-legend i.ally { background: #50b475; }
+.game-hud__map-legend i.enemy { background: #d06b63; }
+.game-hud__map-legend i.cp {
+    background: rgba(252, 251, 248, 0.95);
+    border-color: rgba(78, 76, 70, 0.9);
+}
+
+@keyframes cpPulse {
+    0% { box-shadow: 0 0 0 0.06rem rgba(200, 45, 45, 0.18); }
+    100% { box-shadow: 0 0 0 0.16rem rgba(200, 45, 45, 0.5); }
+}
+
 @media (max-width: 900px) {
     .game-hud__orders-text { font-size: 0.85rem; }
     .game-hud__objective { min-width: 16rem; }
     .game-hud__ammo-main { font-size: 1.45rem; }
     .game-hud__score { font-size: 0.95rem; }
+    .game-hud__map-sheet { width: min(94vw, 36rem); }
 }

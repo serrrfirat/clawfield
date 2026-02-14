@@ -47,6 +47,9 @@ import {
   INCURSION_OBJECTIVE_DURATION,
   INCURSION_WFC_WIDTH,
   INCURSION_WFC_DEPTH,
+  FLASH_GRENADE_MAX_DURATION,
+  SUPPRESSION_MAX_DURATION,
+  SUPPRESSION_NEAR_MISS_RADIUS,
 } from '@clawfield/shared';
 import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode, DirectorEvent, WeatherState, DynamicObjective, HeightGetter, MatchConfig, PlacementCollider, CollisionDisc } from '@clawfield/shared';
 import { createTerrainHeight, DEFAULT_HEIGHTMAP_CONFIG } from '@clawfield/shared';
@@ -65,6 +68,7 @@ import { GadgetManager, type VoxelChange } from './gadget-manager.js';
 import { RocketManager } from './rocket-manager.js';
 import { DestructionManager } from './destruction-manager.js';
 import { SmokeGrenadeManager } from './smoke-grenade-manager.js';
+import { FlashGrenadeManager } from './flash-grenade-manager.js';
 // Dynamic import — Rapier WASM may not load in all environments (e.g. tsx)
 let DebrisPhysicsManager: typeof import('./debris-physics-manager.js').DebrisPhysicsManager | null = null;
 let initRapier: (() => Promise<void>) | null = null;
@@ -131,6 +135,7 @@ export class GameLoop {
   private capturePointManager: CapturePointManager;
   private grenadeManager = new GrenadeManager();
   private smokeGrenadeManager = new SmokeGrenadeManager();
+  private flashGrenadeManager = new FlashGrenadeManager();
   private gadgetManager = new GadgetManager();
   private rocketManager = new RocketManager();
   private destructionManager!: DestructionManager;
@@ -389,6 +394,8 @@ export class GameLoop {
     this.bots = [];
     this.projectileManager = new ProjectileManager();
     this.grenadeManager = new GrenadeManager();
+    this.smokeGrenadeManager = new SmokeGrenadeManager();
+    this.flashGrenadeManager = new FlashGrenadeManager();
     this.rocketManager = new RocketManager();
     this.gadgetManager = new GadgetManager();
     this.sentChunks.clear();
@@ -1498,6 +1505,36 @@ export class GameLoop {
       });
     }
 
+    const flashDetonations = this.flashGrenadeManager.update(
+      TICK_INTERVAL / 1000,
+      voxelGetter,
+      this.heightmapMode ? this.heightmapObstacles : []
+    );
+    for (const detonation of flashDetonations) {
+      this.network.broadcast({
+        type: 'flash_detonate',
+        event: {
+          position: detonation.position,
+          radius: detonation.radius,
+        },
+      });
+
+      for (const target of this.players.values()) {
+        if (!target.alive || target.downed) continue;
+        if (target.id === detonation.ownerId) continue;
+
+        const dx = target.position.x - detonation.position.x;
+        const dy = target.position.y - detonation.position.y;
+        const dz = target.position.z - detonation.position.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist > detonation.radius) continue;
+
+        const closeness = 1 - dist / detonation.radius;
+        const flashMs = Math.round(FLASH_GRENADE_MAX_DURATION * 1000 * (0.35 + closeness * 0.65));
+        target.applyFlash(now, flashMs);
+      }
+    }
+
     // Process gadget use (also spawns rockets via rocketManager)
     this.processGadgetUse(now);
 
@@ -1714,6 +1751,14 @@ export class GameLoop {
       this.network.broadcast({
         type: 'smoke_grenades',
         grenades: smokeGrenadeStates,
+      });
+    }
+
+    const flashGrenadeStates = this.flashGrenadeManager.getStates();
+    if (flashGrenadeStates.length > 0) {
+      this.network.broadcast({
+        type: 'flash_grenades',
+        grenades: flashGrenadeStates,
       });
     }
 
@@ -2170,6 +2215,8 @@ export class GameLoop {
           // Apply spread: random offset within the spread cone
           const dir = this.applySpread(baseDir, effectiveSpread);
 
+          this.applyNearMissSuppression(shooter, eyePos, dir, weapon.maxRange, now);
+
           this.projectileManager.spawn(
             shooter.id,
             shooter.team,
@@ -2179,6 +2226,36 @@ export class GameLoop {
           );
         }
       }
+    }
+  }
+
+  private applyNearMissSuppression(shooter: PlayerSim, origin: Vec3, dir: Vec3, maxRange: number, nowMs: number): void {
+    for (const target of this.players.values()) {
+      if (target.id === shooter.id) continue;
+      if (!target.alive || target.downed) continue;
+      if (target.team === shooter.team) continue;
+
+      const targetEyeY = target.crouching ? target.position.y + (CROUCH_HEIGHT - 0.1) : target.position.y + EYE_OFFSET;
+      const vx = target.position.x - origin.x;
+      const vy = targetEyeY - origin.y;
+      const vz = target.position.z - origin.z;
+
+      const t = vx * dir.x + vy * dir.y + vz * dir.z;
+      if (t <= 0 || t >= maxRange) continue;
+
+      const cx = origin.x + dir.x * t;
+      const cy = origin.y + dir.y * t;
+      const cz = origin.z + dir.z * t;
+
+      const dx = target.position.x - cx;
+      const dy = targetEyeY - cy;
+      const dz = target.position.z - cz;
+      const missDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (missDistance > SUPPRESSION_NEAR_MISS_RADIUS) continue;
+
+      const closeness = 1 - missDistance / SUPPRESSION_NEAR_MISS_RADIUS;
+      const durationMs = Math.round(SUPPRESSION_MAX_DURATION * 1000 * (0.45 + closeness * 0.55));
+      target.applySuppression(nowMs, durationMs);
     }
   }
 
@@ -2260,9 +2337,11 @@ export class GameLoop {
       const throwYaw = player.aimYaw ?? player.yaw;
       const dir = aimDirection(throwYaw, player.pitch);
 
-      // Determine grenade type from grenadeIndex (0 = frag, 1 = smoke)
+      // Determine grenade type from grenadeIndex (0 = frag, 1 = smoke, 2 = flash)
       if ((input.grenadeIndex ?? 0) === 1) {
         this.smokeGrenadeManager.spawn(player.id, eyePos, dir);
+      } else if ((input.grenadeIndex ?? 0) === 2) {
+        this.flashGrenadeManager.spawn(player.id, eyePos, dir);
       } else {
         this.grenadeManager.spawn(player.id, player.team, eyePos, dir);
       }

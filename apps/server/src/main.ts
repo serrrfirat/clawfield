@@ -4,9 +4,11 @@ import { Server as ColyseusServer } from 'colyseus';
 import { BattleRoom } from './colyseus/BattleRoom.js';
 
 const port = parseInt(process.env.PORT || String(SERVER_PORT), 10);
-const useColyseus = process.env.NETCODE_BACKEND === 'colyseus';
+const netcodeBackend = (process.env.NETCODE_BACKEND ?? 'colyseus').toLowerCase();
+const useColyseus = netcodeBackend === 'colyseus';
 
 console.log('Clawfield server starting...');
+console.log(`Netcode backend: ${netcodeBackend}`);
 
 if (useColyseus) {
   const gameServer = new ColyseusServer({});

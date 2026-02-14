@@ -1,0 +1,58 @@
+.ui {
+  pointer-events: none;
+  z-index: 1;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100dvh;
+  padding: 2rem;
+  box-sizing: border-box;
+  touch-action: none;
+  display: grid;
+  grid-template-rows: max-content auto;
+
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    opacity: 0;
+    transform: translateY(-100%);
+
+    animation: 0.2s cubic-bezier(0.75, -0.5, 0, 1.75) 0.3s forwards 1 normal
+      uiShow;
+  }
+
+  @keyframes uiShow {
+    0% {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+.transition {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2;
+  clip-path: circle(0);
+
+  &.show {
+    animation: 1s ease-in-out 0.5s forwards 1 normal playTransition;
+  }
+
+  @keyframes playTransition {
+    0% {
+      clip-path: circle(0);
+    }
+    100% {
+      clip-path: circle(100%);
+    }
+  }
+}

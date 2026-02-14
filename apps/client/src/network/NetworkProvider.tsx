@@ -24,7 +24,7 @@ type TransportClient = {
 
 const NetworkContext = createContext<TransportClient | null>(null)
 
-const NETCODE_BACKEND = (import.meta.env.VITE_NETCODE_BACKEND ?? 'ws').toLowerCase()
+const NETCODE_BACKEND = (import.meta.env.VITE_NETCODE_BACKEND ?? 'colyseus').toLowerCase()
 
 export function useNetwork(): TransportClient | null {
   return useContext(NetworkContext)

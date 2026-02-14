@@ -20,6 +20,8 @@ export class PlayerSchema extends Schema {
   maxAmmo: number = 30;
   weaponSlot: number = 0;
   weaponName: string = "";
+  suppression: number = 0;
+  flash: number = 0;
 }
 
 defineTypes(PlayerSchema, {
@@ -42,6 +44,8 @@ defineTypes(PlayerSchema, {
   maxAmmo: "uint16",
   weaponSlot: "uint8",
   weaponName: "string",
+  suppression: "float32",
+  flash: "float32",
 });
 
 export class CapturePointSchema extends Schema {

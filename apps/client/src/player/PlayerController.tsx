@@ -129,8 +129,9 @@ function getVisualEffectiveSpreadForWeapon(
   const hipSpread = weapon.spread + bloom
   const hipFirePenalty = adsActive ? 1 : 1.4
   const adsMultiplier = adsActive ? weapon.adsSpreadMultiplier : 1
-  const randomnessBoost = 1 + Math.min(0.4, weapon.recoilRandom * 20)
-  return hipSpread * hipFirePenalty * adsMultiplier * randomnessBoost
+  const recoilChaos = 1 + Math.min(0.75, weapon.recoilRandom * 30)
+  const stanceChaos = adsActive ? 1.05 : 1.45
+  return hipSpread * hipFirePenalty * adsMultiplier * recoilChaos * stanceChaos
 }
 
 /** Default weapon for client-predicted projectiles */

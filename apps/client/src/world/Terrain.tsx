@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import TerrainChunk from './TerrainChunk'
 import Trees from './Trees'
 import Foliage from './Foliage'
+import StylizedWaterPlane from './StylizedWaterPlane'
 import useTerrainMaterial from '../materials/TerrainMaterial'
 import useGrassMaterial from '../materials/GrassMaterial'
 import useStonesMaterial from '../materials/StonesMaterial'
@@ -23,6 +24,7 @@ import { createSeededNoise2D } from './utils/worldNoise'
 
 const START_CIRCLE_RADIUS = 0.07
 const START_RADIUS_DELAY = 1.1
+const ENABLE_STYLIZED_WATER = (import.meta.env.VITE_ENABLE_STYLIZED_WATER ?? '0') === '1'
 
 interface TerrainProps {
     uniformsRef?: React.MutableRefObject<{
@@ -60,7 +62,12 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
     const worldSeed = matchConfig?.seed ?? mapTerrain?.seed ?? DEFAULT_HEIGHTMAP_CONFIG.seed
     const effectiveTerrainScale = matchConfig?.terrain?.scale ?? mapTerrain?.scale ?? terrainScale
     const effectiveTerrainAmplitude = matchConfig?.terrain?.amplitude ?? mapTerrain?.amplitude ?? terrainAmplitude
+    const effectiveWaterLevel = matchConfig?.terrain?.waterLevel ?? mapTerrain?.waterLevel
     const heightmap = mapTerrain?.heightmap
+    const worldBounds = matchConfig?.bounds
+    const waterPlaneSize = worldBounds
+        ? Math.max(worldBounds.maxX - worldBounds.minX, worldBounds.maxZ - worldBounds.minZ) + chunkSize * 2
+        : chunkSize * 12
 
     const heightDeltaSampler = useMemo(() => {
         if (!heightmap?.cells?.length) return undefined
@@ -71,6 +78,29 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
         return (wx: number, wz: number) => sampleHeightDelta(wx, wz, heightmap.cellSize, byKey)
     }, [heightmap])
     const noise2D = useMemo(() => createSeededNoise2D(worldSeed), [worldSeed])
+
+    const hasVisibleWater = useMemo(() => {
+        if (typeof effectiveWaterLevel !== 'number') return false
+        if (!activeChunks.length) return false
+
+        for (const chunk of activeChunks as any[]) {
+            const chunkX = chunk.x * chunkSize
+            const chunkZ = chunk.z * chunkSize
+            for (let sx = 0; sx <= 3; sx++) {
+                for (let sz = 0; sz <= 3; sz++) {
+                    const px = chunkX + (sx / 3 - 0.5) * chunkSize
+                    const pz = chunkZ + (sz / 3 - 0.5) * chunkSize
+                    const base = noise2D(px * effectiveTerrainScale, pz * effectiveTerrainScale) * effectiveTerrainAmplitude
+                    const delta = heightDeltaSampler ? heightDeltaSampler(px, pz) : 0
+                    if (base + delta < effectiveWaterLevel - 0.02) {
+                        return true
+                    }
+                }
+            }
+        }
+
+        return false
+    }, [activeChunks, effectiveWaterLevel, chunkSize, noise2D, effectiveTerrainScale, effectiveTerrainAmplitude, heightDeltaSampler])
 
     // Textures
     const noiseTexture = useTexture(noiseTextureUrl)
@@ -255,6 +285,14 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
 
     return (
         <group>
+            {ENABLE_STYLIZED_WATER && typeof effectiveWaterLevel === 'number' && hasVisibleWater && (
+                <StylizedWaterPlane
+                    waterLevel={effectiveWaterLevel}
+                    size={waterPlaneSize}
+                    treeMaterialUniforms={treeMaterial.uniforms}
+                    noiseTexture={noiseTexture}
+                />
+            )}
             {activeChunks.map((chunk) => (
                 <TerrainChunk
                     key={chunk.key}

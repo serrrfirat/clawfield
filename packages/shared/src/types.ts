@@ -60,6 +60,10 @@ export interface PlayerState {
   shooting: boolean;
   /** Display name of the active weapon (for remote gunshot sounds) */
   weaponName: string;
+  /** 0..1 suppression intensity (server-authoritative) */
+  suppression: number;
+  /** 0..1 flash intensity (server-authoritative) */
+  flash: number;
 }
 
 /** Input state captured on the client each frame */
@@ -191,6 +195,21 @@ export interface SmokeDeployEvent {
   position: Vec3;
   radius: number;
   duration: number;
+}
+
+/** Flash grenade state for network sync (in-flight) */
+export interface FlashGrenadeState {
+  id: number;
+  ownerId: string;
+  position: Vec3;
+  velocity: Vec3;
+  fuseRemaining: number;
+}
+
+/** Flash detonation event for VFX feedback */
+export interface FlashDetonateEvent {
+  position: Vec3;
+  radius: number;
 }
 
 /** Scoreboard entry for each player */
@@ -367,6 +386,8 @@ export type ServerMessage =
   | { type: 'chunks'; chunks: ChunkData[] }
   | { type: 'smoke_grenades'; grenades: SmokeGrenadeState[] }
   | { type: 'smoke_deploy'; event: SmokeDeployEvent }
+  | { type: 'flash_grenades'; grenades: FlashGrenadeState[] }
+  | { type: 'flash_detonate'; event: FlashDetonateEvent }
   | { type: 'director_event'; event: DirectorEvent }
   | { type: 'match_timer'; timeRemaining: number; timeLimit: number }
   | { type: 'dynamic_objectives'; objectives: DynamicObjective[] }

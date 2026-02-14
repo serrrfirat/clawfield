@@ -83,6 +83,10 @@ export class PlayerSim {
   sprintFireTimer: number = 0;
   /** Current spread bloom accumulation (radians above base spread) */
   currentBloom: number = 0;
+  /** Suppression timer end timestamp (ms) */
+  suppressedUntilMs: number = 0;
+  /** Flash timer end timestamp (ms) */
+  flashedUntilMs: number = 0;
   /** Rising-edge trigger pulls captured from queued inputs */
   private pendingShotIntents: number = 0;
   /** Previous frame's trigger state for rising-edge detection */
@@ -428,8 +432,37 @@ export class PlayerSim {
   getEffectiveSpread(): number {
     const w = this.activeWeapon;
     const hipSpread = w.spread + this.currentBloom;
-    const adsMultiplier = this.latestInput?.scope && !this.isCurrentWeaponReloading() ? w.adsSpreadMultiplier : 1;
-    return hipSpread * adsMultiplier;
+    const adsActive = !!(this.latestInput?.scope && !this.isCurrentWeaponReloading());
+    const hipFirePenalty = adsActive ? 1 : 1.4;
+    const adsMultiplier = adsActive ? w.adsSpreadMultiplier : 1;
+
+    const now = Date.now();
+    const suppressionPenalty = 1 + this.getSuppressionLevel(now) * 0.9;
+    const flashPenalty = 1 + this.getFlashLevel(now) * 1.1;
+
+    return hipSpread * hipFirePenalty * adsMultiplier * suppressionPenalty * flashPenalty;
+  }
+
+  applySuppression(nowMs: number, durationMs: number): void {
+    this.suppressedUntilMs = Math.max(this.suppressedUntilMs, nowMs + durationMs);
+  }
+
+  applyFlash(nowMs: number, durationMs: number): void {
+    this.flashedUntilMs = Math.max(this.flashedUntilMs, nowMs + durationMs);
+  }
+
+  getSuppressionLevel(nowMs: number): number {
+    if (this.suppressedUntilMs <= nowMs) return 0;
+    const remain = this.suppressedUntilMs - nowMs;
+    const maxWindow = 1300;
+    return Math.max(0, Math.min(1, remain / maxWindow));
+  }
+
+  getFlashLevel(nowMs: number): number {
+    if (this.flashedUntilMs <= nowMs) return 0;
+    const remain = this.flashedUntilMs - nowMs;
+    const maxWindow = 2200;
+    return Math.max(0, Math.min(1, remain / maxWindow));
   }
 
   private isCurrentWeaponReloading(): boolean {
@@ -643,8 +676,10 @@ export class PlayerSim {
     this.lastFireTime = 0;
     this.sprintFireTimer = 0;
     this.crouching = false;
-    this.currentBloom = 0;
-    this.pendingShotIntents = 0;
+      this.currentBloom = 0;
+      this.suppressedUntilMs = 0;
+      this.flashedUntilMs = 0;
+      this.pendingShotIntents = 0;
     this.prevShootHeld = false;
     this.grenadeCount = GRENADE_MAX_COUNT;
     this.lastGrenadeTime = 0;
@@ -737,6 +772,8 @@ export class PlayerSim {
       weaponSlot: this.currentWeaponSlot,
       shooting: this.firedThisTick,
       weaponName: this.activeWeapon.name,
+      suppression: this.getSuppressionLevel(Date.now()),
+      flash: this.getFlashLevel(Date.now()),
     };
   }
 }

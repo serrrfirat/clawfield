@@ -251,6 +251,8 @@ export class ColyseusNetworkClient {
           maxAmmo: player.maxAmmo,
           weaponSlot: player.weaponSlot,
           weaponName: player.weaponName,
+          suppression: player.suppression ?? 0,
+          flash: player.flash ?? 0,
         })
       })
     }
