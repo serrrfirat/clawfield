@@ -13,6 +13,7 @@ import {
   GRAVITY,
   GRENADE_THROW_SPEED,
   SMOKE_GRENADE_THROW_SPEED,
+  FLASH_GRENADE_THROW_SPEED,
   PLAYER_HEIGHT,
   buildHeightmapObstacleDiscs,
   resolveDiscObstacleCollision,
@@ -35,6 +36,7 @@ import { sampleHeightDelta } from '../editor/heightmap-utils'
 
 const BALL_RADIUS = 0.4
 const MAX_AIM_DISTANCE = 45
+const AIM_ORIGIN_FORWARD_OFFSET = 0
 
 function solveBallisticPitch(horizontalDistance: number, deltaY: number, speed: number): number {
   const d = Math.max(0.001, horizontalDistance)
@@ -49,6 +51,86 @@ function solveBallisticPitch(horizontalDistance: number, deltaY: number, speed: 
   }
 
   return Math.max(0.22, Math.atan2(deltaY, d))
+}
+
+function applyDirectionalSpread(dir: Vec3, spread: number): Vec3 {
+  if (spread <= 0) return { ...dir }
+
+  const angle = Math.random() * spread
+  const rotation = Math.random() * Math.PI * 2
+
+  let upX = 0
+  let upY = 1
+  let upZ = 0
+  if (Math.abs(dir.y) > 0.99) {
+    upX = 1
+    upY = 0
+    upZ = 0
+  }
+
+  const rightX = dir.y * upZ - dir.z * upY
+  const rightY = dir.z * upX - dir.x * upZ
+  const rightZ = dir.x * upY - dir.y * upX
+  const rightLen = Math.sqrt(rightX * rightX + rightY * rightY + rightZ * rightZ)
+  if (rightLen < 1e-8) return { ...dir }
+
+  const rx = rightX / rightLen
+  const ry = rightY / rightLen
+  const rz = rightZ / rightLen
+
+  const ax = ry * dir.z - rz * dir.y
+  const ay = rz * dir.x - rx * dir.z
+  const az = rx * dir.y - ry * dir.x
+
+  const sinA = Math.sin(angle)
+  const cosR = Math.cos(rotation)
+  const sinR = Math.sin(rotation)
+
+  const offsetX = sinA * (cosR * rx + sinR * ax)
+  const offsetY = sinA * (cosR * ry + sinR * ay)
+  const offsetZ = sinA * (cosR * rz + sinR * az)
+
+  const cosA = Math.cos(angle)
+  const newX = dir.x * cosA + offsetX
+  const newY = dir.y * cosA + offsetY
+  const newZ = dir.z * cosA + offsetZ
+
+  const len = Math.sqrt(newX * newX + newY * newY + newZ * newZ)
+  if (len < 1e-8) return { ...dir }
+  return { x: newX / len, y: newY / len, z: newZ / len }
+}
+
+const WEAPON_NAME_TO_ID: Record<string, WeaponId> = {
+  rifle: WeaponId.AssaultRifle,
+  'assault rifle': WeaponId.AssaultRifle,
+  smg: WeaponId.SMG_Assault,
+  'medic smg': WeaponId.SMG_Medic,
+  shotgun: WeaponId.Shotgun,
+  carbine: WeaponId.Carbine,
+  pdw: WeaponId.PDW,
+  'sniper rifle': WeaponId.SniperRifle,
+  dmr: WeaponId.DMR,
+  pistol: WeaponId.Pistol,
+  'rocket launcher': WeaponId.RocketLauncher,
+}
+
+function resolveWeaponForName(weaponName?: string) {
+  const normalized = weaponName?.trim().toLowerCase() ?? ''
+  const id = WEAPON_NAME_TO_ID[normalized]
+  if (!id) return DEFAULT_WEAPON
+  return WEAPONS[id] ?? DEFAULT_WEAPON
+}
+
+function getVisualEffectiveSpreadForWeapon(
+  weapon: { spread: number; adsSpreadMultiplier: number; recoilRandom: number },
+  adsActive: boolean,
+  bloom: number,
+): number {
+  const hipSpread = weapon.spread + bloom
+  const hipFirePenalty = adsActive ? 1 : 1.4
+  const adsMultiplier = adsActive ? weapon.adsSpreadMultiplier : 1
+  const randomnessBoost = 1 + Math.min(0.4, weapon.recoilRandom * 20)
+  return hipSpread * hipFirePenalty * adsMultiplier * randomnessBoost
 }
 
 /** Default weapon for client-predicted projectiles */
@@ -68,6 +150,8 @@ export default function PlayerController() {
   const seqRef = useRef(0)
   /** Fire rate limiter — tracks last shot time */
   const lastShotRef = useRef(0)
+  const localBloomRef = useRef(0)
+  const prevWeaponNameRef = useRef('')
   /** Tracks whether we're actively shooting (for anim derivation) */
   const shootingRef = useRef(false)
   const grenadeEquipUntilRef = useRef(0)
@@ -75,6 +159,8 @@ export default function PlayerController() {
   const cursorWorldPosRef = useRef(new THREE.Vector3())
   /** Player world position for AimCursor — updated each frame via .set() */
   const playerWorldPosRef = useRef(new THREE.Vector3(0, 5, 0))
+  /** Projected muzzle origin (XZ) used to align LOS cone */
+  const aimOriginPosRef = useRef(new THREE.Vector3(0, 5, 0))
 
   const setBallPosition = useStore((s) => s.setBallPosition)
   const setSmoothedCircleCenter = useStore((s) => s.setSmoothedCircleCenter)
@@ -88,6 +174,7 @@ export default function PlayerController() {
   const alive = useStore((s) => s.alive)
   const downed = useStore((s) => s.downed)
   const reloading = useStore((s) => s.reloading)
+  const ammo = useStore((s: any) => s.ammo)
   const weaponName = useStore((s: any) => s.weaponName)
   const [displayWeaponName, setDisplayWeaponName] = useState<string>(weaponName ?? 'Rifle')
 
@@ -133,6 +220,16 @@ export default function PlayerController() {
 
     const clamped = Math.min(dt, 0.1)
     const rb = rigidBodyRef.current
+    const activeWeapon = resolveWeaponForName(weaponName)
+
+    if (weaponName !== prevWeaponNameRef.current) {
+      localBloomRef.current = 0
+      prevWeaponNameRef.current = weaponName ?? ''
+    }
+
+    if (localBloomRef.current > 0) {
+      localBloomRef.current = Math.max(0, localBloomRef.current - activeWeapon.spreadRecovery * clamped)
+    }
 
     // Apply server-authoritative spawn position on respawn.
     const respawnPos = consumeRespawnPosition?.()
@@ -145,6 +242,7 @@ export default function PlayerController() {
       vyRef.current = 0
       groundedRef.current = false
       posRef.current = { ...respawnPos }
+      localBloomRef.current = 0
     }
 
     // Reconcile local predicted position to server-authoritative position.
@@ -227,32 +325,45 @@ export default function PlayerController() {
     inputCapture.yaw = aimYaw
     const input = inputCapture.consume()
 
-    const grenadeVisualName = inputCapture.selectedGrenadeIndex === 1 ? 'smoke grenade' : 'frag grenade'
+    useStore.setState({ selectedGrenadeIndex: inputCapture.selectedGrenadeIndex })
+
+    const grenadeVisualName = inputCapture.selectedGrenadeIndex === 1
+      ? 'smoke grenade'
+      : inputCapture.selectedGrenadeIndex === 2
+        ? 'flash grenade'
+        : 'frag grenade'
     const showGrenadeInHand = inputCapture.grenadeRadialMenuOpen || performance.now() < grenadeEquipUntilRef.current
     const desiredDisplayWeaponName = showGrenadeInHand ? grenadeVisualName : (weaponName ?? 'Rifle')
     if (desiredDisplayWeaponName !== displayWeaponName) {
       setDisplayWeaponName(desiredDisplayWeaponName)
     }
 
+    const aimOriginX = resolvedX + Math.sin(aimYaw) * AIM_ORIGIN_FORWARD_OFFSET
+    const aimOriginZ = resolvedZ - Math.cos(aimYaw) * AIM_ORIGIN_FORWARD_OFFSET
+
     // Update mutable positions for AimCursor (must mutate in-place, not reassign)
     {
       const raw = camera.getCursorWorldPos()
-      const aimDx = raw.x - resolvedX
-      const aimDz = raw.z - resolvedZ
+      const aimDx = raw.x - aimOriginX
+      const aimDz = raw.z - aimOriginZ
       const aimDistance = Math.sqrt(aimDx * aimDx + aimDz * aimDz)
 
       if (aimDistance > MAX_AIM_DISTANCE && aimDistance > 1e-5) {
         const t = MAX_AIM_DISTANCE / aimDistance
         cursorWorldPosRef.current.set(
-          resolvedX + aimDx * t,
+          aimOriginX + aimDx * t,
           raw.y,
-          resolvedZ + aimDz * t,
+          aimOriginZ + aimDz * t,
         )
       } else {
         cursorWorldPosRef.current.copy(raw)
       }
+
+      const cursorTerrainY = heightGetter(cursorWorldPosRef.current.x, cursorWorldPosRef.current.z)
+      cursorWorldPosRef.current.y = cursorTerrainY
     }
     playerWorldPosRef.current.set(resolvedX, playerY, resolvedZ)
+    aimOriginPosRef.current.set(aimOriginX, playerY, aimOriginZ)
 
     if (!alive) {
       // Still update camera/store but skip movement
@@ -285,19 +396,24 @@ export default function PlayerController() {
 
     // ── Shooting: spawn client-predicted projectile toward crosshair ──
     const now = performance.now()
-    const fireInterval = 60000 / DEFAULT_WEAPON.rpm // ms between shots
+    const fireInterval = 60000 / activeWeapon.rpm // ms between shots
+    const canFire = ammo > 0 && !reloading
     shootingRef.current = false
-    if (input.shoot && now - lastShotRef.current >= fireInterval) {
+    if (input.shoot && canFire && now - lastShotRef.current >= fireInterval) {
       lastShotRef.current = now
       shootingRef.current = true
+
+      useStore.setState((state: any) => ({
+        ammo: Math.max(0, Number(state.ammo ?? 0) - 1),
+      }))
 
       // Match server eye offset: playerY (feet) + PLAYER_HEIGHT - 0.1
       const eyeOffset = PLAYER_HEIGHT - 0.1
       const cursorWP = cursorWorldPosRef.current
 
       // Direction from muzzle origin to cursor ground position
-      const muzzleOriginX = resolvedX
-      const muzzleOriginZ = resolvedZ
+      const muzzleOriginX = aimOriginX
+      const muzzleOriginZ = aimOriginZ
       const muzzleY = playerY + eyeOffset
 
       const dx = cursorWP.x - muzzleOriginX
@@ -318,6 +434,14 @@ export default function PlayerController() {
         dirZ = -Math.cos(aimYaw)
       }
 
+      const adsActive = !!(input.scope && !reloading)
+      const visualSpread = getVisualEffectiveSpreadForWeapon(activeWeapon, adsActive, localBloomRef.current)
+      const spreadDir = applyDirectionalSpread({ x: dirX, y: dirY, z: dirZ }, visualSpread)
+      dirX = spreadDir.x
+      dirY = spreadDir.y
+      dirZ = spreadDir.z
+      localBloomRef.current += activeWeapon.spreadBloom
+
       // Offset muzzle slightly forward from player center
       const muzzlePos: Vec3 = {
         x: muzzleOriginX + dirX * 0.7,
@@ -325,13 +449,19 @@ export default function PlayerController() {
         z: muzzleOriginZ + dirZ * 0.7,
       }
 
+      const tracerTargetPos: Vec3 = {
+        x: muzzlePos.x + dirX * shootRange,
+        y: muzzlePos.y + dirY * shootRange,
+        z: muzzlePos.z + dirZ * shootRange,
+      }
+
       if (combatSystems.projectiles) {
         combatSystems.projectiles.spawnLocal(
           muzzlePos,
           { x: dirX, y: dirY, z: dirZ },
-          DEFAULT_WEAPON.projectileSpeed,
+          activeWeapon.projectileSpeed,
           shootRange,
-          { x: cursorWP.x, y: cursorWP.y, z: cursorWP.z },
+          tracerTargetPos,
         )
       }
 
@@ -354,9 +484,15 @@ export default function PlayerController() {
       const throwDx = target.x - eyePos.x
       const throwDz = target.z - eyePos.z
       const horizontalDistance = Math.sqrt(throwDx * throwDx + throwDz * throwDz)
-      const isSmokeGrenade = (input.grenadeIndex ?? 0) === 1
-      const throwSpeed = isSmokeGrenade ? SMOKE_GRENADE_THROW_SPEED : GRENADE_THROW_SPEED
-      const minArcPitch = isSmokeGrenade ? 0.45 : 0.22
+      const grenadeIndex = input.grenadeIndex ?? 0
+      const isSmokeGrenade = grenadeIndex === 1
+      const isFlashGrenade = grenadeIndex === 2
+      const throwSpeed = isSmokeGrenade
+        ? SMOKE_GRENADE_THROW_SPEED
+        : isFlashGrenade
+          ? FLASH_GRENADE_THROW_SPEED
+          : GRENADE_THROW_SPEED
+      const minArcPitch = isSmokeGrenade ? 0.45 : isFlashGrenade ? 0.34 : 0.22
       const throwPitch = Math.max(
         minArcPitch,
         solveBallisticPitch(horizontalDistance, target.y - eyePos.y, throwSpeed),
@@ -374,6 +510,8 @@ export default function PlayerController() {
         if (isSmokeGrenade) {
           // Smoke grenade motion/collision is server-authoritative.
           // Avoid local predicted smoke flight to prevent client/server divergence visuals.
+        } else if (isFlashGrenade) {
+          // Flash grenade motion/collision is server-authoritative.
         } else {
           combatSystems.grenades.spawnLocal(eyePos, throwVelocity)
         }
@@ -422,6 +560,9 @@ export default function PlayerController() {
       <AimCursor
         cursorWorldPos={cursorWorldPosRef.current}
         playerPos={playerWorldPosRef.current}
+        aimOriginPos={aimOriginPosRef.current}
+        weaponRange={MAX_AIM_DISTANCE}
+        obstacleDiscs={obstacleDiscs}
         visible={alive}
       />
     </>

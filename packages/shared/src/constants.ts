@@ -14,19 +14,19 @@ export const TICK_INTERVAL = 1000 / TICK_RATE;
 export const GRAVITY = -20;
 
 /** Jump initial velocity in m/s */
-export const JUMP_VELOCITY = 2;
+export const JUMP_VELOCITY = 6;
 
 /** Walk speed in m/s (default movement) */
-export const WALK_SPEED = 3;
+export const WALK_SPEED = 2.2;
 
 /** Run speed in m/s (double-tap direction) */
-export const MOVE_SPEED = 6;
+export const MOVE_SPEED = 4.8;
 
 /** Sprint speed in m/s */
-export const SPRINT_SPEED = 8.5;
+export const SPRINT_SPEED = 6.8;
 
 /** Crouch move speed in m/s */
-export const CROUCH_SPEED = 3;
+export const CROUCH_SPEED = 2.2;
 
 /** Player hitbox dimensions in world units */
 export const PLAYER_WIDTH = 0.8;
@@ -372,6 +372,32 @@ export const SMOKE_GRENADE_BOUNCINESS = 0.3;
 
 /** Smoke grenade bounce drag */
 export const SMOKE_GRENADE_BOUNCE_DRAG = 0.3;
+
+// --- Flash grenade constants ---
+
+/** Flash grenade throw speed in m/s */
+export const FLASH_GRENADE_THROW_SPEED = 17;
+
+/** Flash grenade fuse time in seconds */
+export const FLASH_GRENADE_FUSE_TIME = 1.6;
+
+/** Flash grenade effect radius in meters */
+export const FLASH_GRENADE_RADIUS = 14;
+
+/** Max flash effect duration at center (seconds) */
+export const FLASH_GRENADE_MAX_DURATION = 2.2;
+
+/** Flash grenade bounce factor */
+export const FLASH_GRENADE_BOUNCINESS = 0.3;
+
+/** Flash grenade bounce drag */
+export const FLASH_GRENADE_BOUNCE_DRAG = 0.28;
+
+/** Near-miss suppression radius in meters */
+export const SUPPRESSION_NEAR_MISS_RADIUS = 2.2;
+
+/** Suppression max duration (seconds) */
+export const SUPPRESSION_MAX_DURATION = 1.3;
 
 // --- Gadget constants ---
 
