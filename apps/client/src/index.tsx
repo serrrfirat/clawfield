@@ -8,6 +8,7 @@ import Loader from './loader/Loader'
 import { NetworkProvider } from './network/NetworkProvider'
 import usePhases, { PHASES } from './stores/usePhases'
 import GameHud from './ui/GameHud'
+import ScreenTintOverlay from './ui/ScreenTintOverlay'
 
 const params = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search)
@@ -21,8 +22,9 @@ function CanvasWrapper({ children }: { children: React.ReactNode }) {
     const phase = usePhases((s) => s.phase)
     const blocked = phase !== PHASES.start
     return (
-        <div style={{ width: '100%', height: '100%', pointerEvents: blocked ? 'none' : 'auto' }}>
+        <div style={{ width: '100%', height: '100%', pointerEvents: blocked ? 'none' : 'auto', position: 'relative' }}>
             {children}
+            <ScreenTintOverlay />
         </div>
     )
 }

@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { Bloom, BrightnessContrast, EffectComposer, GodRays, HueSaturation } from '@react-three/postprocessing'
 import { useFrame } from '@react-three/fiber'
 import useStore from '../stores/useStore'
-import { getDayNightFactors, getFuzzySunPosition } from './dayNight'
+import { getDayNightFactors, getFuzzySunPosition, getTimeOfDayTintFactors } from './dayNight'
 
 export default function PostProcessing() {
     const post = useStore((s) => s.postProcessingParameters)
@@ -23,17 +23,16 @@ export default function PostProcessing() {
 
     const sunPos = getFuzzySunPosition(dayNight.timeOfDay, 0, dayNight.sunRadius)
     const sunHeightNorm = THREE.MathUtils.clamp(sunPos.y / Math.max(1, dayNight.sunRadius), -1, 1)
-    const { dayFactor, sunsetFactor, nightFactor } = getDayNightFactors(sunHeightNorm, dayNight.enabled)
+    const { dayFactor } = getDayNightFactors(sunHeightNorm, true)
     const raysWeight = post.godRaysWeight * dayFactor
     const raysExposure = post.godRaysExposure * THREE.MathUtils.lerp(0.35, 1, dayFactor)
     const tintStrength = post.screenTintStrength ?? 1
-    const morningFactor = dayNight.enabled
-        ? THREE.MathUtils.clamp(1 - Math.abs(dayNight.timeOfDay - 7.4) / 2.6, 0, 1) * dayFactor
-        : 0
-    const hue = (morningFactor * 0.015 + sunsetFactor * 0.02 - nightFactor * 0.06) * tintStrength
-    const saturation = (-0.01 + morningFactor * 0.03 + sunsetFactor * 0.06 - nightFactor * 0.08) * tintStrength
-    const brightness = (morningFactor * 0.01 + sunsetFactor * 0.015 - nightFactor * 0.08) * tintStrength
-    const contrast = (sunsetFactor * 0.04 + nightFactor * 0.09) * tintStrength
+    const { morningOrange, middayYellow, afternoonOrangePurple, nightIndigo } = getTimeOfDayTintFactors(dayNight.timeOfDay)
+
+    const hue = (morningOrange * 0.018 + middayYellow * 0.01 + afternoonOrangePurple * 0.038 - nightIndigo * 0.085) * tintStrength
+    const saturation = (morningOrange * 0.055 + middayYellow * 0.024 + afternoonOrangePurple * 0.082 - nightIndigo * 0.115) * tintStrength
+    const brightness = (morningOrange * 0.028 + middayYellow * 0.02 + afternoonOrangePurple * 0.008 - nightIndigo * 0.1) * tintStrength
+    const contrast = (middayYellow * 0.015 + afternoonOrangePurple * 0.05 + nightIndigo * 0.14) * tintStrength
 
     return (
         <>

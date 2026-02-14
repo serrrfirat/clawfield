@@ -1,6 +1,16 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import useEditorStore from './useEditorStore'
-import { getDefaultCollidableForAsset, getDefaultColliderType, getDefaultGrassSuppressRadius, getDefaultSuppressGrassForAsset, getPlacementCollidable, getPlacementColliderType, getPlacementGrassSuppressRadius, getPlacementSuppressGrass } from './collision-defaults'
+import useStore from '../stores/useStore'
+import {
+  getDefaultCollidableForAsset,
+  getDefaultColliderType,
+  getDefaultGrassSuppressRadius,
+  getDefaultSuppressGrassForAsset,
+  getPlacementCollidable,
+  getPlacementColliderType,
+  getPlacementGrassSuppressRadius,
+  getPlacementSuppressGrass,
+} from './collision-defaults'
 
 const DESTRUCTION_PROFILES = [
   { id: 'none', label: 'none' },
@@ -18,222 +28,526 @@ const PROFILE_DEFAULTS: Record<string, { colliderType: 'none' | 'cuboid' | 'trim
   building_large: { colliderType: 'trimesh', colliderScale: 0.5 },
 }
 
+type SectionKey = 'scene' | 'terrain' | 'tool' | 'selection'
+
 export default function PropertiesPanel() {
+  const activeTool = useEditorStore((s) => s.activeTool)
+  const runtimePreview = useEditorStore((s) => s.runtimePreview)
+  const toggleRuntimePreview = useEditorStore((s) => s.toggleRuntimePreview)
+  const showColliderDebug = useEditorStore((s) => s.showColliderDebug)
+  const toggleColliderDebug = useEditorStore((s) => s.toggleColliderDebug)
+
+  const waterLevel = useEditorStore((s) => s.waterLevel)
+  const setWaterLevel = useEditorStore((s) => s.setWaterLevel)
+  const autoFlattenOnPlace = useEditorStore((s) => s.autoFlattenOnPlace)
+  const setAutoFlattenOnPlace = useEditorStore((s) => s.setAutoFlattenOnPlace)
+  const flattenRadiusScale = useEditorStore((s) => s.flattenRadiusScale)
+  const setFlattenRadiusScale = useEditorStore((s) => s.setFlattenRadiusScale)
+
+  const heightBrushRadius = useEditorStore((s) => s.heightBrushRadius)
+  const setHeightBrushRadius = useEditorStore((s) => s.setHeightBrushRadius)
+  const heightBrushStrength = useEditorStore((s) => s.heightBrushStrength)
+  const setHeightBrushStrength = useEditorStore((s) => s.setHeightBrushStrength)
+  const heightBrushMode = useEditorStore((s) => s.heightBrushMode)
+  const setHeightBrushMode = useEditorStore((s) => s.setHeightBrushMode)
+
+  const roadTextureId = useEditorStore((s) => s.roadTextureId)
+  const setRoadTextureId = useEditorStore((s) => s.setRoadTextureId)
+  const roadWidth = useEditorStore((s) => s.roadWidth)
+  const setRoadWidth = useEditorStore((s) => s.setRoadWidth)
+  const finishRoadStroke = useEditorStore((s) => s.finishRoadStroke)
+
   const selectedId = useEditorStore((s) => s.selectedPlacementId)
   const placements = useEditorStore((s) => s.placements)
   const updatePlacement = useEditorStore((s) => s.updatePlacement)
   const removePlacement = useEditorStore((s) => s.removePlacement)
   const assets = useEditorStore((s) => s.assets)
 
+  const postFx = useStore((s: any) => s.postProcessingParameters)
+  const dayNight = useStore((s: any) => s.dayNightParameters)
+
   const placement = placements.find((p) => p.id === selectedId)
   const asset = assets.find((a) => a.id === placement?.assetId)
 
-  if (!placement) {
-    return (
-      <div style={panelStyle}>
-        <div style={headerStyle}>Properties</div>
-        <div style={emptyStyle}>No selection</div>
-      </div>
-    )
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
+    scene: true,
+    terrain: false,
+    tool: true,
+    selection: true,
+  })
+
+  const patchPostFx = (updates: Record<string, number | boolean>) => {
+    useStore.setState((state: any) => ({
+      postProcessingParameters: {
+        ...state.postProcessingParameters,
+        ...updates,
+      },
+    }))
   }
+
+  const patchDayNight = (updates: Record<string, number | boolean>) => {
+    useStore.setState((state: any) => ({
+      dayNightParameters: {
+        ...state.dayNightParameters,
+        ...updates,
+      },
+    }))
+  }
+
+  const toggleSection = (key: SectionKey) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const timeLabel = useMemo(() => {
+    const value = Number(dayNight?.timeOfDay ?? 14)
+    const normalized = ((value % 24) + 24) % 24
+    const h = Math.floor(normalized)
+    const m = Math.floor((normalized - h) * 60)
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }, [dayNight?.timeOfDay])
 
   return (
     <div style={panelStyle}>
-      <div style={headerStyle}>Properties</div>
-      <div style={sectionStyle}>
-        <label style={labelStyle}>Asset</label>
-        <div style={valueStyle}>{placement.assetId}</div>
-      </div>
-      <div style={sectionStyle}>
-        <label style={labelStyle}>Collision</label>
+      <div style={headerStyle}>Inspector</div>
+
+      <CollapsibleSection
+        title="Scene"
+        open={openSections.scene}
+        onToggle={() => toggleSection('scene')}
+      >
+        <label style={checkRowStyle}>
+          <input type="checkbox" checked={runtimePreview} onChange={toggleRuntimePreview} />
+          <span style={valueStyle}>Runtime look (P)</span>
+        </label>
+        <label style={checkRowStyle}>
+          <input type="checkbox" checked={showColliderDebug} onChange={toggleColliderDebug} />
+          <span style={valueStyle}>Collider debug (C)</span>
+        </label>
+
+        <div style={subSectionStyle}>
+          <label style={checkRowStyle}>
+            <input
+              type="checkbox"
+              checked={Boolean(dayNight?.enabled)}
+              onChange={(e) => patchDayNight({ enabled: e.target.checked })}
+            />
+            <span style={valueStyle}>Day/Night</span>
+          </label>
+          <label style={checkRowStyle}>
+            <input
+              type="checkbox"
+              checked={Boolean(dayNight?.autoCycle)}
+              onChange={(e) => patchDayNight({ enabled: true, autoCycle: e.target.checked })}
+            />
+            <span style={valueStyle}>Auto cycle</span>
+          </label>
+
+          <div style={sliderRowStyle}>
+            <label style={labelStyle}>Time</label>
+            <span style={monoValueStyle}>{timeLabel}</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={24}
+            step={0.05}
+            value={dayNight?.timeOfDay ?? 14}
+            onChange={(e) => patchDayNight({ enabled: true, timeOfDay: Number(e.target.value) })}
+          />
+        </div>
+
+        <div style={subSectionStyle}>
+          <label style={checkRowStyle}>
+            <input
+              type="checkbox"
+              checked={Boolean(postFx?.enabled)}
+              onChange={(e) => patchPostFx({ enabled: e.target.checked })}
+            />
+            <span style={valueStyle}>Post FX</span>
+          </label>
+          <SliderField
+            label="Rays"
+            min={0}
+            max={1}
+            step={0.01}
+            value={postFx?.godRaysWeight ?? 0.3}
+            onChange={(v) => patchPostFx({ godRaysWeight: v })}
+          />
+          <SliderField
+            label="Bloom"
+            min={0}
+            max={2}
+            step={0.01}
+            value={postFx?.bloomIntensity ?? 0.35}
+            onChange={(v) => patchPostFx({ bloomIntensity: v })}
+          />
+          <SliderField
+            label="Tint"
+            min={0}
+            max={2}
+            step={0.01}
+            value={postFx?.screenTintStrength ?? 1.35}
+            onChange={(v) => patchPostFx({ screenTintStrength: v })}
+          />
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Terrain"
+        open={openSections.terrain}
+        onToggle={() => toggleSection('terrain')}
+      >
+        <SliderField
+          label="Water"
+          min={-4}
+          max={4}
+          step={0.05}
+          value={waterLevel}
+          onChange={(v) => setWaterLevel(v)}
+        />
         <label style={checkRowStyle}>
           <input
             type="checkbox"
-            checked={getPlacementCollidable(placement, asset)}
-            onChange={(e) => {
-              updatePlacement(placement.id, {
-                metadata: {
-                  ...(placement.metadata ?? {}),
-                  collidable: e.target.checked,
-                },
-              })
-            }}
+            checked={autoFlattenOnPlace}
+            onChange={(e) => setAutoFlattenOnPlace(e.target.checked)}
           />
-          <span style={valueStyle}>Collidable</span>
+          <span style={valueStyle}>Auto flatten on place</span>
         </label>
-        <div style={hintStyle}>Default: {getDefaultCollidableForAsset(asset) ? 'on' : 'off'}</div>
+        <SliderField
+          label="Flatten Radius"
+          min={0.4}
+          max={2.5}
+          step={0.1}
+          value={flattenRadiusScale}
+          onChange={(v) => setFlattenRadiusScale(v)}
+        />
+      </CollapsibleSection>
 
-        <div style={{ marginTop: 8 }}>
-          <label style={checkRowStyle}>
-            <input
-              type="checkbox"
-              checked={getPlacementSuppressGrass(placement, asset)}
-              onChange={(e) => {
-                updatePlacement(placement.id, {
-                  metadata: {
-                    ...(placement.metadata ?? {}),
-                    suppressGrass: e.target.checked,
-                  },
-                })
-              }}
-            />
-            <span style={valueStyle}>Suppress grass under object</span>
-          </label>
-          <div style={hintStyle}>Default: {getDefaultSuppressGrassForAsset(asset) ? 'on' : 'off'}</div>
-          <div style={{ marginTop: 6 }}>
-            <label style={labelStyle}>Grass Clear Radius</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="range"
-                min={0.25}
-                max={20}
-                step={0.1}
-                value={getPlacementGrassSuppressRadius(placement, asset)}
-                onChange={(e) => {
-                  updatePlacement(placement.id, {
-                    metadata: {
-                      ...(placement.metadata ?? {}),
-                      grassSuppressRadius: Number(e.target.value),
-                    },
-                  })
-                }}
-                style={{ flex: 1, accentColor: '#4a9fff' }}
-              />
-              <input
-                type="number"
-                min={0.25}
-                step={0.1}
-                value={Math.round(getPlacementGrassSuppressRadius(placement, asset) * 10) / 10}
-                onChange={(e) => {
-                  const r = parseFloat(e.target.value) || getDefaultGrassSuppressRadius(asset, placement.scale)
-                  updatePlacement(placement.id, {
-                    metadata: {
-                      ...(placement.metadata ?? {}),
-                      grassSuppressRadius: Math.max(0.25, r),
-                    },
-                  })
-                }}
-                style={{ ...inputStyle, width: 56 }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: 8 }}>
-          <label style={labelStyle}>Collider Type</label>
-          <select
-            value={getPlacementColliderType(placement, asset)}
-            onChange={(e) => {
-              const value = e.target.value as 'none' | 'cuboid' | 'trimesh'
-              updatePlacement(placement.id, {
-                metadata: {
-                  ...(placement.metadata ?? {}),
-                  colliderType: value,
-                },
-              })
-            }}
-            style={selectStyle}
-          >
-            <option value="none">none</option>
-            <option value="cuboid">cuboid</option>
-            <option value="trimesh">trimesh</option>
-          </select>
-          <div style={hintStyle}>Default: {getDefaultColliderType(asset)}</div>
-        </div>
-
-        <div style={{ marginTop: 8 }}>
-          <label style={labelStyle}>Destructible (Future)</label>
-          <label style={checkRowStyle}>
-            <input
-              type="checkbox"
-              checked={Boolean(placement.metadata?.destructible ?? asset?.destructible)}
-              onChange={(e) => {
-                updatePlacement(placement.id, {
-                  metadata: {
-                    ...(placement.metadata ?? {}),
-                    destructible: e.target.checked,
-                  },
-                })
-              }}
-            />
-            <span style={valueStyle}>Enable destruction hooks</span>
-          </label>
-          <div style={{ marginTop: 6 }}>
-            <label style={labelStyle}>Destruction Profile</label>
+      <CollapsibleSection
+        title="Tool Settings"
+        open={openSections.tool}
+        onToggle={() => toggleSection('tool')}
+      >
+        {activeTool === 'height' ? (
+          <>
+            <label style={labelStyle}>Mode</label>
             <select
-              value={String(placement.metadata?.destructionProfile ?? 'none')}
-              onChange={(e) => {
-                const value = e.target.value
-                const defaults = PROFILE_DEFAULTS[value] ?? PROFILE_DEFAULTS.none
-                updatePlacement(placement.id, {
-                  metadata: {
-                    ...(placement.metadata ?? {}),
-                    destructionProfile: value,
-                    destructible: value !== 'none',
-                    colliderType: defaults.colliderType,
-                    colliderScale: defaults.colliderScale,
-                  },
-                })
-              }}
+              value={heightBrushMode}
+              onChange={(e) => setHeightBrushMode(e.target.value as any)}
               style={selectStyle}
             >
-              {DESTRUCTION_PROFILES.map((profile) => (
-                <option key={profile.id} value={profile.id}>{profile.label}</option>
-              ))}
+              <option value="raise">Raise</option>
+              <option value="lower">Lower</option>
+              <option value="flatten">Flatten</option>
             </select>
-          </div>
-        </div>
+            <SliderField
+              label="Brush Radius"
+              min={0.5}
+              max={8}
+              step={0.25}
+              value={heightBrushRadius}
+              onChange={(v) => setHeightBrushRadius(v)}
+            />
+            <SliderField
+              label="Brush Strength"
+              min={0.02}
+              max={0.8}
+              step={0.02}
+              value={heightBrushStrength}
+              onChange={(v) => setHeightBrushStrength(v)}
+            />
+          </>
+        ) : activeTool === 'road' ? (
+          <>
+            <label style={labelStyle}>Road Texture</label>
+            <select
+              value={roadTextureId}
+              onChange={(e) => setRoadTextureId(e.target.value as any)}
+              style={selectStyle}
+            >
+              <option value="road_1">Road 1</option>
+              <option value="road_2">Road 2</option>
+            </select>
+            <SliderField
+              label="Road Width"
+              min={1}
+              max={14}
+              step={0.25}
+              value={roadWidth}
+              onChange={(v) => setRoadWidth(v)}
+            />
+            <button onClick={finishRoadStroke} style={neutralBtn}>
+              Finish Stroke (Enter)
+            </button>
+          </>
+        ) : (
+          <div style={emptyStyle}>Select Height or Road tool for context settings.</div>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Selection"
+        open={openSections.selection}
+        onToggle={() => toggleSection('selection')}
+      >
+        {!placement ? (
+          <div style={emptyStyle}>No selection</div>
+        ) : (
+          <>
+            <div style={sectionStyle}>
+              <label style={labelStyle}>Asset</label>
+              <div style={valueStyle}>{placement.assetId}</div>
+            </div>
+
+            <div style={sectionStyle}>
+              <label style={labelStyle}>Collision</label>
+              <label style={checkRowStyle}>
+                <input
+                  type="checkbox"
+                  checked={getPlacementCollidable(placement, asset)}
+                  onChange={(e) => {
+                    updatePlacement(placement.id, {
+                      metadata: {
+                        ...(placement.metadata ?? {}),
+                        collidable: e.target.checked,
+                      },
+                    })
+                  }}
+                />
+                <span style={valueStyle}>Collidable</span>
+              </label>
+              <div style={hintStyle}>Default: {getDefaultCollidableForAsset(asset) ? 'on' : 'off'}</div>
+
+              <div style={{ marginTop: 8 }}>
+                <label style={checkRowStyle}>
+                  <input
+                    type="checkbox"
+                    checked={getPlacementSuppressGrass(placement, asset)}
+                    onChange={(e) => {
+                      updatePlacement(placement.id, {
+                        metadata: {
+                          ...(placement.metadata ?? {}),
+                          suppressGrass: e.target.checked,
+                        },
+                      })
+                    }}
+                  />
+                  <span style={valueStyle}>Suppress grass under object</span>
+                </label>
+                <div style={hintStyle}>Default: {getDefaultSuppressGrassForAsset(asset) ? 'on' : 'off'}</div>
+                <div style={{ marginTop: 6 }}>
+                  <label style={labelStyle}>Grass Clear Radius</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="range"
+                      min={0.25}
+                      max={20}
+                      step={0.1}
+                      value={getPlacementGrassSuppressRadius(placement, asset)}
+                      onChange={(e) => {
+                        updatePlacement(placement.id, {
+                          metadata: {
+                            ...(placement.metadata ?? {}),
+                            grassSuppressRadius: Number(e.target.value),
+                          },
+                        })
+                      }}
+                      style={{ flex: 1, accentColor: '#4a9fff' }}
+                    />
+                    <input
+                      type="number"
+                      min={0.25}
+                      step={0.1}
+                      value={Math.round(getPlacementGrassSuppressRadius(placement, asset) * 10) / 10}
+                      onChange={(e) => {
+                        const r = parseFloat(e.target.value) || getDefaultGrassSuppressRadius(asset, placement.scale)
+                        updatePlacement(placement.id, {
+                          metadata: {
+                            ...(placement.metadata ?? {}),
+                            grassSuppressRadius: Math.max(0.25, r),
+                          },
+                        })
+                      }}
+                      style={{ ...inputStyle, width: 56 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 8 }}>
+                <label style={labelStyle}>Collider Type</label>
+                <select
+                  value={getPlacementColliderType(placement, asset)}
+                  onChange={(e) => {
+                    const value = e.target.value as 'none' | 'cuboid' | 'trimesh'
+                    updatePlacement(placement.id, {
+                      metadata: {
+                        ...(placement.metadata ?? {}),
+                        colliderType: value,
+                      },
+                    })
+                  }}
+                  style={selectStyle}
+                >
+                  <option value="none">none</option>
+                  <option value="cuboid">cuboid</option>
+                  <option value="trimesh">trimesh</option>
+                </select>
+                <div style={hintStyle}>Default: {getDefaultColliderType(asset)}</div>
+              </div>
+
+              <div style={{ marginTop: 8 }}>
+                <label style={labelStyle}>Destructible (Future)</label>
+                <label style={checkRowStyle}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(placement.metadata?.destructible ?? asset?.destructible)}
+                    onChange={(e) => {
+                      updatePlacement(placement.id, {
+                        metadata: {
+                          ...(placement.metadata ?? {}),
+                          destructible: e.target.checked,
+                        },
+                      })
+                    }}
+                  />
+                  <span style={valueStyle}>Enable destruction hooks</span>
+                </label>
+                <div style={{ marginTop: 6 }}>
+                  <label style={labelStyle}>Destruction Profile</label>
+                  <select
+                    value={String(placement.metadata?.destructionProfile ?? 'none')}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const defaults = PROFILE_DEFAULTS[value] ?? PROFILE_DEFAULTS.none
+                      updatePlacement(placement.id, {
+                        metadata: {
+                          ...(placement.metadata ?? {}),
+                          destructionProfile: value,
+                          destructible: value !== 'none',
+                          colliderType: defaults.colliderType,
+                          colliderScale: defaults.colliderScale,
+                        },
+                      })
+                    }}
+                    style={selectStyle}
+                  >
+                    {DESTRUCTION_PROFILES.map((profile) => (
+                      <option key={profile.id} value={profile.id}>{profile.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <Vec3Input
+              label="Position"
+              value={placement.position}
+              onChange={(v) => updatePlacement(placement.id, { position: v })}
+            />
+            <Vec3Input
+              label="Rotation"
+              value={placement.rotation}
+              step={5}
+              onChange={(v) => updatePlacement(placement.id, { rotation: v })}
+            />
+            <div style={sectionStyle}>
+              <label style={labelStyle}>Size</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={20}
+                  step={0.1}
+                  value={placement.scale[0]}
+                  onChange={(e) => {
+                    const s = parseFloat(e.target.value)
+                    updatePlacement(placement.id, { scale: [s, s, s] })
+                  }}
+                  style={{ flex: 1, accentColor: '#4a9fff' }}
+                />
+                <input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={Math.round(placement.scale[0] * 100) / 100}
+                  onChange={(e) => {
+                    const s = parseFloat(e.target.value) || 1
+                    updatePlacement(placement.id, { scale: [s, s, s] })
+                  }}
+                  style={{ ...inputStyle, width: 52 }}
+                />
+              </div>
+            </div>
+            <Vec3Input
+              label="Scale (per-axis)"
+              value={placement.scale}
+              step={0.1}
+              onChange={(v) => updatePlacement(placement.id, { scale: v })}
+            />
+            <div style={{ padding: '8px 16px' }}>
+              <button onClick={() => removePlacement(placement.id)} style={deleteBtn}>
+                Delete
+              </button>
+            </div>
+          </>
+        )}
+      </CollapsibleSection>
+    </div>
+  )
+}
+
+function CollapsibleSection({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div style={collapsibleWrapStyle}>
+      <button onClick={onToggle} style={collapsibleHeaderStyle}>
+        <span>{open ? '▾' : '▸'}</span>
+        <span>{title}</span>
+      </button>
+      {open && <div style={collapsibleBodyStyle}>{children}</div>}
+    </div>
+  )
+}
+
+function SliderField({
+  label,
+  min,
+  max,
+  step,
+  value,
+  onChange,
+}: {
+  label: string
+  min: number
+  max: number
+  step: number
+  value: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <div style={sliderFieldStyle}>
+      <div style={sliderRowStyle}>
+        <label style={labelStyle}>{label}</label>
+        <span style={monoValueStyle}>{value.toFixed(2)}</span>
       </div>
-      <Vec3Input
-        label="Position"
-        value={placement.position}
-        onChange={(v) => updatePlacement(placement.id, { position: v })}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
       />
-      <Vec3Input
-        label="Rotation"
-        value={placement.rotation}
-        step={5}
-        onChange={(v) => updatePlacement(placement.id, { rotation: v })}
-      />
-      <div style={sectionStyle}>
-        <label style={labelStyle}>Size</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <input
-            type="range"
-            min={0.1}
-            max={20}
-            step={0.1}
-            value={placement.scale[0]}
-            onChange={(e) => {
-              const s = parseFloat(e.target.value)
-              updatePlacement(placement.id, { scale: [s, s, s] })
-            }}
-            style={{ flex: 1, accentColor: '#4a9fff' }}
-          />
-          <input
-            type="number"
-            min={0.1}
-            step={0.1}
-            value={Math.round(placement.scale[0] * 100) / 100}
-            onChange={(e) => {
-              const s = parseFloat(e.target.value) || 1
-              updatePlacement(placement.id, { scale: [s, s, s] })
-            }}
-            style={{ ...inputStyle, width: 52 }}
-          />
-        </div>
-      </div>
-      <Vec3Input
-        label="Scale (per-axis)"
-        value={placement.scale}
-        step={0.1}
-        onChange={(v) => updatePlacement(placement.id, { scale: v })}
-      />
-      <div style={{ padding: '8px 16px' }}>
-        <button onClick={() => removePlacement(placement.id)} style={deleteBtn}>
-          Delete
-        </button>
-      </div>
     </div>
   )
 }
@@ -281,7 +595,7 @@ function Vec3Input({
 }
 
 const panelStyle: React.CSSProperties = {
-  width: 220,
+  width: 280,
   background: '#1e1e2e',
   borderLeft: '1px solid #333',
   overflowY: 'auto',
@@ -290,27 +604,61 @@ const panelStyle: React.CSSProperties = {
 }
 
 const headerStyle: React.CSSProperties = {
-  padding: '12px 16px 8px',
+  padding: '12px 16px 10px',
   fontSize: 14,
   fontWeight: 600,
   color: '#fff',
   borderBottom: '1px solid #333',
 }
 
-const emptyStyle: React.CSSProperties = {
-  padding: 16,
-  color: '#666',
+const collapsibleWrapStyle: React.CSSProperties = {
+  borderBottom: '1px solid #2d2d3d',
+}
+
+const collapsibleHeaderStyle: React.CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '8px 12px',
+  background: '#242438',
+  border: 'none',
+  color: '#d6d6e6',
   fontSize: 12,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: 0.6,
+  cursor: 'pointer',
+}
+
+const collapsibleBodyStyle: React.CSSProperties = {
+  padding: '10px 12px 12px',
+  display: 'grid',
+  gap: 8,
+}
+
+const emptyStyle: React.CSSProperties = {
+  color: '#7d7d94',
+  fontSize: 12,
+  lineHeight: 1.4,
+}
+
+const subSectionStyle: React.CSSProperties = {
+  marginTop: 4,
+  paddingTop: 8,
+  borderTop: '1px solid #31314a',
+  display: 'grid',
+  gap: 6,
 }
 
 const sectionStyle: React.CSSProperties = {
-  padding: '6px 16px',
+  padding: '2px 0',
 }
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: 11,
-  color: '#888',
+  color: '#9696ae',
   marginBottom: 4,
   textTransform: 'uppercase',
   letterSpacing: 0.5,
@@ -318,7 +666,24 @@ const labelStyle: React.CSSProperties = {
 
 const valueStyle: React.CSSProperties = {
   fontSize: 13,
-  color: '#ccc',
+  color: '#d6d6e6',
+}
+
+const monoValueStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: '#aeb7d0',
+  fontFamily: 'monospace',
+}
+
+const sliderFieldStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 4,
+}
+
+const sliderRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
 }
 
 const rowStyle: React.CSSProperties = {
@@ -356,8 +721,18 @@ const selectStyle: React.CSSProperties = {
   border: '1px solid #444',
   borderRadius: 3,
   color: '#ddd',
-  padding: '3px 4px',
+  padding: '4px 6px',
   fontSize: 12,
+}
+
+const neutralBtn: React.CSSProperties = {
+  background: '#2f3d62',
+  border: '1px solid #4a6fa5',
+  borderRadius: 4,
+  color: '#d7e5ff',
+  padding: '6px 10px',
+  fontSize: 12,
+  cursor: 'pointer',
 }
 
 const deleteBtn: React.CSSProperties = {

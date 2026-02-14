@@ -121,6 +121,21 @@ Verification:
   - `apps/client/src/shaders/grass/fragment.glsl`
   - `apps/client/src/shaders/stones/fragment.glsl`
 - Synced post-processing sun source with fuzzy cycle in `apps/client/src/world/PostProcessing.tsx`.
+
+## Active Task: Refactor editor controls into right panel
+
+### Checklist
+- [x] Reduce top toolbar to primary actions/tools.
+- [x] Move scene/tone/day-night controls into right inspector panel.
+- [x] Add collapsible top-level inspector groups.
+- [x] Show actual clock time for day/night slider.
+- [x] Keep per-tool controls (height/road) in right panel for context.
+
+### Review
+- Refactored `apps/client/src/editor/ToolBar.tsx` to remove crowded sliders/toggles and keep load/save, mode toggles, and core tool controls.
+- Rebuilt `apps/client/src/editor/PropertiesPanel.tsx` as an inspector with collapsible sections: `Scene`, `Terrain`, `Tool Settings`, `Selection`.
+- Added day/night time readout in `HH:MM` format next to the time slider in the right panel.
+- Moved Post FX, day/night, terrain flatten, and context tool settings to the right panel to reduce top-bar confusion.
 - Enabled shadows on canvas in `apps/client/src/index.tsx`.
 - Enabled cast/receive shadow flags for placed GLBs in `apps/client/src/world/MapPlacements.tsx`.
 - Added tuning params in store (`cloudShadowParameters`, `softShadowParameters`) and wired controls in `apps/client/src/world/Controls.tsx`.

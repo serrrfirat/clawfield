@@ -4,6 +4,7 @@ import AssetPanel from './AssetPanel'
 import PropertiesPanel from './PropertiesPanel'
 import ToolBar from './ToolBar'
 import ScatterPanel from './ScatterPanel'
+import ScreenTintOverlay from '../ui/ScreenTintOverlay'
 
 export default function EditorCanvas() {
   return (
@@ -19,6 +20,7 @@ export default function EditorCanvas() {
           >
             <EditorExperience />
           </Canvas>
+          <ScreenTintOverlay />
           <ScatterPanel />
         </div>
         <PropertiesPanel />

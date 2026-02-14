@@ -143,7 +143,7 @@ const createStore = () =>
                 bloomThreshold: 0.12,
                 bloomSmoothing: 0.9,
                 bloomHeight: 300,
-                screenTintStrength: 1.0,
+                screenTintStrength: 1.35,
             },
 
             cloudShadowParameters: {
