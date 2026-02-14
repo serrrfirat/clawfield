@@ -8,6 +8,7 @@ import useStore from '../stores/useStore'
 
 export default function useTreeMaterial({ chunkSize, initialCircleRadius, noiseTexture, alphaMap }) {
     const treeParameters = useStore((s) => s.treeParameters)
+    const windParameters = useStore((s) => s.windParameters)
     const ballFadeParameters = useStore((s) => s.ballFadeParameters)
     const borderTreesMultiplier = useStore((s) => s.borderParameters.borderTreesMultiplier)
     const borderNoiseStrength = useStore((s) => s.borderParameters.noiseStrength)
@@ -20,7 +21,7 @@ export default function useTreeMaterial({ chunkSize, initialCircleRadius, noiseT
             baseMaterial: THREE.MeshStandardMaterial,
             uniforms: {
                 uTime: { value: 0 },
-                uWiggleStrength: { value: treeParameters.bushWiggleStrength },
+                uWiggleStrength: { value: treeParameters.bushWiggleStrength * (windParameters.globalMultiplier ?? 1) },
                 uWiggleSpeed: { value: treeParameters.bushWiggleSpeed },
                 uWorldNoiseScale: { value: treeParameters.bushWorldNoiseScale },
                 uUvWiggleScale: { value: treeParameters.bushUvWiggleScale },
@@ -65,7 +66,7 @@ export default function useTreeMaterial({ chunkSize, initialCircleRadius, noiseT
 
     useEffect(() => {
         const u = material.uniforms
-        u.uWiggleStrength.value = treeParameters.bushWiggleStrength
+        u.uWiggleStrength.value = treeParameters.bushWiggleStrength * (windParameters.globalMultiplier ?? 1)
         u.uWiggleSpeed.value = treeParameters.bushWiggleSpeed
         u.uWorldNoiseScale.value = treeParameters.bushWorldNoiseScale
         u.uUvWiggleScale.value = treeParameters.bushUvWiggleScale
@@ -104,6 +105,7 @@ export default function useTreeMaterial({ chunkSize, initialCircleRadius, noiseT
     }, [
         material,
         treeParameters,
+        windParameters.globalMultiplier,
         chunkSize,
         noiseTexture,
         alphaMap,

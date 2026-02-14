@@ -11,6 +11,9 @@ export default function Controls() {
     const stoneParameters = useStore((state) => state.stoneParameters)
     const treeParameters = useStore((state) => state.treeParameters)
     const ballFadeParameters = useStore((state) => state.ballFadeParameters)
+    const postProcessingParameters = useStore((state) => state.postProcessingParameters)
+    const cloudShadowParameters = useStore((state) => state.cloudShadowParameters)
+    const softShadowParameters = useStore((state) => state.softShadowParameters)
     const generalParameters = useStore((state) => state.generalParameters)
     const perfVisible = useStore((state) => state.perfVisible)
     const physicsDebug = useStore((state) => state.physicsDebug)
@@ -259,6 +262,142 @@ export default function Controls() {
             max: 1,
             step: 0.01,
             onChange: setParam('windParameters', 'scale'),
+        },
+        globalMultiplier: {
+            value: windParameters.globalMultiplier ?? 1,
+            min: 0,
+            max: 4,
+            step: 0.05,
+            onChange: setParam('windParameters', 'globalMultiplier'),
+        },
+    })
+
+    /**
+     * Post-processing parameters
+     */
+    useControls('Post FX', {
+        enabled: {
+            value: postProcessingParameters.enabled,
+            onChange: setParam('postProcessingParameters', 'enabled'),
+        },
+        godRaysDensity: {
+            value: postProcessingParameters.godRaysDensity,
+            min: 0.5,
+            max: 1.0,
+            step: 0.005,
+            onChange: setParam('postProcessingParameters', 'godRaysDensity'),
+        },
+        godRaysWeight: {
+            value: postProcessingParameters.godRaysWeight,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            onChange: setParam('postProcessingParameters', 'godRaysWeight'),
+        },
+        godRaysDecay: {
+            value: postProcessingParameters.godRaysDecay,
+            min: 0.8,
+            max: 1,
+            step: 0.005,
+            onChange: setParam('postProcessingParameters', 'godRaysDecay'),
+        },
+        godRaysExposure: {
+            value: postProcessingParameters.godRaysExposure,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            onChange: setParam('postProcessingParameters', 'godRaysExposure'),
+        },
+        godRaysSamples: {
+            value: postProcessingParameters.godRaysSamples,
+            min: 16,
+            max: 100,
+            step: 1,
+            onChange: setParam('postProcessingParameters', 'godRaysSamples'),
+        },
+        bloomIntensity: {
+            value: postProcessingParameters.bloomIntensity,
+            min: 0,
+            max: 2,
+            step: 0.01,
+            onChange: setParam('postProcessingParameters', 'bloomIntensity'),
+        },
+        bloomThreshold: {
+            value: postProcessingParameters.bloomThreshold,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            onChange: setParam('postProcessingParameters', 'bloomThreshold'),
+        },
+        bloomSmoothing: {
+            value: postProcessingParameters.bloomSmoothing,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            onChange: setParam('postProcessingParameters', 'bloomSmoothing'),
+        },
+    })
+
+    useControls('Cloud Shadows', {
+        enabled: {
+            value: cloudShadowParameters.enabled,
+            onChange: setParam('cloudShadowParameters', 'enabled'),
+        },
+        intensity: {
+            value: cloudShadowParameters.intensity,
+            min: 0,
+            max: 1.5,
+            step: 0.01,
+            onChange: setParam('cloudShadowParameters', 'intensity'),
+        },
+        speedX: {
+            value: cloudShadowParameters.speedX,
+            min: -0.02,
+            max: 0.02,
+            step: 0.0005,
+            onChange: setParam('cloudShadowParameters', 'speedX'),
+        },
+        speedY: {
+            value: cloudShadowParameters.speedY,
+            min: -0.02,
+            max: 0.02,
+            step: 0.0005,
+            onChange: setParam('cloudShadowParameters', 'speedY'),
+        },
+        scale: {
+            value: cloudShadowParameters.scale,
+            min: 0.2,
+            max: 3,
+            step: 0.01,
+            onChange: setParam('cloudShadowParameters', 'scale'),
+        },
+    })
+
+    useControls('Soft Shadows', {
+        enabled: {
+            value: softShadowParameters.enabled,
+            onChange: setParam('softShadowParameters', 'enabled'),
+        },
+        size: {
+            value: softShadowParameters.size,
+            min: 4,
+            max: 64,
+            step: 1,
+            onChange: setParam('softShadowParameters', 'size'),
+        },
+        samples: {
+            value: softShadowParameters.samples,
+            min: 1,
+            max: 32,
+            step: 1,
+            onChange: setParam('softShadowParameters', 'samples'),
+        },
+        focus: {
+            value: softShadowParameters.focus,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            onChange: setParam('softShadowParameters', 'focus'),
         },
     })
 

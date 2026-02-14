@@ -51,7 +51,7 @@ export default function useGrassMaterial({
 
                     uWindDirection: { value: windParameters.direction },
                     uWindScale: { value: windParameters.scale },
-                    uWindStrength: { value: windParameters.strength },
+                    uWindStrength: { value: windParameters.strength * (windParameters.globalMultiplier ?? 1) },
                     uWindSpeed: { value: windParameters.speed },
                     uTrailTexture: { value: null },
                     uBallPosition: { value: new THREE.Vector3() },
@@ -100,7 +100,7 @@ export default function useGrassMaterial({
 
         u.uWindDirection.value = windParameters.direction
         u.uWindScale.value = windParameters.scale
-        u.uWindStrength.value = windParameters.strength
+        u.uWindStrength.value = windParameters.strength * (windParameters.globalMultiplier ?? 1)
         u.uWindSpeed.value = windParameters.speed
         u.uTrailCanvasSize.value = trailCanvasSize
         u.uSobelMode.value = grassParameters.sobelMode

@@ -53,7 +53,7 @@ export default function useWindMaterial({ chunkSize, initialCircleRadius, noiseT
         u.uTimeMultiplier.value = windLineParameters.timeMultiplier
         u.uAlphaMultiplier.value = windLineParameters.alphaMultiplier
         u.uLengthMultiplier.value = windLineParameters.lengthMultiplier
-        u.uStrength.value = windParameters.strength
+        u.uStrength.value = windParameters.strength * (windParameters.globalMultiplier ?? 1)
         u.uSpeed.value = windParameters.speed
         u.uPixelSize.value = ditheringParameters.pixelSize
         u.uDitherMode.value = ditherModeValue
@@ -69,6 +69,7 @@ export default function useWindMaterial({ chunkSize, initialCircleRadius, noiseT
         windLineParameters.alphaMultiplier,
         windLineParameters.lengthMultiplier,
         windParameters.strength,
+        windParameters.globalMultiplier,
         windParameters.speed,
         ditheringParameters.pixelSize,
         ditherModeValue,

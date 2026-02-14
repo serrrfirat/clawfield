@@ -11,6 +11,7 @@ export default function useTerrainMaterial({
     noiseTexture,
 }) {
     const terrainColor = useStore((s) => s.terrainParameters.color)
+    const cloudShadowParameters = useStore((s) => s.cloudShadowParameters)
     const borderNoiseStrength = useStore((s) => s.borderParameters.noiseStrength)
     const borderNoiseScale = useStore((s) => s.borderParameters.noiseScale)
     const borderGrassFadeOffset = useStore((s) => s.borderParameters.grassFadeOffset)
@@ -23,6 +24,7 @@ export default function useTerrainMaterial({
         return new THREE.ShaderMaterial({
             uniforms: {
                 uBaseColor: { value: new THREE.Color(terrainColor) },
+                uTime: { value: 0 },
                 uCircleCenter: { value: new THREE.Vector3() },
                 uTrailPatchSize: { value: chunkSize },
                 uCircleRadiusFactor: { value: initialCircleRadius },
@@ -34,6 +36,10 @@ export default function useTerrainMaterial({
                 uNoiseScale: { value: borderNoiseScale },
                 uPixelSize: { value: pixelSize },
                 uDitherMode: { value: ditherModeValue }, // 0: Diamond, 1: Bayer
+                uCloudStrength: { value: cloudShadowParameters.enabled ? cloudShadowParameters.intensity * 0.45 : 0 },
+                uCloudScale: { value: cloudShadowParameters.scale },
+                uCloudSpeedX: { value: cloudShadowParameters.speedX },
+                uCloudSpeedY: { value: cloudShadowParameters.speedY },
             },
             vertexShader: terrainVertexShader,
             fragmentShader: terrainFragmentShader,
@@ -52,6 +58,10 @@ export default function useTerrainMaterial({
         u.uNoiseScale.value = borderNoiseScale
         u.uPixelSize.value = pixelSize
         u.uDitherMode.value = ditherModeValue
+        u.uCloudStrength.value = cloudShadowParameters.enabled ? cloudShadowParameters.intensity * 0.45 : 0
+        u.uCloudScale.value = cloudShadowParameters.scale
+        u.uCloudSpeedX.value = cloudShadowParameters.speedX
+        u.uCloudSpeedY.value = cloudShadowParameters.speedY
     }, [
         material,
         terrainColor,
@@ -64,6 +74,11 @@ export default function useTerrainMaterial({
         borderNoiseScale,
         pixelSize,
         ditherModeValue,
+        cloudShadowParameters.enabled,
+        cloudShadowParameters.intensity,
+        cloudShadowParameters.scale,
+        cloudShadowParameters.speedX,
+        cloudShadowParameters.speedY,
     ])
 
     useEffect(() => {

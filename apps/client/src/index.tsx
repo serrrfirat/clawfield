@@ -51,6 +51,7 @@ if (EDITOR_MODE) {
             >
                 <CanvasWrapper>
                     <Canvas
+                        shadows
                         dpr={[1, 2]}
                         camera={{
                             fov: 45,

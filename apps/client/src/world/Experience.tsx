@@ -13,6 +13,7 @@ import PlayerController from '../player/PlayerController'
 import CombatEffects from '../combat/CombatEffects'
 import useStore from '../stores/useStore'
 import { TerrainUniformsContext, type TerrainUniformsRef } from './TerrainUniformsContext'
+import PostProcessing from './PostProcessing'
 
 export default function Experience() {
     const perfVisible = useStore((state) => state.perfVisible)
@@ -36,6 +37,7 @@ export default function Experience() {
             </Physics>
 
             <CombatEffects />
+            <PostProcessing />
             <Controls />
             <BackgroundSphere color={backgroundColor} />
         </TerrainUniformsContext.Provider>

@@ -3,6 +3,7 @@
 #endif
 
 uniform vec3 uBaseColor;        
+uniform float uTime;
 uniform vec3 uCircleCenter;    
 uniform float uTrailPatchSize;  
 uniform float uCircleRadiusFactor;
@@ -14,6 +15,10 @@ uniform float uNoiseStrength;
 uniform float uNoiseScale;
 uniform float uPixelSize;
 uniform int uDitherMode;
+uniform float uCloudStrength;
+uniform float uCloudScale;
+uniform float uCloudSpeedX;
+uniform float uCloudSpeedY;
 
 // Varyings
 varying vec3 vWorldPosition;
@@ -115,6 +120,12 @@ void main() {
   }
 
   vec3 color = uBaseColor; // No mix, rely on dither
+
+  vec2 cloudUV = worldXZ * (uCloudScale * 0.04) + vec2(uTime * uCloudSpeedX, uTime * uCloudSpeedY);
+  float cloudNoise = texture2D(uNoiseTexture, cloudUV).r;
+  float cloudMask = smoothstep(0.35, 0.8, cloudNoise);
+  float cloudShade = mix(1.0 - uCloudStrength, 1.0, cloudMask);
+  color *= cloudShade;
 
   gl_FragColor = vec4(color, 1.0);
 

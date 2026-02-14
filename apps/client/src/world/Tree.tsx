@@ -130,7 +130,8 @@ export function Tree(props) {
     useFrame((state) => {
         if (!boneRoot) return
 
-        const { speed: windSpeed, strength: windStrength } = windParameters
+        const { speed: windSpeed, strength: windStrength, globalMultiplier = 1 } = windParameters
+        const effectiveWindStrength = windStrength * globalMultiplier
         const time = state.clock.elapsedTime
 
         const angleMax = treeParameters.boneAngleMax ?? 0.18
@@ -161,7 +162,7 @@ export function Tree(props) {
                 const initial = object.userData.initialRotation
 
                 // Base periodic sway (keeps a consistent "wind direction")
-                const base = Math.sin(time * windSpeed * speedMul + (object.userData.windPhase ?? 0)) * windStrength
+                const base = Math.sin(time * windSpeed * speedMul + (object.userData.windPhase ?? 0)) * effectiveWindStrength
 
                 // Smooth random modulation (like grass wind, but CPU-side): simplex noise in [-1, 1]
                 const n = treeBoneNoise2D((object.userData.windSeed ?? 0) + time * noiseSpeed, object.position.y * noiseScale)

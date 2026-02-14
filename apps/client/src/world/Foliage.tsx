@@ -229,7 +229,12 @@ function FoliageTypeRenderer({
     if (!groupRef.current) return
 
     const state = useStore.getState()
-    const { speed: windSpeed, strength: windStrength, direction: windDir } = state.windParameters
+    const {
+      speed: windSpeed,
+      strength: windStrength,
+      direction: windDir,
+      globalMultiplier = 1,
+    } = state.windParameters
     const t = clock.elapsedTime
     const children = groupRef.current.children
 
@@ -242,7 +247,7 @@ function FoliageTypeRenderer({
       const sway = computeWindSwayEuler(
         inst.position,
         t,
-        { speed: windSpeed, strength: windStrength, direction: windDir },
+        { speed: windSpeed, strength: windStrength * globalMultiplier, direction: windDir },
         windNoise2D,
       )
       child.rotation.x = sway.x
