@@ -69,10 +69,10 @@ export default function TerrainChunk({
         <group position={[x * size, 0, z * size]}>
             {obstacleCollisionsEnabled ? (
                 <RigidBody type="fixed" colliders="trimesh" userData={{ name: 'terrain' }}>
-                    <mesh geometry={geometry} material={terrainMaterial} rotation-x={-Math.PI / 2} />
+                    <mesh geometry={geometry} material={terrainMaterial} rotation-x={-Math.PI / 2} receiveShadow />
                 </RigidBody>
             ) : (
-                <mesh geometry={geometry} material={terrainMaterial} rotation-x={-Math.PI / 2} />
+                <mesh geometry={geometry} material={terrainMaterial} rotation-x={-Math.PI / 2} receiveShadow />
             )}
 
             <Grass

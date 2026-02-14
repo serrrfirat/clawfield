@@ -11,7 +11,7 @@ import useEditorStore from './useEditorStore'
 import { downloadMapdef, loadMapdef } from './mapdef-adapter'
 import { getDefaultCollidableForAsset, getDefaultGrassSuppressRadius, getDefaultSuppressGrassForAsset } from './collision-defaults'
 import Terrain from '../world/Terrain'
-import PostProcessing from '../world/PostProcessing'
+import Lights from '../world/Lights'
 import useStore from '../stores/useStore'
 import type { MapdefPlacement } from './editor-types'
 import RoadLayer from '../world/RoadLayer'
@@ -72,11 +72,9 @@ export default function EditorExperience() {
   useFrame(() => {
     if (!runtimePreview) return
     const [x, y, z] = useEditorStore.getState().cameraTarget
-    const center = new THREE.Vector3(x, y, z)
-    useStore.setState({
-      ballPosition: center,
-      smoothedCircleCenter: center,
-    })
+    const runtime = useStore.getState() as any
+    runtime.ballPosition?.set(x, y, z)
+    runtime.smoothedCircleCenter?.set(x, y, z)
   })
 
   // Track mouse position for ghost placement
@@ -208,8 +206,7 @@ export default function EditorExperience() {
   return (
     <>
       <color args={['#9a9065']} attach="background" />
-      <directionalLight position={[4, 10, 1]} intensity={4.5} />
-      <ambientLight intensity={3.5} />
+      <Lights />
       <EditorCamera />
       <group onPointerMissed={onPointerMissed}>
         {runtimePreview ? (
@@ -217,13 +214,12 @@ export default function EditorExperience() {
             <Terrain disableDither />
           </Physics>
         ) : <EditorTerrain />}
-        <RoadLayer roads={roads} heightGetter={getTerrainHeight} />
+        {!runtimePreview && <RoadLayer roads={roads} heightGetter={getTerrainHeight} />}
         <PlacedObjectsLayer />
         <PlacementGhost />
       </group>
       <SelectedTransform />
       <gridHelper args={[200, 200, '#555', '#333']} position={[0, 0.01, 0]} />
-      <PostProcessing />
     </>
   )
 }

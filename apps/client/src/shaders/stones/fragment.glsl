@@ -1,5 +1,10 @@
 uniform float uPixelSize;
 uniform int uDitherMode;
+uniform float uDayFactor;
+uniform float uSunsetFactor;
+uniform float uNightFactor;
+uniform vec3 uNightTint;
+uniform vec3 uDuskTint;
 
 varying vec3 vColor;
 varying vec3 vNormal;
@@ -82,6 +87,12 @@ void main() {
 
   vec3 lighting = diffuseLighting * 0.25 + ambientLighting * 0.75;
   vec3 color = vColor * lighting;
+
+  float exposure = mix(0.58, 1.02, clamp(uDayFactor, 0.0, 1.0));
+  color *= exposure;
+  color = mix(color, color * vec3(1.03, 1.07, 0.93), clamp(uDayFactor, 0.0, 1.0) * 0.14);
+  color = mix(color, color * uDuskTint, clamp(uSunsetFactor, 0.0, 1.0) * 0.28);
+  color = mix(color, color * uNightTint, clamp(uNightFactor, 0.0, 1.0) * 0.56);
 
   // Dither fade (same logic as grass)
   if (vFadeMask < 0.99) {

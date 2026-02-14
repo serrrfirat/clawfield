@@ -13,6 +13,7 @@ export default function EditorCanvas() {
         <AssetPanel />
         <div style={canvasWrap}>
           <Canvas
+            shadows
             dpr={[1, 2]}
             camera={{ fov: 45, near: 0.1, far: 500, position: [0, 30, 20] }}
           >

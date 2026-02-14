@@ -19,6 +19,11 @@ uniform float uCloudStrength;
 uniform float uCloudScale;
 uniform float uCloudSpeedX;
 uniform float uCloudSpeedY;
+uniform float uDayFactor;
+uniform float uSunsetFactor;
+uniform float uNightFactor;
+uniform vec3 uNightTint;
+uniform vec3 uDuskTint;
 
 // Varyings
 varying vec3 vWorldPosition;
@@ -126,6 +131,12 @@ void main() {
   float cloudMask = smoothstep(0.35, 0.8, cloudNoise);
   float cloudShade = mix(1.0 - uCloudStrength, 1.0, cloudMask);
   color *= cloudShade;
+
+  float exposure = mix(0.56, 1.03, clamp(uDayFactor, 0.0, 1.0));
+  color *= exposure;
+  color = mix(color, color * vec3(1.05, 1.08, 0.92), clamp(uDayFactor, 0.0, 1.0) * 0.16);
+  color = mix(color, color * uDuskTint, clamp(uSunsetFactor, 0.0, 1.0) * 0.32);
+  color = mix(color, color * uNightTint, clamp(uNightFactor, 0.0, 1.0) * 0.58);
 
   gl_FragColor = vec4(color, 1.0);
 

@@ -79,7 +79,7 @@ const createStore = () =>
             borderParameters: {
                 noiseStrength: 0.45,
                 noiseScale: 0.35,
-                circleRadiusFactor: 0.9,
+                circleRadiusFactor: 1.8,
                 grassFadeOffset: 3.5,
                 groundOffset: -0.75,
                 groundFadeOffset: 1.0,
@@ -143,11 +143,12 @@ const createStore = () =>
                 bloomThreshold: 0.12,
                 bloomSmoothing: 0.9,
                 bloomHeight: 300,
+                screenTintStrength: 1.0,
             },
 
             cloudShadowParameters: {
                 enabled: true,
-                intensity: 0.55,
+                intensity: 0.22,
                 speedX: 0.004,
                 speedY: 0.002,
                 scale: 0.85,
@@ -162,6 +163,18 @@ const createStore = () =>
                 size: 32,
                 samples: 16,
                 focus: 0.55,
+            },
+
+            dayNightParameters: {
+                enabled: false,
+                autoCycle: false,
+                cycleSpeed: 0.35,
+                timeOfDay: 14,
+                sunRadius: 140,
+                fogNearDay: 44,
+                fogFarDay: 220,
+                fogNearNight: 20,
+                fogFarNight: 110,
             },
 
             stoneParameters: {

@@ -80,6 +80,12 @@ function buildRoadGeometry(road: RoadSpline, heightGetter: (x: number, z: number
 function RoadMesh({ road, texture, heightGetter }: { road: RoadSpline; texture: THREE.Texture; heightGetter: (x: number, z: number) => number }) {
   const geometry = useMemo(() => buildRoadGeometry(road, heightGetter), [road, heightGetter])
 
+  useEffect(() => {
+    return () => {
+      geometry?.dispose()
+    }
+  }, [geometry])
+
   if (!geometry) return null
 
   return (

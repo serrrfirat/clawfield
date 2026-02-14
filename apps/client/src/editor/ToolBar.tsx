@@ -23,6 +23,7 @@ export default function ToolBar() {
   const runtimePreview = useEditorStore((s) => s.runtimePreview)
   const toggleRuntimePreview = useEditorStore((s) => s.toggleRuntimePreview)
   const postFx = useStore((s: any) => s.postProcessingParameters)
+  const dayNight = useStore((s: any) => s.dayNightParameters)
   const roadTextureId = useEditorStore((s) => s.roadTextureId)
   const setRoadTextureId = useEditorStore((s) => s.setRoadTextureId)
   const roadWidth = useEditorStore((s) => s.roadWidth)
@@ -37,6 +38,15 @@ export default function ToolBar() {
     useStore.setState((state: any) => ({
       postProcessingParameters: {
         ...state.postProcessingParameters,
+        ...updates,
+      },
+    }))
+  }
+
+  const patchDayNight = (updates: Record<string, number | boolean>) => {
+    useStore.setState((state: any) => ({
+      dayNightParameters: {
+        ...state.dayNightParameters,
         ...updates,
       },
     }))
@@ -123,7 +133,22 @@ export default function ToolBar() {
       />
       <ToolButton label="Runtime Look (P)" active={runtimePreview} onClick={toggleRuntimePreview} />
       <ToolButton label="Post FX" active={!!postFx?.enabled} onClick={() => patchPostFx({ enabled: !postFx?.enabled })} />
+      <ToolButton label="Day/Night" active={!!dayNight?.enabled} onClick={() => patchDayNight({ enabled: !dayNight?.enabled })} />
+      <ToolButton
+        label="Cycle"
+        active={!!dayNight?.autoCycle}
+        onClick={() => patchDayNight({ enabled: true, autoCycle: !dayNight?.autoCycle })}
+      />
       <ToolButton label="Colliders (C)" active={showColliderDebug} onClick={toggleColliderDebug} />
+      <label style={controlLabel}>Time</label>
+      <input
+        type="range"
+        min={0}
+        max={24}
+        step={0.05}
+        value={dayNight?.timeOfDay ?? 14}
+        onChange={(e) => patchDayNight({ enabled: true, timeOfDay: Number(e.target.value) })}
+      />
       <label style={controlLabel}>Rays</label>
       <input
         type="range"
@@ -141,6 +166,15 @@ export default function ToolBar() {
         step={0.01}
         value={postFx?.bloomIntensity ?? 0.35}
         onChange={(e) => patchPostFx({ bloomIntensity: Number(e.target.value) })}
+      />
+      <label style={controlLabel}>Tint</label>
+      <input
+        type="range"
+        min={0}
+        max={2}
+        step={0.01}
+        value={postFx?.screenTintStrength ?? 1}
+        onChange={(e) => patchPostFx({ screenTintStrength: Number(e.target.value) })}
       />
       <div style={divider} />
       <ToolButton label="Select (V)" active={activeTool === 'select'} onClick={() => setActiveTool('select')} />

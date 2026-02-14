@@ -22,6 +22,7 @@ import { sampleHeightDelta } from '../editor/heightmap-utils'
 import noiseTextureUrl from '../assets/textures/noiseTexture.png'
 import alphaLeavesUrl from '../assets/textures/alpha_leaves.png'
 import { createSeededNoise2D } from './utils/worldNoise'
+import { getDayNightFactors, getFuzzySunPosition } from './dayNight'
 
 const START_CIRCLE_RADIUS = 0.07
 const START_RADIUS_DELAY = 1.1
@@ -259,18 +260,40 @@ export default function Terrain({ uniformsRef, disableDither = false }: TerrainP
 
     useFrame(({ clock }) => {
         const state = useStore.getState()
+        const dn = state.dayNightParameters ?? { enabled: false, timeOfDay: 14, sunRadius: 140 }
+        const sunPos = dn.enabled
+            ? getFuzzySunPosition(dn.timeOfDay, clock.elapsedTime, dn.sunRadius)
+            : new THREE.Vector3(45, 90, 28)
+        const sunHeightNorm = dn.enabled
+            ? THREE.MathUtils.clamp(sunPos.y / Math.max(1, dn.sunRadius), -1, 1)
+            : 1
+        const { dayFactor, sunsetFactor, nightFactor } = getDayNightFactors(sunHeightNorm, dn.enabled)
+
         // Update terrain material uniforms
         terrainMaterial.uniforms.uTime.value = clock.elapsedTime
         terrainMaterial.uniforms.uCircleCenter.value.copy(state.smoothedCircleCenter)
+        terrainMaterial.uniforms.uDayFactor.value = dayFactor
+        terrainMaterial.uniforms.uSunsetFactor.value = sunsetFactor
+        terrainMaterial.uniforms.uNightFactor.value = nightFactor
+        const cloudParams = state.cloudShadowParameters
+        terrainMaterial.uniforms.uCloudStrength.value = cloudParams.enabled
+            ? cloudParams.intensity * 0.45 * (0.45 + 0.55 * dayFactor)
+            : 0
 
         // Update grass material uniforms
         grassMaterial.uniforms.uTime.value = clock.elapsedTime
         grassMaterial.uniforms.uTrailTexture.value = state.trailTexture
         grassMaterial.uniforms.uBallPosition.value.copy(state.ballPosition)
         grassMaterial.uniforms.uCircleCenter.value.copy(state.smoothedCircleCenter)
+        grassMaterial.uniforms.uDayFactor.value = dayFactor
+        grassMaterial.uniforms.uSunsetFactor.value = sunsetFactor
+        grassMaterial.uniforms.uNightFactor.value = nightFactor
 
         // Update stones uniforms (no rerenders required)
         stoneMaterial.uniforms.uCircleCenter.value.copy(state.smoothedCircleCenter)
+        stoneMaterial.uniforms.uDayFactor.value = dayFactor
+        stoneMaterial.uniforms.uSunsetFactor.value = sunsetFactor
+        stoneMaterial.uniforms.uNightFactor.value = nightFactor
 
         // Update tree material uniforms
         if (treesEnabled && treeMaterial.uniforms) {

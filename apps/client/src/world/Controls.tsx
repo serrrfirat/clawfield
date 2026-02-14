@@ -14,6 +14,7 @@ export default function Controls() {
     const postProcessingParameters = useStore((state) => state.postProcessingParameters)
     const cloudShadowParameters = useStore((state) => state.cloudShadowParameters)
     const softShadowParameters = useStore((state) => state.softShadowParameters)
+    const dayNightParameters = useStore((state) => state.dayNightParameters)
     const generalParameters = useStore((state) => state.generalParameters)
     const perfVisible = useStore((state) => state.perfVisible)
     const physicsDebug = useStore((state) => state.physicsDebug)
@@ -125,7 +126,7 @@ export default function Controls() {
         radius: {
             value: borderParameters.circleRadiusFactor,
             min: 0.1,
-            max: 1.0,
+            max: 3.0,
             step: 0.01,
             onChange: setParam('borderParameters', 'circleRadiusFactor'),
         },
@@ -335,6 +336,38 @@ export default function Controls() {
             max: 1,
             step: 0.01,
             onChange: setParam('postProcessingParameters', 'bloomSmoothing'),
+        },
+        screenTintStrength: {
+            value: postProcessingParameters.screenTintStrength ?? 1,
+            min: 0,
+            max: 2,
+            step: 0.01,
+            onChange: setParam('postProcessingParameters', 'screenTintStrength'),
+        },
+    })
+
+    useControls('Day/Night', {
+        enabled: {
+            value: dayNightParameters.enabled,
+            onChange: setParam('dayNightParameters', 'enabled'),
+        },
+        autoCycle: {
+            value: dayNightParameters.autoCycle,
+            onChange: setParam('dayNightParameters', 'autoCycle'),
+        },
+        timeOfDay: {
+            value: dayNightParameters.timeOfDay,
+            min: 0,
+            max: 24,
+            step: 0.01,
+            onChange: setParam('dayNightParameters', 'timeOfDay'),
+        },
+        cycleSpeed: {
+            value: dayNightParameters.cycleSpeed,
+            min: 0,
+            max: 4,
+            step: 0.01,
+            onChange: setParam('dayNightParameters', 'cycleSpeed'),
         },
     })
 

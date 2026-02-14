@@ -18,7 +18,13 @@ export default function Stones({ stones, maxCount, stoneMaterial, stoneGeometry,
 
     return (
         <InstancedRigidBodies instances={instances} type="fixed" colliders={enableColliders ? 'hull' : false}>
-            <instancedMesh args={[stoneGeometry, stoneMaterial, maxCount]} count={instances.length} frustumCulled={false} />
+            <instancedMesh
+                args={[stoneGeometry, stoneMaterial, maxCount]}
+                count={instances.length}
+                frustumCulled={false}
+                castShadow
+                receiveShadow
+            />
         </InstancedRigidBodies>
     )
 }

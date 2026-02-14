@@ -212,7 +212,14 @@ export function Tree(props) {
         <>
             <group {...props} scale={treeScale}>
                 <group ref={innerRef} rotation-y={Math.PI / 2}>
-                    <skinnedMesh geometry={nodes.tree.geometry} material={props.treeMaterial} skeleton={nodes.tree.skeleton} dispose={null} />
+                    <skinnedMesh
+                        geometry={nodes.tree.geometry}
+                        material={props.treeMaterial}
+                        skeleton={nodes.tree.skeleton}
+                        castShadow
+                        receiveShadow
+                        dispose={null}
+                    />
                     <primitive object={boneRoot} />
                 </group>
             </group>

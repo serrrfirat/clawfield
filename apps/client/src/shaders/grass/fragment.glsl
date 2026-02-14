@@ -1,5 +1,10 @@
 uniform float uPixelSize;
 uniform int uDitherMode;
+uniform float uDayFactor;
+uniform float uSunsetFactor;
+uniform float uNightFactor;
+uniform vec3 uNightTint;
+uniform vec3 uDuskTint;
 
 varying vec3 vColor;
 varying vec4 vGrassData;
@@ -130,6 +135,12 @@ void main() {
   float trailMask = smoothstep(0.0, 0.9, vTrailValue);
   float darkenFactor = mix(1.0, 0.5, trailMask);
   color *= darkenFactor;
+
+  float exposure = mix(0.55, 1.03, clamp(uDayFactor, 0.0, 1.0));
+  color *= exposure;
+  color = mix(color, color * vec3(1.04, 1.1, 0.9), clamp(uDayFactor, 0.0, 1.0) * 0.18);
+  color = mix(color, color * uDuskTint, clamp(uSunsetFactor, 0.0, 1.0) * 0.3);
+  color = mix(color, color * uNightTint, clamp(uNightFactor, 0.0, 1.0) * 0.62);
 
   // Apply Dithering
   // Only apply fade if we are in the fade region (vGrassData.w < 1.0)

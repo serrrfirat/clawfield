@@ -77,6 +77,50 @@ Verification:
   - animated cookie offset in `useFrame`
   - optional `SoftShadows` via drei
 - Added terrain-level moving cloud shadow modulation in `apps/client/src/shaders/terrain/fragment.glsl` + `apps/client/src/materials/TerrainMaterial.tsx` so cloud movement is visible on the ground even with custom terrain shading.
+
+## Active Task: Implement stylized day/night cycle
+
+### Checklist
+- [x] Add shared day/night configuration and state to store.
+- [x] Implement orbiting sun/moon lights with painterly color interpolation.
+- [x] Add sky + stars and dynamic fog blending for day/sunset/night.
+- [x] Sync God Rays sun mesh to day/night sun position.
+- [x] Expose editor/runtime controls for time scrub and auto-cycle.
+
+### Review
+- Added `dayNightParameters` to `apps/client/src/stores/useStore.tsx`.
+- Added helper math in `apps/client/src/world/dayNight.ts`.
+- Upgraded `apps/client/src/world/Lights.tsx` with:
+  - sun/moon directional lights,
+  - palette lerp for sunlight/ambient/fog,
+  - procedural `Sky` + `Stars`,
+  - automatic time progression (optional) and fog near/far changes.
+- Updated `apps/client/src/world/PostProcessing.tsx` so God Rays sun source follows day/night sun position and fades at night.
+- Enabled the same lighting in editor by using `Lights` in `apps/client/src/editor/EditorExperience.tsx` and adding day/night controls in `apps/client/src/editor/ToolBar.tsx`.
+- Targeted TS validation passed for touched files.
+
+## Active Task: Make shaders respond to day/night + add fuzzy cycle motion
+
+### Checklist
+- [x] Add shared day/night factor helpers for shader/light sync.
+- [x] Add day/night tint uniforms to terrain, grass, and stone shader materials.
+- [x] Apply painterly day/sunset/night color grading in fragment shaders.
+- [x] Feed uniforms every frame from `Terrain` based on current cycle state.
+- [x] Add low-frequency wobble and soft cloud occlusion modulation for less mechanical light motion.
+
+### Review
+- Added `getFuzzySunPosition()` and `getDayNightFactors()` in `apps/client/src/world/dayNight.ts`.
+- Updated `apps/client/src/world/Lights.tsx` to use fuzzy sun orbit and smoother damped transitions.
+- Updated `apps/client/src/world/Terrain.tsx` to push `uDayFactor/uSunsetFactor/uNightFactor` to terrain/grass/stone materials every frame.
+- Extended material uniforms in:
+  - `apps/client/src/materials/TerrainMaterial.tsx`
+  - `apps/client/src/materials/GrassMaterial.tsx`
+  - `apps/client/src/materials/StonesMaterial.tsx`
+- Applied day/night tinting in:
+  - `apps/client/src/shaders/terrain/fragment.glsl`
+  - `apps/client/src/shaders/grass/fragment.glsl`
+  - `apps/client/src/shaders/stones/fragment.glsl`
+- Synced post-processing sun source with fuzzy cycle in `apps/client/src/world/PostProcessing.tsx`.
 - Enabled shadows on canvas in `apps/client/src/index.tsx`.
 - Enabled cast/receive shadow flags for placed GLBs in `apps/client/src/world/MapPlacements.tsx`.
 - Added tuning params in store (`cloudShadowParameters`, `softShadowParameters`) and wired controls in `apps/client/src/world/Controls.tsx`.
