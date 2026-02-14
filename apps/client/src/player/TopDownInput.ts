@@ -14,6 +14,8 @@ export class TopDownInputCapture {
   private mouseDown = false;
   /** Right mouse button = iron sights (ADS) */
   private rightMouseDown = false;
+  /** CapsLock toggle for ADS */
+  private adsToggle = false;
 
   /** Reload pressed this frame */
   private reloadPressed = false;
@@ -76,6 +78,7 @@ export class TopDownInputCapture {
       }
 
       if (e.code === 'KeyR') this.reloadPressed = true;
+      if (e.code === 'CapsLock' && !e.repeat) this.adsToggle = !this.adsToggle;
       if (e.code === 'KeyG' && !e.repeat) this.gKeyDownTime = performance.now();
       if (e.code === 'KeyF' && !e.repeat) this.fKeyDownTime = performance.now();
       if (e.code === 'Digit1' && !e.repeat) {
@@ -271,7 +274,7 @@ export class TopDownInputCapture {
       useGadget,
       gadgetIndex: this.selectedGadgetIndex,
       grenadeIndex: this.selectedGrenadeIndex,
-      scope: this.rightMouseDown,
+      scope: this.rightMouseDown || this.adsToggle,
       interact: this.keys.has('KeyE'),
       weaponSlot: this.weaponSlot,
       yaw: this.yaw,

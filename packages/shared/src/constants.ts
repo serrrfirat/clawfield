@@ -28,6 +28,9 @@ export const SPRINT_SPEED = 6.8;
 /** Crouch move speed in m/s */
 export const CROUCH_SPEED = 2.2;
 
+/** ADS movement multiplier (applied while scoped) */
+export const ADS_MOVE_SPEED_MULT = 0.72;
+
 /** Player hitbox dimensions in world units */
 export const PLAYER_WIDTH = 0.8;
 export const PLAYER_HEIGHT = 1.8;

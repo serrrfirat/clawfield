@@ -5,6 +5,7 @@ import {
   MOVE_SPEED,
   SPRINT_SPEED,
   CROUCH_SPEED,
+  ADS_MOVE_SPEED_MULT,
   PLAYER_WIDTH,
   PLAYER_HEIGHT,
   CROUCH_HEIGHT,
@@ -111,6 +112,11 @@ export function inputToVelocity(input: InputState, yaw: number): Vec3 {
     speed = WALK_SPEED;
   } else if (input.crouch) {
     speed = CROUCH_SPEED;
+  }
+
+  // ADS downside: while scoped, movement is forced slower.
+  if (input.scope && hasMovement) {
+    speed = Math.min(speed, MOVE_SPEED) * ADS_MOVE_SPEED_MULT;
   }
 
   // Normalize horizontal movement
