@@ -6,6 +6,12 @@ import * as THREE from 'three'
 import useStore from '../stores/useStore'
 import assetCatalog from '../editor/asset-catalog.json'
 import type { MapdefPlacement } from '../editor/editor-types'
+import type { AssetEntry, EditorPlacement } from '../editor/editor-types'
+import {
+    getDefaultColliderScale,
+    getPlacementCollidable,
+    getPlacementColliderType,
+} from '../editor/collision-defaults'
 import { TerrainUniformsContext } from './TerrainUniformsContext'
 import {
     type DitherUniforms,
@@ -14,14 +20,15 @@ import {
 } from '../render/dither-reveal'
 
 function PlacedAsset({ placement, enableColliders }: { placement: MapdefPlacement; enableColliders: boolean }) {
-    const entry = assetCatalog.find((a) => a.id === placement.componentId)
+    const entry = assetCatalog.find((a) => a.id === placement.componentId) as AssetEntry | undefined
     if (!entry) return null
-    return <PlacedGLB path={entry.path} placement={placement} enableColliders={enableColliders} />
+    return <PlacedGLB asset={entry} path={entry.path} placement={placement} enableColliders={enableColliders} />
 }
 
-function PlacedGLB({ path, placement, enableColliders }: { path: string; placement: MapdefPlacement; enableColliders: boolean }) {
+function PlacedGLB({ asset, path, placement, enableColliders }: { asset: AssetEntry; path: string; placement: MapdefPlacement; enableColliders: boolean }) {
     const { scene } = useGLTF(path)
     const cloned = useMemo(() => SkeletonUtils.clone(scene), [scene])
+    const placementAsEditor = placement as unknown as EditorPlacement
 
     const terrainUniformsRef = useContext(TerrainUniformsContext)
     const patchedMatsRef = useRef<THREE.Material[]>([])
@@ -36,6 +43,15 @@ function PlacedGLB({ path, placement, enableColliders }: { path: string; placeme
             terrainUniformsRef.current.noiseTexture
         )
     }, [terrainUniformsRef])
+
+    useEffect(() => {
+        cloned.traverse((child) => {
+            const mesh = child as THREE.Mesh
+            if (!mesh.isMesh) return
+            mesh.castShadow = true
+            mesh.receiveShadow = true
+        })
+    }, [cloned])
 
     useEffect(() => {
         if (!ditherUniforms) return
@@ -84,15 +100,19 @@ function PlacedGLB({ path, placement, enableColliders }: { path: string; placeme
 
     const halfExtents: [number, number, number] = useMemo(() => {
         const s = placement.scale ?? [1, 1, 1]
+        const colliderScale =
+            typeof placementAsEditor.metadata?.colliderScale === 'number'
+                ? placementAsEditor.metadata.colliderScale
+                : getDefaultColliderScale(asset)
         const scaledWidth = boundingBox.size.x * s[0]
         const scaledHeight = boundingBox.size.y * s[1]
         const scaledDepth = boundingBox.size.z * s[2]
         return [
-            scaledWidth * 0.3,
-            scaledHeight * 0.3,
-            scaledDepth * 0.3,
+            scaledWidth * colliderScale * 0.5,
+            scaledHeight * colliderScale * 0.5,
+            scaledDepth * colliderScale * 0.5,
         ]
-    }, [boundingBox, placement.scale])
+    }, [asset, boundingBox, placement.scale, placementAsEditor.metadata?.colliderScale])
 
     const colliderY = useMemo(() => {
         const s = placement.scale ?? [1, 1, 1]
@@ -101,31 +121,44 @@ function PlacedGLB({ path, placement, enableColliders }: { path: string; placeme
         return modelBottomY - modelCenterY
     }, [boundingBox, placement.scale])
 
-    if (!enableColliders) {
+    const visualYOffset = useMemo(() => {
+        const s = placement.scale ?? [1, 1, 1]
+        return -boundingBox.minY * s[1]
+    }, [boundingBox.minY, placement.scale])
+
+    const collidable = getPlacementCollidable(placementAsEditor, asset)
+    const colliderType = getPlacementColliderType(placementAsEditor, asset)
+
+    if (!enableColliders || !collidable || colliderType === 'none') {
         return (
             <group position={placement.position} rotation={placement.rotation}>
-                <primitive object={cloned} scale={placement.scale ?? [1, 1, 1]} />
+                <primitive object={cloned} scale={placement.scale ?? [1, 1, 1]} position={[0, visualYOffset, 0]} />
             </group>
         )
     }
+
+    const rigidBodyColliders = colliderType === 'trimesh' ? 'trimesh' : false
 
     return (
         <RigidBody
             type="fixed"
             position={placement.position}
             rotation={placement.rotation}
-            colliders={false}
+            colliders={rigidBodyColliders as any}
             userData={{ name: 'placed-object', componentId: placement.componentId }}
         >
-            <CuboidCollider
-                ref={colliderRef}
-                args={halfExtents}
-                position={[0, colliderY, 0]}
-                collisionGroups={interactionGroups([1], [0])}
-            />
+            {colliderType === 'cuboid' && (
+                <CuboidCollider
+                    ref={colliderRef}
+                    args={halfExtents}
+                    position={[0, colliderY, 0]}
+                    collisionGroups={interactionGroups([1], [0])}
+                />
+            )}
             <primitive
                 object={cloned}
                 scale={placement.scale ?? [1, 1, 1]}
+                position={[0, visualYOffset, 0]}
             />
         </RigidBody>
     )
@@ -133,7 +166,7 @@ function PlacedGLB({ path, placement, enableColliders }: { path: string; placeme
 
 export default function MapPlacements() {
     const placements = useStore((s) => s.mapPlacements)
-    const enableColliders = false
+    const enableColliders = true
 
     if (!placements.length) return null
 

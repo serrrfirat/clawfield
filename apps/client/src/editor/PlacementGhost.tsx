@@ -116,9 +116,15 @@ function GhostModel({
     return clone
   }, [scene])
 
+  const modelYOffset = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(clonedScene)
+    if (!Number.isFinite(box.min.y)) return 0
+    return -box.min.y
+  }, [clonedScene])
+
   return (
     <group ref={groupRef} position={position} rotation={[0, rotationY, 0]} scale={[scale, scale, scale]}>
-      <primitive object={clonedScene} />
+      <primitive object={clonedScene} position={[0, modelYOffset, 0]} />
     </group>
   )
 }

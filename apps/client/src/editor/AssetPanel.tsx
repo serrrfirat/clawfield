@@ -3,19 +3,25 @@ import type { AssetEntry } from './editor-types'
 
 const CATEGORIES = ['structures', 'vegetation', 'props', 'vehicles'] as const
 
+function isAiGenAsset(asset: AssetEntry): boolean {
+  return asset.id.startsWith('france-ai-') || asset.tags.includes('ai-gen')
+}
+
 export default function AssetPanel() {
   const assets = useEditorStore((s) => s.assets)
   const selectedAssetId = useEditorStore((s) => s.selectedAssetId)
   const selectAsset = useEditorStore((s) => s.selectAsset)
 
+  const aiAssets = assets.filter(isAiGenAsset)
+
   const grouped = CATEGORIES.map((cat) => ({
     category: cat,
-    items: assets.filter((a) => a.category === cat),
+    items: aiAssets.filter((a) => a.category === cat),
   })).filter((g) => g.items.length > 0)
 
   return (
     <div style={panelStyle}>
-      <div style={headerStyle}>Assets</div>
+      <div style={headerStyle}>AI Assets</div>
       {grouped.map((group) => (
         <div key={group.category}>
           <div style={categoryStyle}>{group.category}</div>

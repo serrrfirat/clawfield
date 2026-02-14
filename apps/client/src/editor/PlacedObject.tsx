@@ -4,6 +4,7 @@ import { SkeletonUtils } from 'three-stdlib'
 import * as THREE from 'three'
 import type { EditorPlacement, PrimitiveGeometry } from './editor-types'
 import useEditorStore from './useEditorStore'
+import { getPlacementCollidable, getPlacementColliderType } from './collision-defaults'
 
 interface Props {
   placement: EditorPlacement
@@ -45,6 +46,11 @@ function PlacedPrimitive({
   selected: boolean
 }) {
   const groupRef = useRef<THREE.Group>(null!)
+  const assets = useEditorStore((s) => s.assets)
+  const showColliderDebug = useEditorStore((s) => s.showColliderDebug)
+  const asset = assets.find((a) => a.id === placement.assetId)
+  const collidable = getPlacementCollidable(placement, asset)
+  const colliderType = getPlacementColliderType(placement, asset)
 
   const onClick = (e: any) => {
     e.stopPropagation()
@@ -72,6 +78,19 @@ function PlacedPrimitive({
         <PrimitiveGeo shape={primitive.shape} args={primitive.args} />
         <meshStandardMaterial color={primitive.color} roughness={0.85} />
       </mesh>
+      {showColliderDebug && (
+        <ColliderDebugBox
+          size={[
+            (primitive.args[0] ?? 1) * 1.1,
+            (primitive.args[1] ?? primitive.args[0] ?? 1) * 1.1,
+            (primitive.args[2] ?? primitive.args[0] ?? 1) * 1.1,
+          ]}
+          center={[0, yOffset, 0]}
+          collidable={collidable}
+          colliderType={colliderType}
+          destructible={Boolean(placement.metadata?.destructible)}
+        />
+      )}
       {selected && <SelectionBox groupRef={groupRef} />}
     </group>
   )
@@ -103,8 +122,20 @@ function PlacedGLB({
 }) {
   const { scene } = useGLTF(path)
   const groupRef = useRef<THREE.Group>(null!)
+  const assets = useEditorStore((s) => s.assets)
+  const showColliderDebug = useEditorStore((s) => s.showColliderDebug)
+  const asset = assets.find((a) => a.id === placement.assetId)
+  const collidable = getPlacementCollidable(placement, asset)
+  const colliderType = getPlacementColliderType(placement, asset)
 
   const clonedScene = useMemo(() => SkeletonUtils.clone(scene), [scene])
+  const bbox = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(clonedScene)
+    const size = box.getSize(new THREE.Vector3())
+    const center = box.getCenter(new THREE.Vector3())
+    return { size, center, minY: box.min.y }
+  }, [clonedScene])
+  const modelYOffset = Number.isFinite(bbox.minY) ? -bbox.minY : 0
 
   const onClick = (e: any) => {
     e.stopPropagation()
@@ -122,9 +153,51 @@ function PlacedGLB({
       scale={placement.scale}
       onClick={onClick}
     >
-      <primitive object={clonedScene} />
+      <primitive object={clonedScene} position={[0, modelYOffset, 0]} />
+      {showColliderDebug && (
+        <ColliderDebugBox
+          size={[bbox.size.x * 1.02, bbox.size.y * 1.02, bbox.size.z * 1.02]}
+          center={[bbox.center.x, bbox.center.y + modelYOffset, bbox.center.z]}
+          collidable={collidable}
+          colliderType={colliderType}
+          destructible={Boolean(placement.metadata?.destructible)}
+        />
+      )}
       {selected && <SelectionBox groupRef={groupRef} />}
     </group>
+  )
+}
+
+function ColliderDebugBox({
+  size,
+  center,
+  collidable,
+  colliderType,
+  destructible,
+}: {
+  size: [number, number, number]
+  center: [number, number, number]
+  collidable: boolean
+  colliderType: 'none' | 'cuboid' | 'trimesh'
+  destructible: boolean
+}) {
+  const color = !collidable || colliderType === 'none'
+    ? '#8a8a8a'
+    : colliderType === 'trimesh'
+      ? '#36d37e'
+      : '#e0b84e'
+
+  return (
+    <mesh position={center}>
+      <boxGeometry args={size} />
+      <meshBasicMaterial
+        color={destructible ? '#ff4f7f' : color}
+        wireframe
+        transparent
+        opacity={0.7}
+        depthWrite={false}
+      />
+    </mesh>
   )
 }
 

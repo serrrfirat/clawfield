@@ -147,6 +147,7 @@ export default function AimCursor({ cursorWorldPos, playerPos, aimOriginPos, wea
     attr.setXYZ(0, origin.x, planeY - 0.02, origin.z)
 
     const heading = Math.atan2(dirZ, dirX)
+
     const coneHalfAngle = coneHalfAngleRef.current
     for (let i = 0; i <= CONE_RAY_SAMPLES; i++) {
       const t = i / CONE_RAY_SAMPLES
