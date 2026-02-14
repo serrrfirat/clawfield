@@ -178,6 +178,8 @@ export default function PlayerController() {
   const ammo = useStore((s: any) => s.ammo)
   const weaponName = useStore((s: any) => s.weaponName)
   const [displayWeaponName, setDisplayWeaponName] = useState<string>(weaponName ?? 'Rifle')
+  const [adsVisual, setAdsVisual] = useState(false)
+  const adsVisualRef = useRef(false)
 
   const heightGetter = useMemo(
     () => {
@@ -325,6 +327,11 @@ export default function PlayerController() {
     inputCapture.aimYaw = aimYaw
     inputCapture.yaw = aimYaw
     const input = inputCapture.consume()
+    const aimAdsActive = !!(input.scope && !reloading)
+    if (aimAdsActive !== adsVisualRef.current) {
+      adsVisualRef.current = aimAdsActive
+      setAdsVisual(aimAdsActive)
+    }
 
     useStore.setState({ selectedGrenadeIndex: inputCapture.selectedGrenadeIndex })
 
@@ -435,8 +442,7 @@ export default function PlayerController() {
         dirZ = -Math.cos(aimYaw)
       }
 
-      const adsActive = !!(input.scope && !reloading)
-      const visualSpread = getVisualEffectiveSpreadForWeapon(activeWeapon, adsActive, localBloomRef.current)
+      const visualSpread = getVisualEffectiveSpreadForWeapon(activeWeapon, aimAdsActive, localBloomRef.current)
       const spreadDir = applyDirectionalSpread({ x: dirX, y: dirY, z: dirZ }, visualSpread)
       dirX = spreadDir.x
       dirY = spreadDir.y
@@ -563,6 +569,7 @@ export default function PlayerController() {
         playerPos={playerWorldPosRef.current}
         aimOriginPos={aimOriginPosRef.current}
         weaponRange={MAX_AIM_DISTANCE}
+        adsActive={adsVisual}
         obstacleDiscs={obstacleDiscs}
         visible={alive}
       />

@@ -8,12 +8,14 @@ interface AimCursorProps {
   playerPos: { x: number; y: number; z: number }
   aimOriginPos?: { x: number; y: number; z: number }
   weaponRange?: number
+  adsActive?: boolean
   teamColor?: number
   visible?: boolean
   obstacleDiscs?: CollisionDisc[]
 }
 
-const CONE_HALF_ANGLE = THREE.MathUtils.degToRad(9)
+const HIP_CONE_HALF_ANGLE = THREE.MathUtils.degToRad(9)
+const ADS_CONE_HALF_ANGLE = THREE.MathUtils.degToRad(4)
 const CONE_RAY_SAMPLES = 18
 
 function rayDiscHitDistance(ox: number, oz: number, dx: number, dz: number, disc: CollisionDisc): number | null {
@@ -32,9 +34,12 @@ function rayDiscHitDistance(ox: number, oz: number, dx: number, dz: number, disc
   return null
 }
 
-export default function AimCursor({ cursorWorldPos, playerPos, aimOriginPos, weaponRange = 50, teamColor, visible = true, obstacleDiscs = [] }: AimCursorProps) {
+export default function AimCursor({ cursorWorldPos, playerPos, aimOriginPos, weaponRange = 50, adsActive = false, teamColor, visible = true, obstacleDiscs = [] }: AimCursorProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const coneMeshRef = useRef<THREE.Mesh>(null!)
+  const crosshairGroupRef = useRef<THREE.Group>(null!)
+  const coneHalfAngleRef = useRef(HIP_CONE_HALF_ANGLE)
+  const crosshairScaleRef = useRef(1)
 
   // Create crosshair line geometries
   const crosshairLines = useMemo(() => {
@@ -91,6 +96,14 @@ export default function AimCursor({ cursorWorldPos, playerPos, aimOriginPos, wea
   useFrame(() => {
     if (!groupRef.current || !visible) return
 
+    const targetConeHalfAngle = adsActive ? ADS_CONE_HALF_ANGLE : HIP_CONE_HALF_ANGLE
+    const targetCrosshairScale = adsActive ? 0.72 : 1.08
+    coneHalfAngleRef.current = THREE.MathUtils.lerp(coneHalfAngleRef.current, targetConeHalfAngle, 0.18)
+    crosshairScaleRef.current = THREE.MathUtils.lerp(crosshairScaleRef.current, targetCrosshairScale, 0.2)
+    if (crosshairGroupRef.current) {
+      crosshairGroupRef.current.scale.setScalar(crosshairScaleRef.current)
+    }
+
     const origin = aimOriginPos ?? playerPos
     const planeY = cursorWorldPos.y + 0.05
 
@@ -134,9 +147,10 @@ export default function AimCursor({ cursorWorldPos, playerPos, aimOriginPos, wea
     attr.setXYZ(0, origin.x, planeY - 0.02, origin.z)
 
     const heading = Math.atan2(dirZ, dirX)
+    const coneHalfAngle = coneHalfAngleRef.current
     for (let i = 0; i <= CONE_RAY_SAMPLES; i++) {
       const t = i / CONE_RAY_SAMPLES
-      const angle = heading - CONE_HALF_ANGLE + t * (CONE_HALF_ANGLE * 2)
+      const angle = heading - coneHalfAngle + t * (coneHalfAngle * 2)
       const rayDx = Math.cos(angle)
       const rayDz = Math.sin(angle)
 
@@ -170,6 +184,7 @@ export default function AimCursor({ cursorWorldPos, playerPos, aimOriginPos, wea
     <>
       <mesh ref={coneMeshRef} geometry={coneGeo} material={coneMat} renderOrder={995} />
       <group ref={groupRef} renderOrder={999}>
+      <group ref={crosshairGroupRef}>
       {/* Central dot */}
       <mesh rotation-x={-Math.PI / 2}>
         <circleGeometry args={[0.1, 12]} />
@@ -205,6 +220,7 @@ export default function AimCursor({ cursorWorldPos, playerPos, aimOriginPos, wea
         <primitive object={ringGeo} attach="geometry" />
         <lineBasicMaterial color={0xffffff} transparent opacity={0.15} depthTest={false} />
       </line>
+      </group>
       </group>
     </>
   )
