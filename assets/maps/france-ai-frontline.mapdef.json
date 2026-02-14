@@ -1,0 +1,1089 @@
+{
+  "name": "France AI Frontline",
+  "bounds": {
+    "minX": -100,
+    "maxX": 100,
+    "minZ": -100,
+    "maxZ": 100
+  },
+  "terrain": {
+    "seed": 4242,
+    "scale": 0.045,
+    "amplitude": 2.4,
+    "waterLevel": -0.55
+  },
+  "placements": [
+    {
+      "componentId": "france-ai-village-housing",
+      "position": [
+        -28,
+        0,
+        -26
+      ],
+      "rotation": [
+        0,
+        0.15,
+        0
+      ],
+      "scale": [
+        1.2937500000000002,
+        1.2937500000000002,
+        1.2937500000000002
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-stone-house",
+      "position": [
+        -14,
+        0,
+        -33
+      ],
+      "rotation": [
+        0,
+        -0.3,
+        0
+      ],
+      "scale": [
+        0.9800000000000001,
+        0.9800000000000001,
+        0.9800000000000001
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-stone-building",
+      "position": [
+        2,
+        0,
+        -30
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9818181818181819,
+        0.9818181818181819,
+        0.9818181818181819
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-rural-barn",
+      "position": [
+        20,
+        0,
+        -24
+      ],
+      "rotation": [
+        0,
+        0.05,
+        0
+      ],
+      "scale": [
+        0.9615384615384616,
+        0.9615384615384616,
+        0.9615384615384616
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-canvas-tent",
+      "position": [
+        36,
+        0,
+        -20
+      ],
+      "rotation": [
+        0,
+        -1.57,
+        0
+      ],
+      "scale": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-logistics-compound",
+      "position": [
+        -26,
+        0,
+        4
+      ],
+      "rotation": [
+        0,
+        0.2,
+        0
+      ],
+      "scale": [
+        0.96875,
+        0.96875,
+        0.96875
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-municipal-hall",
+      "position": [
+        0,
+        0,
+        3
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9428571428571428,
+        0.9428571428571428,
+        0.9428571428571428
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-stone-tower-windmill",
+      "position": [
+        27,
+        0,
+        4
+      ],
+      "rotation": [
+        0,
+        -0.1,
+        0
+      ],
+      "scale": [
+        0.9466666666666667,
+        0.9466666666666667,
+        0.9466666666666667
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-streetlamp",
+      "position": [
+        -6,
+        0,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.9333333333333333,
+        1.9333333333333333,
+        1.9333333333333333
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-streetlamp",
+      "position": [
+        10,
+        0,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.9333333333333333,
+        1.9333333333333333,
+        1.9333333333333333
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-straight-road",
+      "position": [
+        -44,
+        0,
+        22
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9166666666666666,
+        0.9166666666666666,
+        0.9166666666666666
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-straight-road",
+      "position": [
+        -22,
+        0,
+        22
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9166666666666666,
+        0.9166666666666666,
+        0.9166666666666666
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-straight-road",
+      "position": [
+        0,
+        0,
+        22
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9166666666666666,
+        0.9166666666666666,
+        0.9166666666666666
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-straight-road",
+      "position": [
+        22,
+        0,
+        22
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9166666666666666,
+        0.9166666666666666,
+        0.9166666666666666
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-straight-road",
+      "position": [
+        44,
+        0,
+        22
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9166666666666666,
+        0.9166666666666666,
+        0.9166666666666666
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-masonry-bridge",
+      "position": [
+        -14,
+        0,
+        34
+      ],
+      "rotation": [
+        0,
+        0.05,
+        0
+      ],
+      "scale": [
+        0.90625,
+        0.90625,
+        0.90625
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-masonry-bridge",
+      "position": [
+        18,
+        0,
+        34
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.875,
+        0.875,
+        0.875
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-stone-building",
+      "position": [
+        -34,
+        0,
+        10
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9272727272727272,
+        0.9272727272727272,
+        0.9272727272727272
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-stone-house",
+      "position": [
+        -22,
+        0,
+        12
+      ],
+      "rotation": [
+        0,
+        1.45,
+        0
+      ],
+      "scale": [
+        0.9400000000000001,
+        0.9400000000000001,
+        0.9400000000000001
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-stone-house",
+      "position": [
+        -8,
+        0,
+        12
+      ],
+      "rotation": [
+        0,
+        -1.45,
+        0
+      ],
+      "scale": [
+        0.9400000000000001,
+        0.9400000000000001,
+        0.9400000000000001
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-stone-building",
+      "position": [
+        6,
+        0,
+        11
+      ],
+      "rotation": [
+        0,
+        -1.57,
+        0
+      ],
+      "scale": [
+        0.9272727272727272,
+        0.9272727272727272,
+        0.9272727272727272
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-rural-barn",
+      "position": [
+        24,
+        0,
+        12
+      ],
+      "rotation": [
+        0,
+        0.12,
+        0
+      ],
+      "scale": [
+        0.9076923076923078,
+        0.9076923076923078,
+        0.9076923076923078
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-wall",
+      "position": [
+        -18,
+        0,
+        20
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9142857142857144,
+        0.9142857142857144,
+        0.9142857142857144
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-wall",
+      "position": [
+        2,
+        0,
+        20
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9142857142857144,
+        0.9142857142857144,
+        0.9142857142857144
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-wall",
+      "position": [
+        20,
+        0,
+        20
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9142857142857144,
+        0.9142857142857144,
+        0.9142857142857144
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-streetlamp",
+      "position": [
+        -30,
+        0,
+        24
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.9333333333333333,
+        1.9333333333333333,
+        1.9333333333333333
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-streetlamp",
+      "position": [
+        -10,
+        0,
+        24
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.9333333333333333,
+        1.9333333333333333,
+        1.9333333333333333
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-streetlamp",
+      "position": [
+        12,
+        0,
+        24
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.9333333333333333,
+        1.9333333333333333,
+        1.9333333333333333
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-fuel-drums",
+      "position": [
+        -26,
+        0,
+        6
+      ],
+      "rotation": [
+        0,
+        0.5,
+        0
+      ],
+      "scale": [
+        0.923076923076923,
+        0.923076923076923,
+        0.923076923076923
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-ammo-stack",
+      "position": [
+        18,
+        0,
+        7
+      ],
+      "rotation": [
+        0,
+        0.8,
+        0
+      ],
+      "scale": [
+        1.1199999999999999,
+        1.1199999999999999,
+        1.1199999999999999
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-wall",
+      "position": [
+        -30,
+        0,
+        -48
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9714285714285714,
+        0.9714285714285714,
+        0.9714285714285714
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-wall",
+      "position": [
+        -15,
+        0,
+        -48
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9714285714285714,
+        0.9714285714285714,
+        0.9714285714285714
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-wall",
+      "position": [
+        0,
+        0,
+        -48
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9714285714285714,
+        0.9714285714285714,
+        0.9714285714285714
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-wall",
+      "position": [
+        15,
+        0,
+        -48
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9714285714285714,
+        0.9714285714285714,
+        0.9714285714285714
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-wall",
+      "position": [
+        30,
+        0,
+        -48
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9714285714285714,
+        0.9714285714285714,
+        0.9714285714285714
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-barbed-wire",
+      "position": [
+        -35,
+        0,
+        -39
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9444444444444444,
+        0.9444444444444444,
+        0.9444444444444444
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-barbed-wire",
+      "position": [
+        0,
+        0,
+        -39
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9444444444444444,
+        0.9444444444444444,
+        0.9444444444444444
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-barbed-wire",
+      "position": [
+        35,
+        0,
+        -39
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9444444444444444,
+        0.9444444444444444,
+        0.9444444444444444
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-obstacle",
+      "position": [
+        -18,
+        0,
+        -34
+      ],
+      "rotation": [
+        0,
+        0.45,
+        0
+      ],
+      "scale": [
+        0.9523809523809523,
+        0.9523809523809523,
+        0.9523809523809523
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-defensive-obstacle",
+      "position": [
+        18,
+        0,
+        -34
+      ],
+      "rotation": [
+        0,
+        -0.45,
+        0
+      ],
+      "scale": [
+        0.9523809523809523,
+        0.9523809523809523,
+        0.9523809523809523
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-stone-retaining-wall",
+      "position": [
+        -58,
+        0,
+        2
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9666666666666667,
+        0.9666666666666667,
+        0.9666666666666667
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-stone-retaining-wall",
+      "position": [
+        58,
+        0,
+        2
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9666666666666667,
+        0.9666666666666667,
+        0.9666666666666667
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-transport-vehicle",
+      "position": [
+        -48,
+        0,
+        -10
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.8135714285714286,
+        0.8135714285714286,
+        0.8135714285714286
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-medium-tank",
+      "position": [
+        48,
+        0,
+        12
+      ],
+      "rotation": [
+        0,
+        -1.57,
+        0
+      ],
+      "scale": [
+        1.1520000000000001,
+        1.1520000000000001,
+        1.1520000000000001
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-fuel-drums",
+      "position": [
+        -6,
+        0,
+        14
+      ],
+      "rotation": [
+        0,
+        0.2,
+        0
+      ],
+      "scale": [
+        0.923076923076923,
+        0.923076923076923,
+        0.923076923076923
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-ammo-stack",
+      "position": [
+        11,
+        0,
+        14
+      ],
+      "rotation": [
+        0,
+        1.1,
+        0
+      ],
+      "scale": [
+        1.1199999999999999,
+        1.1199999999999999,
+        1.1199999999999999
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-grapevines",
+      "position": [
+        -62,
+        0,
+        26
+      ],
+      "rotation": [
+        0,
+        0.1,
+        0
+      ],
+      "scale": [
+        0.6263636363636363,
+        0.6263636363636363,
+        0.6263636363636363
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-grapevines",
+      "position": [
+        -62,
+        0,
+        48
+      ],
+      "rotation": [
+        0,
+        0.1,
+        0
+      ],
+      "scale": [
+        0.6263636363636363,
+        0.6263636363636363,
+        0.6263636363636363
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-grapevines",
+      "position": [
+        62,
+        0,
+        -4
+      ],
+      "rotation": [
+        0,
+        -0.15,
+        0
+      ],
+      "scale": [
+        0.6263636363636363,
+        0.6263636363636363,
+        0.6263636363636363
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-grapevines",
+      "position": [
+        62,
+        0,
+        18
+      ],
+      "rotation": [
+        0,
+        -0.15,
+        0
+      ],
+      "scale": [
+        0.6263636363636363,
+        0.6263636363636363,
+        0.6263636363636363
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-grapevines",
+      "position": [
+        -24,
+        0,
+        58
+      ],
+      "rotation": [
+        0,
+        0.35,
+        0
+      ],
+      "scale": [
+        0.6263636363636363,
+        0.6263636363636363,
+        0.6263636363636363
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-grapevines",
+      "position": [
+        -6,
+        0,
+        60
+      ],
+      "rotation": [
+        0,
+        0.35,
+        0
+      ],
+      "scale": [
+        0.6263636363636363,
+        0.6263636363636363,
+        0.6263636363636363
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-grapevines",
+      "position": [
+        14,
+        0,
+        58
+      ],
+      "rotation": [
+        0,
+        0.35,
+        0
+      ],
+      "scale": [
+        0.6263636363636363,
+        0.6263636363636363,
+        0.6263636363636363
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-wwii-south-prism",
+      "position": [
+        -72,
+        0,
+        -62
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9473684210526315,
+        0.9473684210526315,
+        0.9473684210526315
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-wwii-south-prism-alt",
+      "position": [
+        72,
+        0,
+        -62
+      ],
+      "rotation": [
+        0,
+        1.57,
+        0
+      ],
+      "scale": [
+        0.9473684210526315,
+        0.9473684210526315,
+        0.9473684210526315
+      ],
+      "source": "manual"
+    },
+    {
+      "componentId": "france-ai-wwii-south-meshy",
+      "position": [
+        72,
+        0,
+        62
+      ],
+      "rotation": [
+        0,
+        3.14,
+        0
+      ],
+      "scale": [
+        0.9473684210526315,
+        0.9473684210526315,
+        0.9473684210526315
+      ],
+      "source": "manual"
+    }
+  ],
+  "editorState": {
+    "cameraTarget": [
+      0,
+      0,
+      0
+    ],
+    "cameraZoom": 1
+  }
+}

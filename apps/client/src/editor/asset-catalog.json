@@ -4,7 +4,12 @@
     "name": "Pine Trees",
     "category": "vegetation",
     "path": "/models/props/natural/Pine Trees.glb",
-    "tags": ["nature", "foliage", "cover", "group"],
+    "tags": [
+      "nature",
+      "foliage",
+      "cover",
+      "group"
+    ],
     "defaultScale": 1
   },
   {
@@ -12,7 +17,11 @@
     "name": "Pine",
     "category": "vegetation",
     "path": "/models/props/natural/Pine.glb",
-    "tags": ["nature", "foliage", "cover"],
+    "tags": [
+      "nature",
+      "foliage",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -20,7 +29,12 @@
     "name": "Birch Trees",
     "category": "vegetation",
     "path": "/models/props/natural/Birch Trees.glb",
-    "tags": ["nature", "foliage", "cover", "group"],
+    "tags": [
+      "nature",
+      "foliage",
+      "cover",
+      "group"
+    ],
     "defaultScale": 1
   },
   {
@@ -28,7 +42,12 @@
     "name": "Maple Trees",
     "category": "vegetation",
     "path": "/models/props/natural/Maple Trees.glb",
-    "tags": ["nature", "foliage", "cover", "group"],
+    "tags": [
+      "nature",
+      "foliage",
+      "cover",
+      "group"
+    ],
     "defaultScale": 1
   },
   {
@@ -36,7 +55,11 @@
     "name": "Palm Trees",
     "category": "vegetation",
     "path": "/models/props/natural/Palm Trees.glb",
-    "tags": ["nature", "foliage", "tropical"],
+    "tags": [
+      "nature",
+      "foliage",
+      "tropical"
+    ],
     "defaultScale": 1
   },
   {
@@ -44,7 +67,11 @@
     "name": "Tree",
     "category": "vegetation",
     "path": "/models/props/natural/Tree.glb",
-    "tags": ["nature", "foliage", "cover"],
+    "tags": [
+      "nature",
+      "foliage",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -52,7 +79,12 @@
     "name": "Trees",
     "category": "vegetation",
     "path": "/models/props/natural/Trees.glb",
-    "tags": ["nature", "foliage", "cover", "group"],
+    "tags": [
+      "nature",
+      "foliage",
+      "cover",
+      "group"
+    ],
     "defaultScale": 1
   },
   {
@@ -60,7 +92,11 @@
     "name": "Dead Tree",
     "category": "vegetation",
     "path": "/models/props/natural/Dead Tree.glb",
-    "tags": ["nature", "dead", "cover"],
+    "tags": [
+      "nature",
+      "dead",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -68,7 +104,12 @@
     "name": "Dead Trees",
     "category": "vegetation",
     "path": "/models/props/natural/Dead Trees.glb",
-    "tags": ["nature", "dead", "cover", "group"],
+    "tags": [
+      "nature",
+      "dead",
+      "cover",
+      "group"
+    ],
     "defaultScale": 1
   },
   {
@@ -76,7 +117,11 @@
     "name": "Twisted Tree",
     "category": "vegetation",
     "path": "/models/props/natural/Twisted Tree.glb",
-    "tags": ["nature", "foliage", "spooky"],
+    "tags": [
+      "nature",
+      "foliage",
+      "spooky"
+    ],
     "defaultScale": 1
   },
   {
@@ -84,7 +129,10 @@
     "name": "Bush",
     "category": "vegetation",
     "path": "/models/props/natural/Bush.glb",
-    "tags": ["nature", "concealment"],
+    "tags": [
+      "nature",
+      "concealment"
+    ],
     "defaultScale": 1
   },
   {
@@ -92,7 +140,11 @@
     "name": "Bushes",
     "category": "vegetation",
     "path": "/models/props/natural/Bushes.glb",
-    "tags": ["nature", "concealment", "group"],
+    "tags": [
+      "nature",
+      "concealment",
+      "group"
+    ],
     "defaultScale": 1
   },
   {
@@ -100,7 +152,11 @@
     "name": "Bush with Flowers",
     "category": "vegetation",
     "path": "/models/props/natural/Bush with Flowers.glb",
-    "tags": ["nature", "concealment", "decorative"],
+    "tags": [
+      "nature",
+      "concealment",
+      "decorative"
+    ],
     "defaultScale": 1
   },
   {
@@ -108,7 +164,10 @@
     "name": "Fern",
     "category": "vegetation",
     "path": "/models/props/natural/Fern.glb",
-    "tags": ["nature", "ground-cover"],
+    "tags": [
+      "nature",
+      "ground-cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -116,7 +175,10 @@
     "name": "Flower Group",
     "category": "vegetation",
     "path": "/models/props/natural/Flower Group.glb",
-    "tags": ["nature", "decorative"],
+    "tags": [
+      "nature",
+      "decorative"
+    ],
     "defaultScale": 1
   },
   {
@@ -124,7 +186,10 @@
     "name": "Flower Bushes",
     "category": "vegetation",
     "path": "/models/props/natural/Flower Bushes.glb",
-    "tags": ["nature", "decorative"],
+    "tags": [
+      "nature",
+      "decorative"
+    ],
     "defaultScale": 1
   },
   {
@@ -132,7 +197,10 @@
     "name": "Flowers",
     "category": "vegetation",
     "path": "/models/props/natural/Flowers.glb",
-    "tags": ["nature", "decorative"],
+    "tags": [
+      "nature",
+      "decorative"
+    ],
     "defaultScale": 1
   },
   {
@@ -140,7 +208,10 @@
     "name": "Grass",
     "category": "vegetation",
     "path": "/models/props/natural/Grass.glb",
-    "tags": ["nature", "ground-cover"],
+    "tags": [
+      "nature",
+      "ground-cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -148,7 +219,11 @@
     "name": "Tall Grass",
     "category": "vegetation",
     "path": "/models/props/natural/Tall Grass.glb",
-    "tags": ["nature", "concealment", "ground-cover"],
+    "tags": [
+      "nature",
+      "concealment",
+      "ground-cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -156,7 +231,11 @@
     "name": "Rocks",
     "category": "vegetation",
     "path": "/models/props/natural/Rocks.glb",
-    "tags": ["nature", "cover", "group"],
+    "tags": [
+      "nature",
+      "cover",
+      "group"
+    ],
     "defaultScale": 1
   },
   {
@@ -164,7 +243,10 @@
     "name": "Rock Medium",
     "category": "vegetation",
     "path": "/models/props/natural/Rock Medium.glb",
-    "tags": ["nature", "cover"],
+    "tags": [
+      "nature",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -172,7 +254,10 @@
     "name": "Pebbles",
     "category": "vegetation",
     "path": "/models/props/natural/Pebble Round.glb",
-    "tags": ["nature", "detail"],
+    "tags": [
+      "nature",
+      "detail"
+    ],
     "defaultScale": 1
   },
   {
@@ -180,7 +265,10 @@
     "name": "Plant",
     "category": "vegetation",
     "path": "/models/props/natural/Plant.glb",
-    "tags": ["nature", "decorative"],
+    "tags": [
+      "nature",
+      "decorative"
+    ],
     "defaultScale": 1
   },
   {
@@ -188,7 +276,10 @@
     "name": "Plant Big",
     "category": "vegetation",
     "path": "/models/props/natural/Plant Big.glb",
-    "tags": ["nature", "decorative"],
+    "tags": [
+      "nature",
+      "decorative"
+    ],
     "defaultScale": 1
   },
   {
@@ -196,7 +287,10 @@
     "name": "Mushroom",
     "category": "vegetation",
     "path": "/models/props/natural/Mushroom.glb",
-    "tags": ["nature", "decorative"],
+    "tags": [
+      "nature",
+      "decorative"
+    ],
     "defaultScale": 1
   },
   {
@@ -204,7 +298,12 @@
     "name": "Buildings (5)",
     "category": "structures",
     "path": "/models/props/urban/5 Buildings Low-Poly.glb",
-    "tags": ["building", "cover", "interior", "group"],
+    "tags": [
+      "building",
+      "cover",
+      "interior",
+      "group"
+    ],
     "defaultScale": 1
   },
   {
@@ -212,7 +311,10 @@
     "name": "Car",
     "category": "vehicles",
     "path": "/models/props/urban/Car.glb",
-    "tags": ["vehicle", "cover"],
+    "tags": [
+      "vehicle",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -220,7 +322,10 @@
     "name": "Police Car",
     "category": "vehicles",
     "path": "/models/props/urban/Police Car.glb",
-    "tags": ["vehicle", "cover"],
+    "tags": [
+      "vehicle",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -228,7 +333,10 @@
     "name": "SUV",
     "category": "vehicles",
     "path": "/models/props/urban/SUV.glb",
-    "tags": ["vehicle", "cover"],
+    "tags": [
+      "vehicle",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -236,7 +344,11 @@
     "name": "Sports Car",
     "category": "vehicles",
     "path": "/models/props/urban/Sports Car.glb",
-    "tags": ["vehicle", "cover", "fast"],
+    "tags": [
+      "vehicle",
+      "cover",
+      "fast"
+    ],
     "defaultScale": 1
   },
   {
@@ -244,7 +356,11 @@
     "name": "Taxi",
     "category": "vehicles",
     "path": "/models/props/urban/Taxi.glb",
-    "tags": ["vehicle", "cover", "urban"],
+    "tags": [
+      "vehicle",
+      "cover",
+      "urban"
+    ],
     "defaultScale": 1
   },
   {
@@ -252,7 +368,12 @@
     "name": "Church",
     "category": "structures",
     "path": "/models/props/france/Church of the Good Shepherd.glb",
-    "tags": ["france", "building", "landmark", "cover"],
+    "tags": [
+      "france",
+      "building",
+      "landmark",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -260,7 +381,13 @@
     "name": "Square Tower",
     "category": "structures",
     "path": "/models/props/france/Fougeres Square Tower 3D Model.glb",
-    "tags": ["france", "building", "landmark", "tower", "cover"],
+    "tags": [
+      "france",
+      "building",
+      "landmark",
+      "tower",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -268,7 +395,12 @@
     "name": "Guingamp Shop",
     "category": "structures",
     "path": "/models/props/france/Guingamp Shop 1 France.glb",
-    "tags": ["france", "building", "shop", "cover"],
+    "tags": [
+      "france",
+      "building",
+      "shop",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -276,7 +408,12 @@
     "name": "Tramain House",
     "category": "structures",
     "path": "/models/props/france/Tramain House 1 France.glb",
-    "tags": ["france", "building", "house", "cover"],
+    "tags": [
+      "france",
+      "building",
+      "house",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -284,7 +421,12 @@
     "name": "Troyes Shop 7",
     "category": "structures",
     "path": "/models/props/france/Troyes Shop 7 France.glb",
-    "tags": ["france", "building", "shop", "cover"],
+    "tags": [
+      "france",
+      "building",
+      "shop",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -292,7 +434,12 @@
     "name": "Troyes Shop 8",
     "category": "structures",
     "path": "/models/props/france/Troyes Shop 8 France.glb",
-    "tags": ["france", "building", "shop", "cover"],
+    "tags": [
+      "france",
+      "building",
+      "shop",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -300,7 +447,12 @@
     "name": "Windmill",
     "category": "structures",
     "path": "/models/props/france/Windmill 3D Model by KIFIR.glb",
-    "tags": ["france", "building", "landmark", "cover"],
+    "tags": [
+      "france",
+      "building",
+      "landmark",
+      "cover"
+    ],
     "defaultScale": 1
   },
   {
@@ -308,7 +460,11 @@
     "name": "Hay Bale",
     "category": "props",
     "path": "/models/props/france/Hay Bale 3D Model.glb",
-    "tags": ["france", "cover", "farm"],
+    "tags": [
+      "france",
+      "cover",
+      "farm"
+    ],
     "defaultScale": 1
   },
   {
@@ -316,7 +472,12 @@
     "name": "Lavender",
     "category": "vegetation",
     "path": "/models/props/france/Lavender 3D Model.glb",
-    "tags": ["france", "nature", "decorative", "flower"],
+    "tags": [
+      "france",
+      "nature",
+      "decorative",
+      "flower"
+    ],
     "defaultScale": 1
   },
   {
@@ -324,7 +485,12 @@
     "name": "Sunflower",
     "category": "vegetation",
     "path": "/models/props/france/Sunflower 3D Model.glb",
-    "tags": ["france", "nature", "decorative", "flower"],
+    "tags": [
+      "france",
+      "nature",
+      "decorative",
+      "flower"
+    ],
     "defaultScale": 1
   },
   {
@@ -332,7 +498,12 @@
     "name": "Sunflower (Small)",
     "category": "vegetation",
     "path": "/models/props/france/Sunflower 3D Model (1).glb",
-    "tags": ["france", "nature", "decorative", "flower"],
+    "tags": [
+      "france",
+      "nature",
+      "decorative",
+      "flower"
+    ],
     "defaultScale": 1
   },
   {
@@ -340,7 +511,12 @@
     "name": "Stone Bridge",
     "category": "structures",
     "path": "/models/props/france/Stone Bridge 3D Model.glb",
-    "tags": ["france", "bridge", "landmark", "stone"],
+    "tags": [
+      "france",
+      "bridge",
+      "landmark",
+      "stone"
+    ],
     "defaultScale": 1
   },
   {
@@ -348,7 +524,12 @@
     "name": "Fountain",
     "category": "props",
     "path": "/models/props/france/Simple Fountain 3D Model.glb",
-    "tags": ["france", "landmark", "water", "decorative"],
+    "tags": [
+      "france",
+      "landmark",
+      "water",
+      "decorative"
+    ],
     "defaultScale": 1
   },
   {
@@ -356,7 +537,12 @@
     "name": "Wooden Fence",
     "category": "props",
     "path": "/models/props/france/Wooden Fence 3D Model.glb",
-    "tags": ["france", "fence", "cover", "farm"],
+    "tags": [
+      "france",
+      "fence",
+      "cover",
+      "farm"
+    ],
     "defaultScale": 1
   },
   {
@@ -364,7 +550,12 @@
     "name": "Wooden Fence (Simple)",
     "category": "props",
     "path": "/models/props/france/Wooden Fence Simple.glb",
-    "tags": ["france", "fence", "cover", "farm"],
+    "tags": [
+      "france",
+      "fence",
+      "cover",
+      "farm"
+    ],
     "defaultScale": 1
   },
   {
@@ -372,7 +563,417 @@
     "name": "Wood Planks",
     "category": "props",
     "path": "/models/props/france/Wood Planks Game Ready Asset.glb",
-    "tags": ["france", "detail", "wood", "debris"],
+    "tags": [
+      "france",
+      "detail",
+      "wood",
+      "debris"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-village-housing",
+    "name": "Village Housing (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Connected Village Housing Model.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "building",
+      "village",
+      "cover"
+    ],
+    "defaultScale": 1.35
+  },
+  {
+    "id": "france-ai-stone-house",
+    "name": "Stone House (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Two Story Stone House.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "house",
+      "building",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-stone-building",
+    "name": "Stone Building (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Two Story Stone Building.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "building",
+      "urban",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-municipal-hall",
+    "name": "Municipal Stone Hall (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/A_large_prominent_municipal_stone_building_in_the_Prism_30_e8bfb037.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "building",
+      "landmark",
+      "stone"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-rural-barn",
+    "name": "Rural Barn (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Large Rural Barn Structure.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "barn",
+      "farm",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-logistics-compound",
+    "name": "Logistics Compound (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Open Air Logistics Compound.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "compound",
+      "military",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-masonry-bridge",
+    "name": "Masonry Bridge (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/A_sturdy_arched_masonry_bridge_designed_for_vehicl_Prism_30_2b5979f4.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "bridge",
+      "stone",
+      "landmark"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-stone-tower-windmill",
+    "name": "Stone Tower Windmill (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Tall Cylindrical Stone Tower Windmill.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "tower",
+      "windmill",
+      "landmark"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-canvas-tent",
+    "name": "Canvas Military Tent (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Beige Canvas Military Tent 3D Model.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "tent",
+      "military",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-defensive-wall",
+    "name": "Defensive Wall Section (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/Waist High Defensive Wall Section.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "defense",
+      "wall",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-defensive-obstacle",
+    "name": "Heavy Defensive Obstacle (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/Large Heavy Defensive Obstacle.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "defense",
+      "obstacle",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-barbed-wire",
+    "name": "Coiled Barbed Wire (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/Coiled Barbed Wire Prism 30.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "defense",
+      "barbed-wire",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-stone-retaining-wall",
+    "name": "Stone Retaining Wall (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/Tall Dry Stack Stone Retaining Wall.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "wall",
+      "stone",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-streetlamp",
+    "name": "Cast Iron Streetlamp (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/An_old_fashioned_tall_cast_iron_streetlamp_with_a_Prism_30_46804703.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "street",
+      "lamp",
+      "urban"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-ammo-stack",
+    "name": "Ammo Stack (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/Wooden Military Ammunition Stack.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "military",
+      "ammo",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-fuel-drums",
+    "name": "Fuel Drums (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/3D Model Group of Three 55 Gallon Fuel Drums.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "industrial",
+      "drums",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-straight-road",
+    "name": "Straight Road Segment (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/Straight Road Segment.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "road",
+      "infrastructure"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-dirt-ramp",
+    "name": "Dirt Ramp (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/Sloped Dirt Ramp to Prism 30.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "ramp",
+      "terrain",
+      "infrastructure"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-grapevines",
+    "name": "Grapevines (AI)",
+    "category": "vegetation",
+    "path": "/models/props/france/ai_gen/Grapevines 3D Model.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "vineyard",
+      "vegetation",
+      "cover"
+    ],
+    "defaultScale": 0.65
+  },
+  {
+    "id": "france-ai-transport-vehicle",
+    "name": "Transport Vehicle (AI)",
+    "category": "vehicles",
+    "path": "/models/props/france/ai_gen/Military Transport Vehicle.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "vehicle",
+      "military",
+      "cover"
+    ],
+    "defaultScale": 0.85
+  },
+  {
+    "id": "france-ai-medium-tank",
+    "name": "Medium Tank (AI)",
+    "category": "vehicles",
+    "path": "/models/props/france/ai_gen/A_medium_sized_tank_with_a_boxy_hull_and_a_promine_Prism_30_9c3c7fb9.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "tank",
+      "vehicle",
+      "military"
+    ],
+    "defaultScale": 1.2
+  },
+  {
+    "id": "france-ai-wwii-south-prism",
+    "name": "WWII South Prism (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/WWII South Prism 3D Asset.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "wwii",
+      "fortification",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-wwii-south-meshy",
+    "name": "WWII South Meshy (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/WWII South Meshy 3D Asset.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "wwii",
+      "fortification",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-wwii-south-prism-alt",
+    "name": "WWII South Prism Alt (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/3D Game Asset WWII South Prism.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "wwii",
+      "fortification",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-narrow-townhouse",
+    "name": "Narrow Stone Townhouse (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/A_tall_very_narrow_three_story_stone_townhouse_It_Prism_30_d2545b28.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "building",
+      "townhouse",
+      "urban"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-wedge-stone-building",
+    "name": "Wedge Stone Building (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Narrow Triangular Wedge Stone Building.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "building",
+      "urban",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-stone-village-house",
+    "name": "Stone Village House (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Two Story Stone Village House.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "house",
+      "village",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-water-canal-section",
+    "name": "Water Canal Section (AI)",
+    "category": "props",
+    "path": "/models/props/france/ai_gen/A_concrete_and_stone_water_canal_section_featuring_Prism_30_016a4b28.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "canal",
+      "infrastructure",
+      "cover"
+    ],
+    "defaultScale": 1
+  },
+  {
+    "id": "france-ai-z-ruin",
+    "name": "Z Shape Stone Ruin (AI)",
+    "category": "structures",
+    "path": "/models/props/france/ai_gen/Jagged Z Shape Stone Ruin.glb",
+    "tags": [
+      "france",
+      "ai-gen",
+      "ruin",
+      "stone",
+      "cover"
+    ],
     "defaultScale": 1
   }
 ]
