@@ -28,6 +28,8 @@ export default function TerrainChunk({
     terrainScaleOverride,
     terrainAmplitudeOverride,
     heightDeltaSampler,
+    roads,
+    placements,
 }) {
     const terrainParameters = useStore((s) => s.terrainParameters)
     const stoneParameters = useStore((s) => s.stoneParameters)
@@ -83,6 +85,8 @@ export default function TerrainChunk({
                 scale={terrainScale}
                 amplitude={terrainAmplitude}
                 stones={stoneField.stones}
+                roads={roads}
+                placements={placements}
                 grassMaterial={grassMaterial}
             />
 

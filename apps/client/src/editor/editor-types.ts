@@ -10,8 +10,16 @@ export interface EditorPlacement {
 
 export interface EditorPlacementMetadata {
   collidable?: boolean
+  suppressGrass?: boolean
+  grassSuppressRadius?: number
+  colliderType?: ColliderType
+  colliderScale?: number
+  destructible?: boolean
+  destructionProfile?: string
   [key: string]: unknown
 }
+
+export type ColliderType = 'none' | 'cuboid' | 'trimesh'
 
 export interface PrimitiveGeometry {
   shape: 'box' | 'cylinder' | 'cone' | 'sphere'
@@ -27,6 +35,10 @@ export interface AssetEntry {
   tags: string[]
   defaultScale: number
   collidable?: boolean
+  colliderType?: ColliderType
+  colliderScale?: number
+  destructible?: boolean
+  destructionProfile?: string
   primitive?: PrimitiveGeometry
 }
 
@@ -43,8 +55,17 @@ export interface ScatterConfig {
   seed: number
 }
 
-export type EditorTool = 'select' | 'place' | 'scatter' | 'height'
+export type EditorTool = 'select' | 'place' | 'scatter' | 'height' | 'road'
 export type GizmoMode = 'translate' | 'rotate' | 'scale'
+
+export type RoadTextureId = 'road_1' | 'road_2'
+
+export interface RoadSpline {
+  id: string
+  textureId: RoadTextureId
+  width: number
+  points: [number, number][]
+}
 
 export interface HeightmapCell {
   x: number
@@ -62,6 +83,7 @@ export interface MapdefJson {
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number }
   terrain: { seed: number; scale: number; amplitude: number; waterLevel?: number }
   heightmap?: TerrainHeightmap
+  roads?: RoadSpline[]
   placements: MapdefPlacement[]
   editorState?: {
     cameraTarget: [number, number, number]

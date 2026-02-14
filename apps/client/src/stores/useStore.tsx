@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import type { CollisionDisc, GameMode, PlacementCollider, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, FlashGrenadeState, ExplosionEvent, SmokeDeployEvent, FlashDetonateEvent, MatchConfig, Vec3, LobbyPlayer, ServerPhase } from '@clawfield/shared'
 import type { MapdefPlacement } from '../editor/editor-types'
 import type { TerrainHeightmap } from '../editor/editor-types'
+import type { RoadSpline } from '../editor/editor-types'
 
 type LocalMapTerrain = {
     seed: number
@@ -117,6 +118,7 @@ const createStore = () =>
                 strength: 0.7,
                 speed: 1.0,
                 scale: 0.35,
+                globalMultiplier: 1.0,
             },
 
             windLineParameters: {
@@ -127,6 +129,39 @@ const createStore = () =>
                 alphaMultiplier: 1.0,
                 lengthMultiplier: 1.65,
                 width: 0.1,
+            },
+
+            postProcessingParameters: {
+                enabled: true,
+                godRaysDensity: 0.96,
+                godRaysWeight: 0.3,
+                godRaysDecay: 0.95,
+                godRaysExposure: 0.35,
+                godRaysSamples: 45,
+                godRaysClampMax: 1.0,
+                bloomIntensity: 0.35,
+                bloomThreshold: 0.12,
+                bloomSmoothing: 0.9,
+                bloomHeight: 300,
+            },
+
+            cloudShadowParameters: {
+                enabled: true,
+                intensity: 0.55,
+                speedX: 0.004,
+                speedY: 0.002,
+                scale: 0.85,
+                spotlightIntensity: 1.9,
+                spotlightDistance: 420,
+                spotlightAngle: 1.05,
+                spotlightPenumbra: 0.75,
+            },
+
+            softShadowParameters: {
+                enabled: true,
+                size: 32,
+                samples: 16,
+                focus: 0.55,
             },
 
             stoneParameters: {
@@ -231,6 +266,8 @@ const createStore = () =>
             setMapPlacements: (p: MapdefPlacement[]) => set({ mapPlacements: p }),
             mapTerrain: null as LocalMapTerrain | null,
             setMapTerrain: (terrain: LocalMapTerrain | null) => set({ mapTerrain: terrain }),
+            mapRoads: [] as RoadSpline[],
+            setMapRoads: (roads: RoadSpline[]) => set({ mapRoads: roads }),
 
             // ── Game State ─────────────────────────────────────────
             connected: false,

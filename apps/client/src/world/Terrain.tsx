@@ -8,6 +8,7 @@ import TerrainChunk from './TerrainChunk'
 import Trees from './Trees'
 import Foliage from './Foliage'
 import StylizedWaterPlane from './StylizedWaterPlane'
+import RoadLayer from './RoadLayer'
 import useTerrainMaterial from '../materials/TerrainMaterial'
 import useGrassMaterial from '../materials/GrassMaterial'
 import useStonesMaterial from '../materials/StonesMaterial'
@@ -31,9 +32,10 @@ interface TerrainProps {
         treeMaterialUniforms?: Record<string, { value: any }>
         noiseTexture?: THREE.Texture
     }>
+    disableDither?: boolean
 }
 
-export default function Terrain({ uniformsRef }: TerrainProps) {
+export default function Terrain({ uniformsRef, disableDither = false }: TerrainProps) {
     const [activeChunks, setActiveChunks] = useState([])
 
     const currentChunk = useRef({ x: 0, z: 0, size: 0 })
@@ -48,6 +50,8 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
     const terrainAmplitude = useStore((s) => s.terrainParameters.amplitude)
     const matchConfig = useStore((s: any) => s.matchConfig)
     const mapTerrain = useStore((s: any) => s.mapTerrain)
+    const mapPlacements = useStore((s: any) => s.mapPlacements ?? [])
+    const mapRoads = useStore((s: any) => s.mapRoads ?? [])
     const borderCircleRadius = useStore((s) => s.borderParameters.circleRadiusFactor)
     const windParameters = useStore((s) => s.windParameters)
     const windLineParameters = useStore((s) => s.windLineParameters)
@@ -78,6 +82,14 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
         return (wx: number, wz: number) => sampleHeightDelta(wx, wz, heightmap.cellSize, byKey)
     }, [heightmap])
     const noise2D = useMemo(() => createSeededNoise2D(worldSeed), [worldSeed])
+
+    const terrainHeightGetter = useMemo(() => {
+        return (wx: number, wz: number) => {
+            const base = noise2D(wx * effectiveTerrainScale, wz * effectiveTerrainScale) * effectiveTerrainAmplitude
+            const delta = heightDeltaSampler ? heightDeltaSampler(wx, wz) : 0
+            return base + delta
+        }
+    }, [noise2D, effectiveTerrainScale, effectiveTerrainAmplitude, heightDeltaSampler])
 
     const hasVisibleWater = useMemo(() => {
         if (typeof effectiveWaterLevel !== 'number') return false
@@ -198,6 +210,16 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
     }, [stoneGeometry, rigidBodyMaterial, noiseTexture, alphaMap])
 
     useEffect(() => {
+        if (disableDither) {
+            if (radiusAnimationRef.current) {
+                radiusAnimationRef.current.kill()
+                radiusAnimationRef.current = null
+            }
+            setCircleRadius(9999)
+            prevPhaseRef.current = phase
+            return
+        }
+
         const wasStarted = prevPhaseRef.current === PHASES.start
 
         if (phase === PHASES.start) {
@@ -233,11 +255,12 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
         }
 
         prevPhaseRef.current = phase
-    }, [phase, borderCircleRadius])
+    }, [phase, borderCircleRadius, disableDither])
 
     useFrame(({ clock }) => {
         const state = useStore.getState()
         // Update terrain material uniforms
+        terrainMaterial.uniforms.uTime.value = clock.elapsedTime
         terrainMaterial.uniforms.uCircleCenter.value.copy(state.smoothedCircleCenter)
 
         // Update grass material uniforms
@@ -315,8 +338,11 @@ export default function Terrain({ uniformsRef }: TerrainProps) {
                     terrainScaleOverride={effectiveTerrainScale}
                     terrainAmplitudeOverride={effectiveTerrainAmplitude}
                     heightDeltaSampler={heightDeltaSampler}
+                    roads={mapRoads}
+                    placements={mapPlacements}
                 />
             ))}
+            <RoadLayer roads={mapRoads} heightGetter={terrainHeightGetter} />
             {treesEnabled && (
                 <>
                     <Trees

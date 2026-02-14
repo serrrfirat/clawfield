@@ -19,6 +19,7 @@ export default function Loader() {
     const setPhase = usePhases((s: any) => s.setPhase)
     const setMapPlacements = useStore((s) => s.setMapPlacements)
     const setMapTerrain = useStore((s: any) => s.setMapTerrain)
+    const setMapRoads = useStore((s: any) => s.setMapRoads)
     const connected = useStore((s: any) => s.connected)
     const myId = useStore((s: any) => s.myId)
     const lobbyPlayers = useStore((s: any) => s.lobbyPlayers)
@@ -186,6 +187,7 @@ export default function Loader() {
                 } else {
                     setMapPlacements([])
                 }
+                setMapRoads(mapdef.roads ?? [])
                 if (mapdef.terrain) {
                     const terrainPayload = {
                         seed: mapdef.terrain.seed,
@@ -218,7 +220,7 @@ export default function Loader() {
             }
         }
         input.click()
-    }, [phase, setMapPlacements, setMapTerrain, inLobby, isHost, network, buildLobbyMatchConfig])
+    }, [phase, setMapPlacements, setMapTerrain, setMapRoads, inLobby, isHost, network, buildLobbyMatchConfig])
 
     const handleOpenEditor = () => {
         window.location.href = window.location.pathname + '?mode=editor'

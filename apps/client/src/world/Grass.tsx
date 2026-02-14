@@ -4,8 +4,31 @@ import * as THREE from 'three'
 import useStore from '../stores/useStore'
 import { mulberry32 } from './utils/randomUtils'
 import { smoothstep } from './utils/stoneUtils'
+import assetCatalog from '../editor/asset-catalog.json'
+import type { AssetEntry, EditorPlacement } from '../editor/editor-types'
+import { getPlacementGrassSuppressRadius, getPlacementSuppressGrass } from '../editor/collision-defaults'
 
-export default function Grass({ size, chunkX, chunkZ, chunkIndexX, chunkIndexZ, noise2D, scale, amplitude, stones, grassMaterial }) {
+function distanceToSegment2D(px, pz, ax, az, bx, bz) {
+    const abx = bx - ax
+    const abz = bz - az
+    const apx = px - ax
+    const apz = pz - az
+    const abLenSq = abx * abx + abz * abz
+    if (abLenSq < 1e-8) {
+        const dx = px - ax
+        const dz = pz - az
+        return Math.sqrt(dx * dx + dz * dz)
+    }
+    let t = (apx * abx + apz * abz) / abLenSq
+    t = Math.max(0, Math.min(1, t))
+    const cx = ax + abx * t
+    const cz = az + abz * t
+    const dx = px - cx
+    const dz = pz - cz
+    return Math.sqrt(dx * dx + dz * dz)
+}
+
+export default function Grass({ size, chunkX, chunkZ, chunkIndexX, chunkIndexZ, noise2D, scale, amplitude, stones, roads = [], placements = [], grassMaterial }) {
     const grassParameters = useStore((s) => s.grassParameters)
     const stoneParameters = useStore((s) => s.stoneParameters)
 
@@ -73,6 +96,53 @@ export default function Grass({ size, chunkX, chunkZ, chunkIndexX, chunkIndexZ, 
                   })()
                 : null
 
+        const roadFootprints = Array.isArray(roads) && roads.length > 0
+            ? (() => {
+                const fadeW = Math.max(0.2, stoneParameters?.grassFadeWidth ?? 0.8)
+                const out = []
+                for (let r = 0; r < roads.length; r++) {
+                    const road = roads[r]
+                    const pts = road?.points
+                    if (!Array.isArray(pts) || pts.length < 2) continue
+                    const half = Math.max(0.25, Number(road.width ?? 0) * 0.5)
+                    for (let i = 0; i < pts.length - 1; i++) {
+                        const a = pts[i]
+                        const b = pts[i + 1]
+                        if (!a || !b) continue
+                        const ax = Number(a[0])
+                        const az = Number(a[1])
+                        const bx = Number(b[0])
+                        const bz = Number(b[1])
+                        if (!Number.isFinite(ax) || !Number.isFinite(az) || !Number.isFinite(bx) || !Number.isFinite(bz)) continue
+                        out.push({ ax, az, bx, bz, radius: half, fade: fadeW })
+                    }
+                }
+                return out.length > 0 ? out : null
+            })()
+            : null
+
+        const placementFootprints = Array.isArray(placements) && placements.length > 0
+            ? (() => {
+                const fadeW = Math.max(0.2, stoneParameters?.grassFadeWidth ?? 0.8)
+                const out = []
+                for (let i = 0; i < placements.length; i++) {
+                    const p = placements[i]
+                    const editorP = p as EditorPlacement
+                    const entry = (assetCatalog as AssetEntry[]).find((a) => a.id === p.componentId)
+                    if (!getPlacementSuppressGrass(editorP, entry)) continue
+
+                    const radius = getPlacementGrassSuppressRadius(editorP, entry)
+
+                    const x = Number(p.position?.[0] ?? 0)
+                    const z = Number(p.position?.[2] ?? 0)
+                    if (!Number.isFinite(x) || !Number.isFinite(z)) continue
+
+                    out.push({ x, z, radius, fade: fadeW })
+                }
+                return out.length > 0 ? out : null
+            })()
+            : null
+
         for (let i = 0; i < grassParameters.count; i++) {
             const x = (rng() - 0.5) * size
             const z = (rng() - 0.5) * size
@@ -107,6 +177,34 @@ export default function Grass({ size, chunkX, chunkZ, chunkIndexX, chunkIndexZ, 
                 if (best >= 0.999) break
             }
 
+            if (roadFootprints) {
+                const wx = x + chunkX
+                const wz = z + chunkZ
+                for (let r = 0; r < roadFootprints.length; r++) {
+                    const rf = roadFootprints[r]
+                    const d = distanceToSegment2D(wx, wz, rf.ax, rf.az, rf.bx, rf.bz)
+                    if (d >= rf.radius + rf.fade) continue
+                    const influence = 1.0 - smoothstep(rf.radius, rf.radius + rf.fade, d)
+                    if (influence > best) best = influence
+                    if (best >= 0.999) break
+                }
+            }
+
+            if (placementFootprints) {
+                const wx = x + chunkX
+                const wz = z + chunkZ
+                for (let p = 0; p < placementFootprints.length; p++) {
+                    const fp = placementFootprints[p]
+                    const dx = wx - fp.x
+                    const dz = wz - fp.z
+                    const d = Math.sqrt(dx * dx + dz * dz)
+                    if (d >= fp.radius + fp.fade) continue
+                    const influence = 1.0 - smoothstep(fp.radius, fp.radius + fp.fade, d)
+                    if (influence > best) best = influence
+                    if (best >= 0.999) break
+                }
+            }
+
             stoneInfluence[i] = best
         }
 
@@ -129,6 +227,8 @@ export default function Grass({ size, chunkX, chunkZ, chunkIndexX, chunkIndexZ, 
         stoneParameters?.enabled,
         stoneParameters?.grassClearRadiusMultiplier,
         stoneParameters?.grassFadeWidth,
+        roads,
+        placements,
     ])
 
     useEffect(() => {

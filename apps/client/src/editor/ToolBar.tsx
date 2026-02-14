@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import useEditorStore from './useEditorStore'
+import useStore from '../stores/useStore'
 import type { EditorTool, GizmoMode } from './editor-types'
 
 export default function ToolBar() {
@@ -17,6 +18,29 @@ export default function ToolBar() {
   const setHeightBrushStrength = useEditorStore((s) => s.setHeightBrushStrength)
   const heightBrushMode = useEditorStore((s) => s.heightBrushMode)
   const setHeightBrushMode = useEditorStore((s) => s.setHeightBrushMode)
+  const showColliderDebug = useEditorStore((s) => s.showColliderDebug)
+  const toggleColliderDebug = useEditorStore((s) => s.toggleColliderDebug)
+  const runtimePreview = useEditorStore((s) => s.runtimePreview)
+  const toggleRuntimePreview = useEditorStore((s) => s.toggleRuntimePreview)
+  const postFx = useStore((s: any) => s.postProcessingParameters)
+  const roadTextureId = useEditorStore((s) => s.roadTextureId)
+  const setRoadTextureId = useEditorStore((s) => s.setRoadTextureId)
+  const roadWidth = useEditorStore((s) => s.roadWidth)
+  const setRoadWidth = useEditorStore((s) => s.setRoadWidth)
+  const finishRoadStroke = useEditorStore((s) => s.finishRoadStroke)
+  const autoFlattenOnPlace = useEditorStore((s) => s.autoFlattenOnPlace)
+  const setAutoFlattenOnPlace = useEditorStore((s) => s.setAutoFlattenOnPlace)
+  const flattenRadiusScale = useEditorStore((s) => s.flattenRadiusScale)
+  const setFlattenRadiusScale = useEditorStore((s) => s.setFlattenRadiusScale)
+
+  const patchPostFx = (updates: Record<string, number | boolean>) => {
+    useStore.setState((state: any) => ({
+      postProcessingParameters: {
+        ...state.postProcessingParameters,
+        ...updates,
+      },
+    }))
+  }
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -32,6 +56,9 @@ export default function ToolBar() {
           break
         case 'KeyH':
           setActiveTool('height')
+          break
+        case 'KeyT':
+          setActiveTool('road')
           break
         case 'KeyW':
           if (activeTool === 'select') setGizmoMode('translate')
@@ -53,6 +80,15 @@ export default function ToolBar() {
           if (sel) useEditorStore.getState().removePlacement(sel)
           break
         }
+        case 'KeyC':
+          toggleColliderDebug()
+          break
+        case 'KeyP':
+          toggleRuntimePreview()
+          break
+        case 'Enter':
+          if (activeTool === 'road') finishRoadStroke()
+          break
       }
 
       // Ctrl+S save
@@ -68,17 +104,49 @@ export default function ToolBar() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeTool, setActiveTool, setGizmoMode])
+  }, [activeTool, setActiveTool, setGizmoMode, toggleColliderDebug, toggleRuntimePreview, finishRoadStroke])
 
   return (
     <div style={toolbarStyle}>
       <span style={mapNameStyle}>
         {mapName}{dirty ? ' *' : ''}
       </span>
+      <ToolButton
+        label="Load Map"
+        active={false}
+        onClick={() => document.dispatchEvent(new CustomEvent('editor-load'))}
+      />
+      <ToolButton
+        label="Save Map"
+        active={false}
+        onClick={() => document.dispatchEvent(new CustomEvent('editor-save'))}
+      />
+      <ToolButton label="Runtime Look (P)" active={runtimePreview} onClick={toggleRuntimePreview} />
+      <ToolButton label="Post FX" active={!!postFx?.enabled} onClick={() => patchPostFx({ enabled: !postFx?.enabled })} />
+      <ToolButton label="Colliders (C)" active={showColliderDebug} onClick={toggleColliderDebug} />
+      <label style={controlLabel}>Rays</label>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={postFx?.godRaysWeight ?? 0.3}
+        onChange={(e) => patchPostFx({ godRaysWeight: Number(e.target.value) })}
+      />
+      <label style={controlLabel}>Bloom</label>
+      <input
+        type="range"
+        min={0}
+        max={2}
+        step={0.01}
+        value={postFx?.bloomIntensity ?? 0.35}
+        onChange={(e) => patchPostFx({ bloomIntensity: Number(e.target.value) })}
+      />
       <div style={divider} />
       <ToolButton label="Select (V)" active={activeTool === 'select'} onClick={() => setActiveTool('select')} />
       <ToolButton label="Place (B)" active={activeTool === 'place'} onClick={() => setActiveTool('place')} />
       <ToolButton label="Height (H)" active={activeTool === 'height'} onClick={() => setActiveTool('height')} />
+      <ToolButton label="Road (T)" active={activeTool === 'road'} onClick={() => setActiveTool('road')} />
       <ToolButton label="Scatter" active={activeTool === 'scatter'} onClick={() => setActiveTool('scatter')} />
       <div style={divider} />
       {activeTool === 'select' && (
@@ -120,6 +188,29 @@ export default function ToolBar() {
           />
         </>
       )}
+      {activeTool === 'road' && (
+        <>
+          <label style={controlLabel}>Road Tex</label>
+          <select
+            value={roadTextureId}
+            onChange={(e) => setRoadTextureId(e.target.value as any)}
+            style={selectStyle}
+          >
+            <option value="road_1">Road 1</option>
+            <option value="road_2">Road 2</option>
+          </select>
+          <label style={controlLabel}>Width</label>
+          <input
+            type="range"
+            min={1}
+            max={14}
+            step={0.25}
+            value={roadWidth}
+            onChange={(e) => setRoadWidth(Number(e.target.value))}
+          />
+          <ToolButton label="Finish (Enter)" active={false} onClick={finishRoadStroke} />
+        </>
+      )}
       <div style={divider} />
       <label style={controlLabel}>Water</label>
       <input
@@ -129,6 +220,19 @@ export default function ToolBar() {
         step={0.05}
         value={waterLevel}
         onChange={(e) => setWaterLevel(Number(e.target.value))}
+      />
+      <div style={divider} />
+      <label style={checkLabelStyle}>
+        <input type="checkbox" checked={autoFlattenOnPlace} onChange={(e) => setAutoFlattenOnPlace(e.target.checked)} />
+        Auto flatten placements
+      </label>
+      <input
+        type="range"
+        min={0.4}
+        max={2.5}
+        step={0.1}
+        value={flattenRadiusScale}
+        onChange={(e) => setFlattenRadiusScale(Number(e.target.value))}
       />
     </div>
   )
@@ -151,6 +255,7 @@ function ToolButton({ label, active, onClick }: { label: string; active: boolean
 
 const toolbarStyle: React.CSSProperties = {
   display: 'flex',
+  flexWrap: 'wrap',
   alignItems: 'center',
   gap: 4,
   padding: '6px 12px',
@@ -193,4 +298,12 @@ const selectStyle: React.CSSProperties = {
   borderRadius: 4,
   fontSize: 12,
   padding: '2px 6px',
+}
+
+const checkLabelStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: '#bbb',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
 }

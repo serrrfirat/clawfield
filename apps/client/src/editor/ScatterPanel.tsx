@@ -2,7 +2,7 @@ import { useState } from 'react'
 import useEditorStore from './useEditorStore'
 import type { ScatterConfig } from './editor-types'
 import { generateScatter } from './scatter-engine'
-import { getDefaultCollidableForAsset } from './collision-defaults'
+import { getDefaultCollidableForAsset, getDefaultGrassSuppressRadius, getDefaultSuppressGrassForAsset } from './collision-defaults'
 
 const defaultConfig: ScatterConfig = {
   assetId: '',
@@ -98,6 +98,8 @@ export default function ScatterPanel() {
         metadata: {
           ...(p.metadata ?? {}),
           collidable: getDefaultCollidableForAsset(asset),
+          suppressGrass: getDefaultSuppressGrassForAsset(asset),
+          grassSuppressRadius: getDefaultGrassSuppressRadius(asset, p.scale),
         },
       })
     }

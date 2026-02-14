@@ -1,6 +1,7 @@
-import { useRef, useCallback, useEffect } from 'react'
-import { useThree } from '@react-three/fiber'
+import { useRef, useCallback, useEffect, useMemo } from 'react'
+import { useThree, useFrame } from '@react-three/fiber'
 import { TransformControls } from '@react-three/drei'
+import { Physics } from '@react-three/rapier'
 import * as THREE from 'three'
 import EditorCamera from './EditorCamera'
 import EditorTerrain, { getTerrainHeight } from './EditorTerrain'
@@ -8,7 +9,12 @@ import PlacedObjectsLayer from './PlacedObjectsLayer'
 import PlacementGhost from './PlacementGhost'
 import useEditorStore from './useEditorStore'
 import { downloadMapdef, loadMapdef } from './mapdef-adapter'
-import { getDefaultCollidableForAsset } from './collision-defaults'
+import { getDefaultCollidableForAsset, getDefaultGrassSuppressRadius, getDefaultSuppressGrassForAsset } from './collision-defaults'
+import Terrain from '../world/Terrain'
+import PostProcessing from '../world/PostProcessing'
+import useStore from '../stores/useStore'
+import type { MapdefPlacement } from './editor-types'
+import RoadLayer from '../world/RoadLayer'
 
 const _raycaster = new THREE.Raycaster()
 const _mouse = new THREE.Vector2()
@@ -18,6 +24,60 @@ const _hitPoint = new THREE.Vector3()
 export default function EditorExperience() {
   const { camera, gl, scene } = useThree()
   const isPaintingRef = useRef(false)
+  const runtimePreview = useEditorStore((s) => s.runtimePreview)
+  const placements = useEditorStore((s) => s.placements)
+  const terrainSeed = useEditorStore((s) => s.terrainSeed)
+  const terrainScale = useEditorStore((s) => s.terrainScale)
+  const terrainAmplitude = useEditorStore((s) => s.terrainAmplitude)
+  const waterLevel = useEditorStore((s) => s.waterLevel)
+  const heightCellSize = useEditorStore((s) => s.heightCellSize)
+  const heightCells = useEditorStore((s) => s.heightCells)
+  const roads = useEditorStore((s) => s.roads)
+
+  const runtimePlacements = useMemo<MapdefPlacement[]>(() => {
+    return placements.map((p) => ({
+      componentId: p.assetId,
+      position: p.position,
+      rotation: p.rotation,
+      scale: p.scale,
+      source: p.source,
+      metadata: p.metadata,
+    }))
+  }, [placements])
+
+  useEffect(() => {
+    if (!runtimePreview) return
+
+    const mapTerrain = {
+      seed: terrainSeed,
+      scale: terrainScale,
+      amplitude: terrainAmplitude,
+      waterLevel,
+      heightmap: {
+        cellSize: heightCellSize,
+        cells: Object.entries(heightCells).map(([key, h]) => {
+          const [sx, sz] = key.split(',')
+          return { x: Number(sx), z: Number(sz), h: Number(h) }
+        }).filter((c) => Number.isFinite(c.x) && Number.isFinite(c.z) && Number.isFinite(c.h)),
+      },
+    }
+
+    useStore.setState({
+      mapTerrain,
+      mapPlacements: runtimePlacements,
+      mapRoads: roads,
+    })
+  }, [runtimePreview, terrainSeed, terrainScale, terrainAmplitude, waterLevel, heightCellSize, heightCells, runtimePlacements, roads])
+
+  useFrame(() => {
+    if (!runtimePreview) return
+    const [x, y, z] = useEditorStore.getState().cameraTarget
+    const center = new THREE.Vector3(x, y, z)
+    useStore.setState({
+      ballPosition: center,
+      smoothedCircleCenter: center,
+    })
+  })
 
   // Track mouse position for ghost placement
   useEffect(() => {
@@ -26,7 +86,7 @@ export default function EditorExperience() {
 
     const onPointerMove = (e: PointerEvent) => {
       const store = useEditorStore.getState()
-      if (store.activeTool !== 'place' && store.activeTool !== 'height') return
+      if (store.activeTool !== 'place' && store.activeTool !== 'height' && store.activeTool !== 'road') return
 
       const rect = canvas.getBoundingClientRect()
       _mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
@@ -45,7 +105,7 @@ export default function EditorExperience() {
       const hits = _raycaster.intersectObjects(terrainMeshes, false)
       if (hits.length > 0) {
         const p = hits[0].point
-        if (store.activeTool === 'place') {
+        if (store.activeTool === 'place' || store.activeTool === 'road') {
           store.setGhostPosition([p.x, p.y, p.z])
         } else if (store.activeTool === 'height' && isPaintingRef.current) {
           store.applyHeightBrushAt(p.x, p.z)
@@ -55,7 +115,7 @@ export default function EditorExperience() {
         const hit = _raycaster.ray.intersectPlane(_groundPlane, _hitPoint)
         if (hit) {
           const y = getTerrainHeight(_hitPoint.x, _hitPoint.z)
-          if (store.activeTool === 'place') {
+          if (store.activeTool === 'place' || store.activeTool === 'road') {
             store.setGhostPosition([_hitPoint.x, y, _hitPoint.z])
           } else if (store.activeTool === 'height' && isPaintingRef.current) {
             store.applyHeightBrushAt(_hitPoint.x, _hitPoint.z)
@@ -84,6 +144,8 @@ export default function EditorExperience() {
 
         const s = asset.defaultScale
         const collidable = getDefaultCollidableForAsset(asset)
+        const suppressGrass = getDefaultSuppressGrassForAsset(asset)
+        const grassSuppressRadius = getDefaultGrassSuppressRadius(asset, [s, s, s])
         store.addPlacement({
           id: crypto.randomUUID(),
           assetId: store.selectedAssetId,
@@ -91,8 +153,21 @@ export default function EditorExperience() {
           rotation: [0, store.ghostRotation, 0],
           scale: [s, s, s],
           source: 'manual',
-          metadata: { collidable },
+          metadata: { collidable, suppressGrass, grassSuppressRadius },
         })
+
+        if (store.autoFlattenOnPlace) {
+          store.flattenHeightAround(store.ghostPosition[0], store.ghostPosition[2], grassSuppressRadius * store.flattenRadiusScale)
+        }
+      } else if (store.activeTool === 'road') {
+        store.addRoadPointAt(store.ghostPosition[0], store.ghostPosition[2])
+      }
+    }
+
+    const onDoubleClick = () => {
+      const store = useEditorStore.getState()
+      if (store.activeTool === 'road') {
+        store.finishRoadStroke()
       }
     }
 
@@ -100,11 +175,13 @@ export default function EditorExperience() {
     canvas.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('pointerup', onPointerUp)
     canvas.addEventListener('click', onClick)
+    canvas.addEventListener('dblclick', onDoubleClick)
     return () => {
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('pointerup', onPointerUp)
       canvas.removeEventListener('click', onClick)
+      canvas.removeEventListener('dblclick', onDoubleClick)
     }
   }, [camera, gl, scene])
 
@@ -135,12 +212,18 @@ export default function EditorExperience() {
       <ambientLight intensity={3.5} />
       <EditorCamera />
       <group onPointerMissed={onPointerMissed}>
-        <EditorTerrain />
+        {runtimePreview ? (
+          <Physics gravity={[0, 0, 0]}>
+            <Terrain disableDither />
+          </Physics>
+        ) : <EditorTerrain />}
+        <RoadLayer roads={roads} heightGetter={getTerrainHeight} />
         <PlacedObjectsLayer />
         <PlacementGhost />
       </group>
       <SelectedTransform />
       <gridHelper args={[200, 200, '#555', '#333']} position={[0, 0.01, 0]} />
+      <PostProcessing />
     </>
   )
 }

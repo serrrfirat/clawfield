@@ -18,6 +18,7 @@ export function exportMapdef(): MapdefJson {
       waterLevel: state.waterLevel,
     },
     heightmap: toSparseHeightmap(state.heightCellSize, state.heightCells),
+    roads: state.roads,
     placements: state.placements.map(toMapdefPlacement),
     editorState: {
       cameraTarget: state.cameraTarget,
@@ -37,6 +38,7 @@ export function importMapdef(json: MapdefJson) {
   }
   store.setWaterLevel(json.terrain?.waterLevel ?? -0.5)
   store.setHeightCells(fromSparseHeightmap(json.heightmap))
+  store.setRoads(json.roads ?? [])
   store.setDirty(false)
 }
 

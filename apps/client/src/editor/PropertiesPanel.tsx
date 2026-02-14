@@ -1,6 +1,22 @@
 import { useCallback } from 'react'
 import useEditorStore from './useEditorStore'
-import { getDefaultCollidableForAsset, getPlacementCollidable } from './collision-defaults'
+import { getDefaultCollidableForAsset, getDefaultColliderType, getDefaultGrassSuppressRadius, getDefaultSuppressGrassForAsset, getPlacementCollidable, getPlacementColliderType, getPlacementGrassSuppressRadius, getPlacementSuppressGrass } from './collision-defaults'
+
+const DESTRUCTION_PROFILES = [
+  { id: 'none', label: 'none' },
+  { id: 'light_prop', label: 'light prop' },
+  { id: 'wall_section', label: 'wall section' },
+  { id: 'building_small', label: 'building small' },
+  { id: 'building_large', label: 'building large' },
+] as const
+
+const PROFILE_DEFAULTS: Record<string, { colliderType: 'none' | 'cuboid' | 'trimesh'; colliderScale: number }> = {
+  none: { colliderType: 'cuboid', colliderScale: 0.45 },
+  light_prop: { colliderType: 'cuboid', colliderScale: 0.38 },
+  wall_section: { colliderType: 'cuboid', colliderScale: 0.55 },
+  building_small: { colliderType: 'trimesh', colliderScale: 0.5 },
+  building_large: { colliderType: 'trimesh', colliderScale: 0.5 },
+}
 
 export default function PropertiesPanel() {
   const selectedId = useEditorStore((s) => s.selectedPlacementId)
@@ -46,6 +62,127 @@ export default function PropertiesPanel() {
           <span style={valueStyle}>Collidable</span>
         </label>
         <div style={hintStyle}>Default: {getDefaultCollidableForAsset(asset) ? 'on' : 'off'}</div>
+
+        <div style={{ marginTop: 8 }}>
+          <label style={checkRowStyle}>
+            <input
+              type="checkbox"
+              checked={getPlacementSuppressGrass(placement, asset)}
+              onChange={(e) => {
+                updatePlacement(placement.id, {
+                  metadata: {
+                    ...(placement.metadata ?? {}),
+                    suppressGrass: e.target.checked,
+                  },
+                })
+              }}
+            />
+            <span style={valueStyle}>Suppress grass under object</span>
+          </label>
+          <div style={hintStyle}>Default: {getDefaultSuppressGrassForAsset(asset) ? 'on' : 'off'}</div>
+          <div style={{ marginTop: 6 }}>
+            <label style={labelStyle}>Grass Clear Radius</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="range"
+                min={0.25}
+                max={20}
+                step={0.1}
+                value={getPlacementGrassSuppressRadius(placement, asset)}
+                onChange={(e) => {
+                  updatePlacement(placement.id, {
+                    metadata: {
+                      ...(placement.metadata ?? {}),
+                      grassSuppressRadius: Number(e.target.value),
+                    },
+                  })
+                }}
+                style={{ flex: 1, accentColor: '#4a9fff' }}
+              />
+              <input
+                type="number"
+                min={0.25}
+                step={0.1}
+                value={Math.round(getPlacementGrassSuppressRadius(placement, asset) * 10) / 10}
+                onChange={(e) => {
+                  const r = parseFloat(e.target.value) || getDefaultGrassSuppressRadius(asset, placement.scale)
+                  updatePlacement(placement.id, {
+                    metadata: {
+                      ...(placement.metadata ?? {}),
+                      grassSuppressRadius: Math.max(0.25, r),
+                    },
+                  })
+                }}
+                style={{ ...inputStyle, width: 56 }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <label style={labelStyle}>Collider Type</label>
+          <select
+            value={getPlacementColliderType(placement, asset)}
+            onChange={(e) => {
+              const value = e.target.value as 'none' | 'cuboid' | 'trimesh'
+              updatePlacement(placement.id, {
+                metadata: {
+                  ...(placement.metadata ?? {}),
+                  colliderType: value,
+                },
+              })
+            }}
+            style={selectStyle}
+          >
+            <option value="none">none</option>
+            <option value="cuboid">cuboid</option>
+            <option value="trimesh">trimesh</option>
+          </select>
+          <div style={hintStyle}>Default: {getDefaultColliderType(asset)}</div>
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <label style={labelStyle}>Destructible (Future)</label>
+          <label style={checkRowStyle}>
+            <input
+              type="checkbox"
+              checked={Boolean(placement.metadata?.destructible ?? asset?.destructible)}
+              onChange={(e) => {
+                updatePlacement(placement.id, {
+                  metadata: {
+                    ...(placement.metadata ?? {}),
+                    destructible: e.target.checked,
+                  },
+                })
+              }}
+            />
+            <span style={valueStyle}>Enable destruction hooks</span>
+          </label>
+          <div style={{ marginTop: 6 }}>
+            <label style={labelStyle}>Destruction Profile</label>
+            <select
+              value={String(placement.metadata?.destructionProfile ?? 'none')}
+              onChange={(e) => {
+                const value = e.target.value
+                const defaults = PROFILE_DEFAULTS[value] ?? PROFILE_DEFAULTS.none
+                updatePlacement(placement.id, {
+                  metadata: {
+                    ...(placement.metadata ?? {}),
+                    destructionProfile: value,
+                    destructible: value !== 'none',
+                    colliderType: defaults.colliderType,
+                    colliderScale: defaults.colliderScale,
+                  },
+                })
+              }}
+              style={selectStyle}
+            >
+              {DESTRUCTION_PROFILES.map((profile) => (
+                <option key={profile.id} value={profile.id}>{profile.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
       <Vec3Input
         label="Position"
@@ -211,6 +348,16 @@ const inputStyle: React.CSSProperties = {
   padding: '3px 4px',
   fontSize: 12,
   fontFamily: 'monospace',
+}
+
+const selectStyle: React.CSSProperties = {
+  width: '100%',
+  background: '#2a2a3e',
+  border: '1px solid #444',
+  borderRadius: 3,
+  color: '#ddd',
+  padding: '3px 4px',
+  fontSize: 12,
 }
 
 const deleteBtn: React.CSSProperties = {
