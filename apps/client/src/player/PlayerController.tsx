@@ -162,6 +162,7 @@ export default function PlayerController() {
   const playerWorldPosRef = useRef(new THREE.Vector3(0, 5, 0))
   /** Projected muzzle origin (XZ) used to align LOS cone */
   const aimOriginPosRef = useRef(new THREE.Vector3(0, 5, 0))
+  const screenProjectRef = useRef(new THREE.Vector3())
 
   const setBallPosition = useStore((s) => s.setBallPosition)
   const setSmoothedCircleCenter = useStore((s) => s.setSmoothedCircleCenter)
@@ -218,7 +219,7 @@ export default function PlayerController() {
     placementColliders,
   ])
 
-  useFrame((_, dt) => {
+  useFrame((frameState, dt) => {
     if (!rigidBodyRef.current) return
 
     const clamped = Math.min(dt, 0.1)
@@ -321,11 +322,21 @@ export default function PlayerController() {
     // ── 3. Update posRef (ball-center Y for camera/shooting/store) ──
     posRef.current = { x: resolvedX, y: playerY, z: resolvedZ }
 
+    {
+      const p = screenProjectRef.current
+      p.set(resolvedX, playerY + PLAYER_HEIGHT * 0.5, resolvedZ)
+      p.project(frameState.camera)
+      const xPct = Math.max(0, Math.min(100, (p.x * 0.5 + 0.5) * 100))
+      const yPct = Math.max(0, Math.min(100, (-p.y * 0.5 + 0.5) * 100))
+      useStore.setState({ localScreenPos: { xPct, yPct } })
+    }
+
     // ── 4. Camera + input ──
     camera.update(posRef.current, clamped)
     const aimYaw = camera.getAimYaw(posRef.current)
     inputCapture.aimYaw = aimYaw
     inputCapture.yaw = aimYaw
+    useStore.setState({ localAimYaw: aimYaw })
     const input = inputCapture.consume()
     const aimAdsActive = !!(input.scope && !reloading)
     if (aimAdsActive !== adsVisualRef.current) {

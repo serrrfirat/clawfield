@@ -21,6 +21,8 @@ export default function GameHud() {
     const gameMode = useStore((s: any) => s.gameMode)
     const suppression = useStore((s: any) => s.suppression ?? 0)
     const flash = useStore((s: any) => s.flash ?? 0)
+    const localAimYaw = useStore((s: any) => Number(s.localAimYaw ?? 0))
+    const localScreenPos = useStore((s: any) => s.localScreenPos ?? { xPct: 50, yPct: 60 })
     const selectedGrenadeIndex = useStore((s: any) => s.selectedGrenadeIndex ?? 0)
     const myTeam = useStore((s: any) => s.myTeam)
     const capturePoints = useStore((s: any) => s.capturePoints)
@@ -68,6 +70,10 @@ export default function GameHud() {
             : 'INCURSION SCORE'
 
   const grenadeLabel = selectedGrenadeIndex === 1 ? 'SMOKE' : selectedGrenadeIndex === 2 ? 'FLASH' : 'FRAG'
+  const rearVisionAngle = `${((((localAimYaw * 180) / Math.PI) + 180) % 360 + 360) % 360}deg`
+  const backOffset = 6
+  const rearCx = Math.max(0, Math.min(100, Number(localScreenPos.xPct ?? 50) - Math.sin(localAimYaw) * backOffset))
+  const rearCy = Math.max(0, Math.min(100, Number(localScreenPos.yPct ?? 60) + Math.cos(localAimYaw) * backOffset))
 
   if (phase !== PHASES.start) return null
 
@@ -110,6 +116,15 @@ export default function GameHud() {
 
     return (
         <div className="game-hud">
+            <div
+              className="game-hud__rear-vision"
+              style={{
+                ['--rear-vision-angle' as any]: rearVisionAngle,
+                ['--rear-vision-cx' as any]: `${rearCx}%`,
+                ['--rear-vision-cy' as any]: `${rearCy}%`,
+              }}
+              aria-hidden
+            />
             <div className="game-hud__orders" aria-label="Current order">
                 <span className="game-hud__orders-avatar" />
                 <span className="game-hud__orders-text">{orderText}</span>

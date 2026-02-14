@@ -14,6 +14,28 @@
     text-transform: uppercase;
 }
 
+.game-hud__rear-vision {
+    --rear-vision-angle: 180deg;
+    --rear-vision-cx: 50%;
+    --rear-vision-cy: 60%;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background:
+        radial-gradient(circle at var(--rear-vision-cx) var(--rear-vision-cy), rgba(0, 0, 0, 0) 0 28%, rgba(0, 0, 0, 0.07) 58%, rgba(0, 0, 0, 0.16) 100%),
+        conic-gradient(from var(--rear-vision-angle) at var(--rear-vision-cx) var(--rear-vision-cy),
+            rgba(0, 0, 0, 0.3) 0deg,
+            rgba(0, 0, 0, 0.24) 64deg,
+            rgba(0, 0, 0, 0.08) 124deg,
+            rgba(0, 0, 0, 0) 154deg,
+            rgba(0, 0, 0, 0) 206deg,
+            rgba(0, 0, 0, 0.08) 236deg,
+            rgba(0, 0, 0, 0.24) 296deg,
+            rgba(0, 0, 0, 0.3) 360deg);
+    mix-blend-mode: multiply;
+}
+
 .game-hud__flash {
     position: absolute;
     inset: 0;

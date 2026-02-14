@@ -270,6 +270,8 @@ const createStore = () =>
             lobbyError: '' as string,
             pendingRespawnPosition: null as Vec3 | null,
             authoritativePosition: null as Vec3 | null,
+            localAimYaw: 0,
+            localScreenPos: { xPct: 50, yPct: 60 },
             consumeRespawnPosition: () => {
                 const pos = (useStore.getState() as any).pendingRespawnPosition as Vec3 | null
                 if (pos) set({ pendingRespawnPosition: null })
