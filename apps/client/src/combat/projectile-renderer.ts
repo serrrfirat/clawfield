@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { ProjectileState, Vec3 } from '@clawfield/shared';
 import { GRAVITY, MAT_METAL, MAT_WOOD, MAT_WOOD_DARK, MAT_CONCRETE, MAT_CONCRETE_DARK, MAT_ROAD } from '@clawfield/shared';
 import type { ParticleSystem } from './particle-system';
+import type { ImpactSystem } from './impact-system';
 import { soundManager, SoundId } from '../audio/sound-manager';
 
 /** Maximum number of point lights attached to projectiles (performance cap) */
@@ -49,6 +50,7 @@ export class ProjectileRenderer {
   private scene: THREE.Scene;
   private projectiles = new Map<number, TrackedProjectile>();
   private particles: ParticleSystem | null = null;
+  private impactSystem: ImpactSystem | null = null;
   private voxelGetter: ((wx: number, wy: number, wz: number) => number) | null = null;
 
   /** Local player ID — used to skip own projectiles from server data */
@@ -101,6 +103,10 @@ export class ProjectileRenderer {
   /** Set the particle system used for bullet impact effects */
   setParticleSystem(ps: ParticleSystem): void {
     this.particles = ps;
+  }
+
+  setImpactSystem(impact: ImpactSystem): void {
+    this.impactSystem = impact;
   }
 
   setVoxelGetter(getter: (wx: number, wy: number, wz: number) => number): void {
@@ -364,12 +370,20 @@ export class ProjectileRenderer {
   /** Remove a projectile from the scene and clean up its resources */
   private removeProjectile(id: number, tracked: TrackedProjectile): void {
     const pos = tracked.mesh.position;
+    const wx = Math.floor(pos.x);
+    const wy = Math.floor(pos.y);
+    const wz = Math.floor(pos.z);
+    const mat = this.voxelGetter ? this.voxelGetter(wx, wy, wz) : 0;
+
+    if (this.impactSystem) {
+      this.impactSystem.spawnImpact({ x: pos.x, y: pos.y, z: pos.z }, tracked.velocity, mat);
+    }
 
     // Spawn impact sparks at the projectile's last position
     if (this.particles) {
       this.particles.emit({
         position: { x: pos.x, y: pos.y, z: pos.z },
-        count: 15,
+        count: 7,
         speedMin: 2,
         speedMax: 7,
         spread: Math.PI,
@@ -384,11 +398,6 @@ export class ProjectileRenderer {
 
     // Play impact sound for all projectiles (server and local predicted)
     {
-      const wx = Math.floor(pos.x);
-      const wy = Math.floor(pos.y);
-      const wz = Math.floor(pos.z);
-      const mat = this.voxelGetter ? this.voxelGetter(wx, wy, wz) : 0;
-
       let impactSound = SoundId.ImpactDirt;
       if (mat === MAT_METAL) impactSound = SoundId.ImpactMetal;
       else if (mat === MAT_WOOD || mat === MAT_WOOD_DARK) impactSound = SoundId.ImpactWood;

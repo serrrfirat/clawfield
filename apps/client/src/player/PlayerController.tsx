@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react'
+import { useRef, useMemo, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { RigidBody, BallCollider } from '@react-three/rapier'
@@ -141,6 +141,12 @@ export default function PlayerController() {
   const inputCapture = useMemo(() => new TopDownInputCapture(), [])
   const camera = useTopDownCamera()
   const network = useNetwork()
+
+  useEffect(() => {
+    return () => {
+      inputCapture.dispose()
+    }
+  }, [inputCapture])
 
   const posRef = useRef<Vec3>({ x: 0, y: 5, z: 0 })
   const vyRef = useRef(0)
@@ -471,6 +477,10 @@ export default function PlayerController() {
         x: muzzlePos.x + dirX * shootRange,
         y: muzzlePos.y + dirY * shootRange,
         z: muzzlePos.z + dirZ * shootRange,
+      }
+
+      if (combatSystems.gunSmoke) {
+        combatSystems.gunSmoke.spawnBurst(muzzlePos, { x: dirX, y: dirY, z: dirZ })
       }
 
       if (combatSystems.projectiles) {

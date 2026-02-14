@@ -3,6 +3,8 @@ import { useThree, useFrame } from '@react-three/fiber'
 import { ProjectileRenderer } from './projectile-renderer'
 import { ParticleSystem } from './particle-system'
 import { GrenadeRenderer } from './grenade-renderer'
+import { GunSmokeSystem } from './gun-smoke-system'
+import { ImpactSystem } from './impact-system'
 import { soundManager, SoundId } from '../audio/sound-manager'
 import useStore from '../stores/useStore'
 
@@ -14,10 +16,14 @@ export const combatSystems: {
   projectiles: ProjectileRenderer | null
   particles: ParticleSystem | null
   grenades: GrenadeRenderer | null
+  gunSmoke: GunSmokeSystem | null
+  impacts: ImpactSystem | null
 } = {
   projectiles: null,
   particles: null,
   grenades: null,
+  gunSmoke: null,
+  impacts: null,
 }
 
 /**
@@ -31,6 +37,8 @@ export default function CombatEffects() {
   const particles = useRef<ParticleSystem | null>(null)
   const projectiles = useRef<ProjectileRenderer | null>(null)
   const grenades = useRef<GrenadeRenderer | null>(null)
+  const gunSmoke = useRef<GunSmokeSystem | null>(null)
+  const impacts = useRef<ImpactSystem | null>(null)
 
   // Initialize combat systems on mount
   useEffect(() => {
@@ -41,14 +49,23 @@ export default function CombatEffects() {
     pr.setParticleSystem(ps)
     projectiles.current = pr
 
+    const impactSystem = new ImpactSystem(scene)
+    impacts.current = impactSystem
+    pr.setImpactSystem(impactSystem)
+
     const gr = new GrenadeRenderer(scene)
     gr.setParticleSystem(ps)
     grenades.current = gr
+
+    const gs = new GunSmokeSystem(scene)
+    gunSmoke.current = gs
 
     // Expose to other components (e.g. PlayerController for local projectile spawning)
     combatSystems.projectiles = pr
     combatSystems.particles = ps
     combatSystems.grenades = gr
+    combatSystems.gunSmoke = gs
+    combatSystems.impacts = impactSystem
 
     // Initialize audio context on first interaction
     const initAudio = () => {
@@ -64,9 +81,13 @@ export default function CombatEffects() {
       combatSystems.projectiles = null
       combatSystems.particles = null
       combatSystems.grenades = null
+      combatSystems.gunSmoke = null
+      combatSystems.impacts = null
       pr.dispose()
       ps.dispose()
       gr.dispose()
+      gs.dispose()
+      impactSystem.dispose()
       window.removeEventListener('click', initAudio)
       window.removeEventListener('keydown', initAudio)
     }
@@ -178,6 +199,14 @@ export default function CombatEffects() {
 
     if (grenades.current) {
       grenades.current.update(clampedDt)
+    }
+
+    if (gunSmoke.current) {
+      gunSmoke.current.update(clampedDt)
+    }
+
+    if (impacts.current) {
+      impacts.current.update(clampedDt)
     }
 
     // Update audio listener position
