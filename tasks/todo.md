@@ -25,6 +25,62 @@ Verification:
 - `pnpm --filter client build` fails due to pre-existing unrelated type errors in other files (`src/world/*`, `src/ui/*`, etc.), not in touched weapon files.
 - `pnpm --filter client exec tsc --noEmit --pretty false 2>&1 | rg "SoldierModel|weapon-visuals|grenade-renderer|PlayerController|RemotePlayerEntity|weapons/"` returned no matches (no TS errors in modified files).
 
+## Active Task: Add God Rays + Bloom post-processing
+
+### Checklist
+- [x] Add scene post-processing pipeline component using `@react-three/postprocessing`.
+- [x] Add a dedicated sun light-source mesh for `GodRays`.
+- [x] Add global post-processing parameters in client store for weather-driven tuning.
+- [x] Expose key controls for iteration (God Rays and Bloom) in debug Leva panel.
+- [x] Verify touched files are free of targeted TypeScript errors.
+
+### Review
+- Added `apps/client/src/world/PostProcessing.tsx` with `EffectComposer`, `GodRays`, and `Bloom` for a soft summer look.
+- Mounted post FX in gameplay experience (`apps/client/src/world/Experience.tsx`) after world rendering.
+- Added `postProcessingParameters` in `apps/client/src/stores/useStore.tsx` so weather/game systems can drive visual intensity.
+- Added `Post FX` control group in `apps/client/src/world/Controls.tsx` for live tuning.
+- Targeted check passed: `pnpm --filter client exec tsc --noEmit --pretty false 2>&1 | rg "PostProcessing|postProcessingParameters|Controls.tsx|Experience.tsx"`.
+
+## Active Task: Add new France AI GLBs and normalize scale
+
+### Checklist
+- [x] Copy new GLBs into runtime public model directory.
+- [x] Register new `france-ai-*` catalog entries for editor usage.
+- [x] Add bake factors for new assets and apply in-place scale baking.
+- [x] Preserve existing tuned default scales while baking new assets.
+- [x] Validate catalog JSON and texture metadata for new GLBs.
+
+### Review
+- Added 5 new AI assets into `apps/client/public/models/props/france/ai_gen/` and synced to `assets/models/props/france/ai_gen/`.
+- Registered new entries in `apps/client/src/editor/asset-catalog.json`:
+  - `france-ai-narrow-townhouse`
+  - `france-ai-wedge-stone-building`
+  - `france-ai-stone-village-house`
+  - `france-ai-water-canal-section`
+  - `france-ai-z-ruin`
+- Updated `tools/bake-ai-glb-scales.ts` with new factors and removed forced `defaultScale=1` resets so existing hand-tuned sizes stay intact.
+- Ran bake script successfully (`Baked AI GLBs: 10`, `Skipped already-baked files: 48`) and confirmed new files still contain textures.
+
+## Active Task: Add cloud shadows and soft shadow filtering
+
+### Checklist
+- [x] Enable renderer shadows in runtime canvas.
+- [x] Add moving cloud-cookie spotlight (projected texture) driven by configurable parameters.
+- [x] Add drei `SoftShadows` integration for softer painterly shadow edges.
+- [x] Ensure map placement meshes cast/receive shadows.
+- [x] Expose cloud/soft shadow controls in Leva.
+
+### Review
+- Updated lighting pipeline in `apps/client/src/world/Lights.tsx`:
+  - directional sun shadow
+  - projected cloud cookie spotlight using `noiseTexture.png` map
+  - animated cookie offset in `useFrame`
+  - optional `SoftShadows` via drei
+- Added terrain-level moving cloud shadow modulation in `apps/client/src/shaders/terrain/fragment.glsl` + `apps/client/src/materials/TerrainMaterial.tsx` so cloud movement is visible on the ground even with custom terrain shading.
+- Enabled shadows on canvas in `apps/client/src/index.tsx`.
+- Enabled cast/receive shadow flags for placed GLBs in `apps/client/src/world/MapPlacements.tsx`.
+- Added tuning params in store (`cloudShadowParameters`, `softShadowParameters`) and wired controls in `apps/client/src/world/Controls.tsx`.
+
 ## Active Task: In-game HUD style pass (reference-inspired)
 
 ### Checklist
@@ -75,6 +131,23 @@ Verification:
 - Water shader source remains untouched under vendored path and is used through an adapter component.
 - Runtime and editor now render stylized water as a map element controlled by map `waterLevel`.
 
+## Active Task: Generate fun playable map with France AI assets
+
+### Checklist
+- [x] Import `assets/france/ai_gen` GLBs into public runtime model directory.
+- [x] Register AI-generated assets in editor map builder catalog.
+- [x] Author a new playable mapdef focused on readable lanes/chokepoints and central objective combat.
+- [x] Validate JSON structure for new mapdef and asset catalog.
+
+### Review
+- Added `assets/maps/france-ai-frontline.mapdef.json` with lane-based layout, mixed cover densities, and flanking routes.
+- Added new `france-ai-*` catalog entries and copied GLBs into `apps/client/public/models/props/france/ai_gen/`.
+
+Follow-up:
+- Added pinata-ready collision metadata support (`colliderType`, `colliderScale`, `destructible`, `destructionProfile`) in editor asset and placement types.
+- Runtime map placements now support per-placement collider mode (`none`/`cuboid`/`trimesh`) and default to enabled colliders.
+- Properties panel now exposes collider type + destructible toggle for authored gameplay metadata.
+
 ## Active Task: Implement all 'Now' combat features
 
 ### Checklist
@@ -98,6 +171,12 @@ Verification:
 - [ ] Confirm ADS/hip-fire feel and suppression intensity are tuned for top-down readability.
 - [x] Local projectile visualization now applies spread (with bloom/recovery) instead of always tracing straight to cursor.
 - [x] AI Game Master activation architecture documented in `docs/ai-game-master-activation-plan.md` with phased rollout and guardrails.
+
+### Next pass (visibility / LOS)
+- [x] Add front-facing FOV visibility for remote player rendering.
+- [x] Hide remote players when line-of-sight is blocked by obstacle discs.
+- [x] Add subtle rear darkening visual cue (Project Zomboid-style readability aid).
+- [x] Verify targeted client typecheck for touched visibility files.
 
 ## Completed: BattleBit-Style Visual Enhancement (5 Phases)
 - [x] Phase 1: Per-Vertex Ambient Occlusion (mesher.ts, chunk-mesh.ts, world-renderer.ts, viewer.ts, voxel-object-renderer.ts)
