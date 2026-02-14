@@ -269,6 +269,7 @@ const createStore = () =>
             obstacleDiscs: [] as CollisionDisc[],
             lobbyError: '' as string,
             pendingRespawnPosition: null as Vec3 | null,
+            respawnEndsAt: 0,
             authoritativePosition: null as Vec3 | null,
             localAimYaw: 0,
             localScreenPos: { xPct: 50, yPct: 60 },
@@ -327,6 +328,7 @@ const createStore = () =>
                             placementColliders: msg.placementColliders ?? [],
                             obstacleDiscs: msg.obstacleDiscs ?? [],
                             connected: true,
+                            respawnEndsAt: 0,
                             lobbyPhase: 'in_game',
                             lobbyError: '',
                         })
@@ -447,15 +449,19 @@ const createStore = () =>
                         break
 
                     case 'death':
-                        set({ alive: false })
+                        set({
+                            alive: false,
+                            downed: false,
+                            respawnEndsAt: Date.now() + Math.max(0, Number(msg.respawnTime ?? 0)) * 1000,
+                        })
                         break
 
                     case 'downed':
-                        set({ downed: true })
+                        set({ downed: true, respawnEndsAt: 0 })
                         break
 
                     case 'revived':
-                        set({ alive: true, downed: false, health: msg.health })
+                        set({ alive: true, downed: false, health: msg.health, respawnEndsAt: 0 })
                         break
 
                     case 'respawn':
@@ -463,6 +469,7 @@ const createStore = () =>
                             alive: true,
                             downed: false,
                             health: 100,
+                            respawnEndsAt: 0,
                             pendingRespawnPosition: msg.position,
                         })
                         break

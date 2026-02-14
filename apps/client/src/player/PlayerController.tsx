@@ -384,7 +384,7 @@ export default function PlayerController() {
     playerWorldPosRef.current.set(resolvedX, playerY, resolvedZ)
     aimOriginPosRef.current.set(aimOriginX, playerY, aimOriginZ)
 
-    if (!alive) {
+    if (!alive || downed) {
       // Still update camera/store but skip movement
       const pos3 = new THREE.Vector3(resolvedX, playerY, resolvedZ)
       setBallPosition(pos3)
@@ -582,7 +582,7 @@ export default function PlayerController() {
         weaponRange={MAX_AIM_DISTANCE}
         adsActive={adsVisual}
         obstacleDiscs={obstacleDiscs}
-        visible={alive}
+        visible={alive && !downed}
       />
     </>
   )

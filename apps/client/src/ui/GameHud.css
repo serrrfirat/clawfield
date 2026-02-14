@@ -45,6 +45,21 @@
     z-index: 120;
 }
 
+.game-hud__respawn {
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    transform: translate(-50%, -50%);
+    padding: 0.55rem 0.95rem 0.45rem;
+    border: 0.12rem solid rgba(18, 22, 28, 0.86);
+    background: rgba(246, 246, 244, 0.92);
+    color: #131516;
+    box-shadow: 0 0.2rem 0 rgba(0, 0, 0, 0.28);
+    font-size: 1.25rem;
+    letter-spacing: 0.08em;
+    z-index: 130;
+}
+
 .game-hud__orders {
     position: absolute;
     top: 1.1rem;

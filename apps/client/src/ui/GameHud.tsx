@@ -21,6 +21,9 @@ export default function GameHud() {
     const gameMode = useStore((s: any) => s.gameMode)
     const suppression = useStore((s: any) => s.suppression ?? 0)
     const flash = useStore((s: any) => s.flash ?? 0)
+    const alive = useStore((s: any) => Boolean(s.alive))
+    const downed = useStore((s: any) => Boolean(s.downed))
+    const respawnEndsAt = useStore((s: any) => Number(s.respawnEndsAt ?? 0))
     const localAimYaw = useStore((s: any) => Number(s.localAimYaw ?? 0))
     const localScreenPos = useStore((s: any) => s.localScreenPos ?? { xPct: 50, yPct: 60 })
     const selectedGrenadeIndex = useStore((s: any) => s.selectedGrenadeIndex ?? 0)
@@ -35,6 +38,7 @@ export default function GameHud() {
   const remotePlayers = useStore((s: any) => s.remotePlayers)
   const myId = useStore((s: any) => s.myId)
   const [mapOpen, setMapOpen] = useState(false)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -45,6 +49,12 @@ export default function GameHud() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
+
+  useEffect(() => {
+    if (alive || downed || respawnEndsAt <= 0) return
+    const timer = window.setInterval(() => setNowMs(Date.now()), 100)
+    return () => window.clearInterval(timer)
+  }, [alive, downed, respawnEndsAt])
 
     const objectiveLabel = capturePoints?.length
         ? String(capturePoints[0].id ?? '').trim().toUpperCase() || 'OBJECTIVE'
@@ -113,6 +123,9 @@ export default function GameHud() {
   }))
 
   const orderText = ORDER_TEXT[myTeam % ORDER_TEXT.length]
+  const respawnRemaining = !alive && !downed && respawnEndsAt > 0
+    ? Math.max(0, (respawnEndsAt - nowMs) / 1000)
+    : 0
 
     return (
         <div className="game-hud">
@@ -163,6 +176,12 @@ export default function GameHud() {
 
       {flash > 0.01 && (
         <div className="game-hud__flash" style={{ opacity: Math.min(0.85, flash * 0.9) }} aria-hidden />
+      )}
+
+      {respawnRemaining > 0 && (
+        <div className="game-hud__respawn" aria-label="Respawn timer">
+          Respawning In {respawnRemaining.toFixed(1)}
+        </div>
       )}
 
       {mapOpen && (

@@ -33,6 +33,7 @@ export function useNetwork(): TransportClient | null {
 export function NetworkProvider({ children }: { children: React.ReactNode }) {
   const handleServerMessage = useStore((s) => s.handleServerMessage)
   const clientRef = useRef<TransportClient | null>(null)
+  const lastAutoDeployRef = useRef(0)
 
   if (!clientRef.current) {
     clientRef.current = NETCODE_BACKEND === 'colyseus'
@@ -63,6 +64,25 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
       }
     )
     return unsub
+  }, [])
+
+  // Auto-respawn deploy after death timer expires.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const state: any = useStore.getState()
+      if (!state.connected) return
+      if (state.alive) return
+      const endsAt = Number(state.respawnEndsAt ?? 0)
+      if (endsAt <= 0 || Date.now() < endsAt) return
+
+      const now = Date.now()
+      if (now - lastAutoDeployRef.current < 800) return
+      lastAutoDeployRef.current = now
+
+      clientRef.current?.send({ type: 'deploy', classId: 'assault', weaponId: 'rifle', spawnPointId: 'base' })
+    }, 150)
+
+    return () => window.clearInterval(timer)
   }, [])
 
   return (
