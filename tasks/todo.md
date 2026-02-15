@@ -1,5 +1,32 @@
 # Clawfield - Task Tracking
 
+## Completed: Building Destruction & Explosion VFX System (Foxhole-Style)
+
+### Checklist
+- [x] Create `debris-meshes.ts` — procedural debris geometry library (concrete/wood/metal variants)
+- [x] Create `scorch-decal.ts` — ground scorch mark system (pool of 16, fade-in, procedural texture)
+- [x] Create `camera-shake.ts` — distance-attenuated screen shake system
+- [x] Create `explosion-vfx.ts` — multi-phase explosion system (flash→fireball→debris→dust→scorch)
+- [x] Wire into `CombatEffects.tsx` — init + update + dispose new systems
+- [x] Strip old explosion code from `grenade-renderer.ts` (kaboom shader, explosion sphere, particles)
+- [x] Replace VFX in `placement-destruction-view.ts` (remove smoke planes, use ExplosionVFXSystem)
+- [x] Add material type inference in `MapPlacements.tsx` (vegetation→wood, vehicle→metal, default→concrete)
+- [x] Vite build passes with no new errors
+
+### Files Added
+- `apps/client/src/combat/debris-meshes.ts`
+- `apps/client/src/combat/scorch-decal.ts`
+- `apps/client/src/combat/camera-shake.ts`
+- `apps/client/src/combat/explosion-vfx.ts`
+
+### Files Modified
+- `apps/client/src/combat/CombatEffects.tsx`
+- `apps/client/src/combat/grenade-renderer.ts`
+- `apps/client/src/world/placement-destruction-view.ts`
+- `apps/client/src/world/MapPlacements.tsx`
+
+---
+
 ## Active Task: Server-authoritative placement destruction
 
 ### Checklist

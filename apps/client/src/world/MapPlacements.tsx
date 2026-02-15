@@ -131,16 +131,26 @@ function PlacedGLB({ asset, path, placement, colliderId, enableColliders, destro
     const colliderType = getPlacementColliderType(placementAsEditor, asset)
     const destructionRadius = Math.max(0.35, Math.max(halfExtents[0], halfExtents[2]))
 
+    // Infer material type from asset category or component ID
+    const materialType = useMemo(() => {
+        const id = (placement.componentId ?? '').toLowerCase()
+        const cat = (asset.category ?? '').toLowerCase()
+        if (cat.includes('vegetation') || id.includes('tree') || id.includes('wood') || id.includes('fence') || id.includes('crate')) return 'wood' as const
+        if (id.includes('metal') || id.includes('vehicle') || id.includes('barrel') || id.includes('pipe') || id.includes('car')) return 'metal' as const
+        return 'concrete' as const
+    }, [placement.componentId, asset.category])
+
     useEffect(() => {
         placementDestructionView.registerPlacement(colliderId, cloned, destructionRadius, {
             groundY: placement.position[1],
             destroyed,
+            materialType,
         })
 
         return () => {
             placementDestructionView.unregisterPlacement(colliderId)
         }
-    }, [colliderId, cloned, destructionRadius, placement.position, destroyed])
+    }, [colliderId, cloned, destructionRadius, placement.position, destroyed, materialType])
 
     if (!enableColliders || !collidable || colliderType === 'none') {
         return (

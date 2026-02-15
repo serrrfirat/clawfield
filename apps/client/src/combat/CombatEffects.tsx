@@ -7,6 +7,8 @@ import { GrenadeRenderer } from './grenade-renderer'
 import { GunSmokeSystem } from './gun-smoke-system'
 import { ImpactSystem } from './impact-system'
 import { BillboardSmokeSystem } from './billboard-smoke-system'
+import { ExplosionVFXSystem } from './explosion-vfx'
+import { CameraShake } from './camera-shake'
 import { soundManager, SoundId } from '../audio/sound-manager'
 import useStore from '../stores/useStore'
 import { placementDestructionView } from '../world/placement-destruction-view'
@@ -22,6 +24,8 @@ export const combatSystems: {
   gunSmoke: GunSmokeSystem | null
   impacts: ImpactSystem | null
   billboardSmoke: BillboardSmokeSystem | null
+  explosionVFX: ExplosionVFXSystem | null
+  cameraShake: CameraShake | null
 } = {
   projectiles: null,
   particles: null,
@@ -29,6 +33,8 @@ export const combatSystems: {
   gunSmoke: null,
   impacts: null,
   billboardSmoke: null,
+  explosionVFX: null,
+  cameraShake: null,
 }
 
 /**
@@ -45,6 +51,8 @@ export default function CombatEffects() {
   const gunSmoke = useRef<GunSmokeSystem | null>(null)
   const impacts = useRef<ImpactSystem | null>(null)
   const billboardSmoke = useRef<BillboardSmokeSystem | null>(null)
+  const explosionVFX = useRef<ExplosionVFXSystem | null>(null)
+  const cameraShakeRef = useRef<CameraShake | null>(null)
 
   // Initialize combat systems on mount
   useEffect(() => {
@@ -72,6 +80,13 @@ export default function CombatEffects() {
     const bs = new BillboardSmokeSystem(scene)
     billboardSmoke.current = bs
 
+    const shake = new CameraShake()
+    cameraShakeRef.current = shake
+
+    const expVFX = new ExplosionVFXSystem(scene, shake)
+    expVFX.setParticleSystem(ps)
+    explosionVFX.current = expVFX
+
     // Expose to other components (e.g. PlayerController for local projectile spawning)
     combatSystems.projectiles = pr
     combatSystems.particles = ps
@@ -79,8 +94,11 @@ export default function CombatEffects() {
     combatSystems.gunSmoke = gs
     combatSystems.impacts = impactSystem
     combatSystems.billboardSmoke = bs
+    combatSystems.explosionVFX = expVFX
+    combatSystems.cameraShake = shake
     placementDestructionView.setScene(scene)
     placementDestructionView.setParticleSystem(ps)
+    placementDestructionView.setExplosionVFX(expVFX)
 
     // Initialize audio context on first interaction
     const initAudio = () => {
@@ -99,13 +117,17 @@ export default function CombatEffects() {
       combatSystems.gunSmoke = null
       combatSystems.impacts = null
       combatSystems.billboardSmoke = null
+      combatSystems.explosionVFX = null
+      combatSystems.cameraShake = null
       pr.dispose()
       ps.dispose()
       gr.dispose()
       gs.dispose()
       impactSystem.dispose()
       bs.dispose()
+      expVFX.dispose()
       placementDestructionView.setParticleSystem(null)
+      placementDestructionView.setExplosionVFX(null)
       placementDestructionView.setScene(null)
       window.removeEventListener('click', initAudio)
       window.removeEventListener('keydown', initAudio)
@@ -151,7 +173,13 @@ export default function CombatEffects() {
     const store = useStore.getState() as any
     const explosions = store.consumeExplosions()
     for (const exp of explosions) {
-      grenades.current?.addExplosion(exp.position, exp.radius)
+      // Use new explosion VFX system instead of old grenade-renderer explosions
+      if (explosionVFX.current) {
+        const pos = new THREE.Vector3(exp.position.x, exp.position.y, exp.position.z)
+        // Infer tier from radius: small for grenades, medium for larger
+        const tier = exp.radius > 6 ? 'large' as const : exp.radius > 4 ? 'medium' as const : 'small' as const
+        explosionVFX.current.spawnExplosion(pos, tier)
+      }
     }
 
     const flashes = store.consumeFlashDetonations ? store.consumeFlashDetonations() : []
@@ -286,6 +314,10 @@ export default function CombatEffects() {
 
     if (billboardSmoke.current) {
       billboardSmoke.current.update(clampedDt, camera)
+    }
+
+    if (explosionVFX.current) {
+      explosionVFX.current.update(clampedDt, camera)
     }
 
     placementDestructionView.update(clampedDt, camera)
