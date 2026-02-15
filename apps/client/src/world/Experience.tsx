@@ -14,6 +14,7 @@ import CombatEffects from '../combat/CombatEffects'
 import useStore from '../stores/useStore'
 import { TerrainUniformsContext, type TerrainUniformsRef } from './TerrainUniformsContext'
 import PostProcessing from './PostProcessing'
+import TrailRenderer from './TrailRenderer'
 
 export default function Experience() {
     const perfVisible = useStore((state) => state.perfVisible)
@@ -37,6 +38,7 @@ export default function Experience() {
             </Physics>
 
             <CombatEffects />
+            <TrailRenderer />
             <PostProcessing />
             <Controls />
             <BackgroundSphere color={backgroundColor} />
