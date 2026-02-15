@@ -10,8 +10,7 @@ export default function TrailRenderer() {
   const { gl } = useThree()
   const setTrailTexture = useStore((state) => state.setTrailTexture)
   const trailParameters = useStore((state) => state.trailParameters)
-  const terrainParameters = useStore((state) => state.terrainParameters)
-  const ballPosition = useStore((state) => state.ballPosition)
+  // const terrainParameters = useStore((state) => state.terrainParameters) // Don't subscribe to all params if not needed
   
   // We need ping-pong buffers for the feedback loop (fade trail)
   const renderTargetA = useFBO(RESOLUTION, RESOLUTION, {
@@ -127,12 +126,16 @@ export default function TrailRenderer() {
   }, [trailScene, fadeMesh, brushMesh])
 
   useEffect(() => {
-    if (ballPosition) {
-      lastPos.current.copy(ballPosition)
+    const ballPos = useStore.getState().ballPosition
+    if (ballPos) {
+      lastPos.current.copy(ballPos)
     }
   }, []) // Initialize start pos
 
   useFrame((state, delta) => {
+    const ballPosition = useStore.getState().ballPosition
+    const terrainParameters = useStore.getState().terrainParameters
+    
     // 1. Calculate player movement offset in UV space
     // The shader uses chunk size. We need to match this scale.
     // If player moves +X by 1 unit, they move 1/chunkSize of the texture.
