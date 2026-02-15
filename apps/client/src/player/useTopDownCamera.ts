@@ -27,6 +27,7 @@ const AZIMUTH = 0
 
 export function useTopDownCamera() {
   const { camera } = useThree()
+  const baseFovRef = useRef<number | null>(null)
   const state = useRef<TopDownCameraState>({
     followPos: new THREE.Vector3(),
     cursorWorldPos: new THREE.Vector3(),
@@ -45,9 +46,18 @@ export function useTopDownCamera() {
     return () => document.removeEventListener('mousemove', onMouseMove)
   }, [])
 
-  const update = (playerPos: Vec3, dt: number) => {
+  const update = (playerPos: Vec3, dt: number, suppression = 0) => {
     const s = state.current
     const cam = camera as THREE.PerspectiveCamera
+
+    if (baseFovRef.current === null) {
+      baseFovRef.current = cam.fov
+    }
+    const baseFov = baseFovRef.current ?? cam.fov
+    const suppressionLevel = THREE.MathUtils.clamp(suppression, 0, 1)
+    const suppressionFov = THREE.MathUtils.lerp(baseFov, Math.max(30, baseFov - 4), suppressionLevel)
+    cam.fov = THREE.MathUtils.lerp(cam.fov, suppressionFov, 1 - Math.pow(0.8, dt * 60))
+    cam.updateProjectionMatrix()
 
     // Update ground plane
     _groundPlane.constant = -playerPos.y

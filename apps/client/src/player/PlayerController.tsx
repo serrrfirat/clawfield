@@ -125,13 +125,18 @@ function getVisualEffectiveSpreadForWeapon(
   weapon: { spread: number; adsSpreadMultiplier: number; recoilRandom: number },
   adsActive: boolean,
   bloom: number,
+  suppression: number,
+  flash: number,
 ): number {
   const hipSpread = weapon.spread + bloom
   const hipFirePenalty = adsActive ? 1 : 1.4
   const adsMultiplier = adsActive ? weapon.adsSpreadMultiplier : 1
   const recoilChaos = 1 + Math.min(0.75, weapon.recoilRandom * 30)
   const stanceChaos = adsActive ? 1.05 : 1.45
-  return hipSpread * hipFirePenalty * adsMultiplier * recoilChaos * stanceChaos
+  const suppressionChaos = 1 + THREE.MathUtils.clamp(suppression, 0, 1) * 0.9
+  const flashChaos = 1 + THREE.MathUtils.clamp(flash, 0, 1) * 1.1
+
+  return hipSpread * hipFirePenalty * adsMultiplier * recoilChaos * stanceChaos * suppressionChaos * flashChaos
 }
 
 /** Default weapon for client-predicted projectiles */
@@ -179,6 +184,9 @@ export default function PlayerController() {
   const connected = useStore((s: any) => s.connected)
   const placementColliders = useStore((s: any) => s.placementColliders)
   const obstacleDiscsFromServer = useStore((s: any) => s.obstacleDiscs)
+  const destroyedPlacementColliders = useStore((s: any) => s.destroyedPlacementColliders ?? [])
+  const suppression = useStore((s: any) => s.suppression ?? 0)
+  const flash = useStore((s: any) => s.flash ?? 0)
   const alive = useStore((s) => s.alive)
   const downed = useStore((s) => s.downed)
   const reloading = useStore((s) => s.reloading)
@@ -207,14 +215,16 @@ export default function PlayerController() {
   )
 
   const obstacleDiscs = useMemo(() => {
+    const destroyedSet = new Set<string>(destroyedPlacementColliders)
     if (connected) {
-      return obstacleDiscsFromServer ?? []
+      return (obstacleDiscsFromServer ?? []).filter((d: any) => !destroyedSet.has(d.id))
     }
     const cfg = matchConfig ?? DEFAULT_HEIGHTMAP_CONFIG
-    return [...buildHeightmapObstacleDiscs(cfg), ...(placementColliders ?? [])]
+    return [...buildHeightmapObstacleDiscs(cfg), ...(placementColliders ?? [])].filter((d: any) => !destroyedSet.has(d.id))
   }, [
     connected,
     obstacleDiscsFromServer,
+    destroyedPlacementColliders,
     matchConfig?.seed,
     matchConfig?.terrain?.scale,
     matchConfig?.terrain?.amplitude,
@@ -338,7 +348,7 @@ export default function PlayerController() {
     }
 
     // ── 4. Camera + input ──
-    camera.update(posRef.current, clamped)
+    camera.update(posRef.current, clamped, suppression)
     const aimYaw = camera.getAimYaw(posRef.current)
     inputCapture.aimYaw = aimYaw
     inputCapture.yaw = aimYaw
@@ -459,7 +469,13 @@ export default function PlayerController() {
         dirZ = -Math.cos(aimYaw)
       }
 
-      const visualSpread = getVisualEffectiveSpreadForWeapon(activeWeapon, aimAdsActive, localBloomRef.current)
+      const visualSpread = getVisualEffectiveSpreadForWeapon(
+        activeWeapon,
+        aimAdsActive,
+        localBloomRef.current,
+        suppression,
+        flash,
+      )
       const spreadDir = applyDirectionalSpread({ x: dirX, y: dirY, z: dirZ }, visualSpread)
       dirX = spreadDir.x
       dirY = spreadDir.y
@@ -486,8 +502,11 @@ export default function PlayerController() {
       if (combatSystems.projectiles) {
         combatSystems.projectiles.spawnLocal(
           muzzlePos,
-          { x: dirX, y: dirY, z: dirZ },
-          activeWeapon.projectileSpeed,
+          {
+            x: dirX * activeWeapon.projectileSpeed,
+            y: dirY * activeWeapon.projectileSpeed,
+            z: dirZ * activeWeapon.projectileSpeed,
+          },
           shootRange,
           tracerTargetPos,
         )
@@ -541,7 +560,8 @@ export default function PlayerController() {
         } else if (isFlashGrenade) {
           // Flash grenade motion/collision is server-authoritative.
         } else {
-          combatSystems.grenades.spawnLocal(eyePos, throwVelocity)
+          // Frag grenade motion/collision is server-authoritative.
+          // Skip local predicted frag to avoid client-only terrain drift/falloff.
         }
       }
     }
