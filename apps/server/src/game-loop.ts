@@ -113,7 +113,12 @@ const OUT_OF_BOUNDS_MARGIN = 8;
 const OUT_OF_BOUNDS_FALL_DEPTH = 24;
 const LAG_COMPENSATION_MS = 0;
 const POSITION_HISTORY_WINDOW_MS = 1500;
-const TERRAIN_STONE_DESTRUCTIBLE_RADIUS_MIN = 1.0;
+const TERRAIN_STONE_DESTRUCTIBLE_RADIUS_MIN = 0.55;
+const ENVIRONMENT_DESTRUCTION_WEAPONS = new Set<string>([
+  'rocket_launcher',
+  'tank_cannon',
+  'tank_shell',
+]);
 
 /** Lobby player info passed to GameLoop at start */
 export interface LobbyPlayerInfo {
@@ -1432,6 +1437,7 @@ export class GameLoop {
     // Bullet voxel destruction disabled — only explosions destroy terrain for now
     if (this.heightmapMode && projectileObstacleHits.length > 0) {
       for (const hit of projectileObstacleHits) {
+        if (!ENVIRONMENT_DESTRUCTION_WEAPONS.has(hit.weaponId)) continue;
         const collider = this.heightmapObstacles.find((c) => c.id === hit.colliderId);
         if (!collider || collider.destructible !== true) continue;
         if (this.destroyedPlacementColliders.has(collider.id)) continue;

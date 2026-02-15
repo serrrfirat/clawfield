@@ -13,7 +13,12 @@ export interface PlacementLike {
 
 function inferDestructible(componentId: string): boolean {
   const id = componentId.toLowerCase();
-  return id.includes('rock') || id.includes('stone') || id.includes('boulder');
+  return (
+    id.includes('rock') ||
+    id.includes('stone') ||
+    id.includes('boulder') ||
+    id.includes('prop')
+  );
 }
 
 function inferBaseRadius(componentId: string): number {
@@ -31,7 +36,8 @@ function inferBaseRadius(componentId: string): number {
   ) return 0;
   if (id.includes('tree') || id.includes('pine') || id.includes('birch') || id.includes('maple')) return 0.9;
   if (id.includes('rock') || id.includes('stone') || id.includes('boulder')) return 0.8;
-  if (id.includes('building') || id.includes('house') || id.includes('wall')) return 1.2;
+  if (id.includes('building') || id.includes('house')) return 2.2;
+  if (id.includes('wall')) return 1.6;
   return 0.7;
 }
 

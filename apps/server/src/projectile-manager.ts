@@ -60,6 +60,7 @@ export interface ProjectileVoxelHit {
 
 export interface ProjectileObstacleHit {
   colliderId: string;
+  weaponId: string;
   position: Vec3;
   direction: Vec3;
 }
@@ -304,7 +305,7 @@ export class ProjectileManager {
 
       // Terrain collision via heightmap ray march
       const terrainHitDist = rayHeightmapMarch(oldPos, dir, stepDist, getHeight);
-      let closestObstacleDist = terrainHitDist;
+      let closestObstacleDist = Infinity;
       let closestObstacleId: string | null = null;
 
       for (const obstacle of obstacles) {
@@ -315,8 +316,13 @@ export class ProjectileManager {
         }
       }
 
+      const obstacleBeforeTerrain =
+        closestObstacleId !== null &&
+        closestObstacleDist < stepDist &&
+        (terrainHitDist >= stepDist || closestObstacleDist <= terrainHitDist + 0.35);
+
       // Player collision
-      let closestPlayerDist = closestObstacleDist;
+      let closestPlayerDist = obstacleBeforeTerrain ? closestObstacleDist : terrainHitDist;
       let closestPlayerId: string | null = null;
 
       for (const target of players.values()) {
@@ -349,7 +355,8 @@ export class ProjectileManager {
           y: oldPos.y + dir.y * closestPlayerDist,
           z: oldPos.z + dir.z * closestPlayerDist,
         };
-      } else if (closestObstacleId !== null && closestObstacleDist < stepDist) {
+      } else if (obstacleBeforeTerrain) {
+        const obstacleId = closestObstacleId as string;
         proj.alive = false;
         proj.position = {
           x: oldPos.x + dir.x * closestObstacleDist,
@@ -357,7 +364,8 @@ export class ProjectileManager {
           z: oldPos.z + dir.z * closestObstacleDist,
         };
         obstacleHits.push({
-          colliderId: closestObstacleId,
+          colliderId: obstacleId,
+          weaponId: proj.weapon.id,
           position: { ...proj.position },
           direction: { ...dir },
         });

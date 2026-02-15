@@ -368,6 +368,7 @@ const createStore = () =>
             pendingExplosions: [] as ExplosionEvent[],
             pendingSmokeDeploys: [] as SmokeDeployEvent[],
             pendingFlashDetonations: [] as FlashDetonateEvent[],
+            temporaryFlashWhiteout: 0,
             pendingPlacementDestroyed: [] as { colliderId: string; position: Vec3; impulse: Vec3 }[],
             /** Consume pending explosions (called by CombatEffects each frame) */
             consumeExplosions: () => {
@@ -385,6 +386,22 @@ const createStore = () =>
                 const flashes = (useStore.getState() as any).pendingFlashDetonations
                 if (flashes.length > 0) set({ pendingFlashDetonations: [] })
                 return flashes as FlashDetonateEvent[]
+            },
+            addFlashWhiteout: (amount: number) => {
+                set((state: any) => {
+                    const next = THREE.MathUtils.clamp(
+                        Number(state.temporaryFlashWhiteout ?? 0) + Number(amount ?? 0),
+                        0,
+                        1,
+                    )
+                    return { temporaryFlashWhiteout: next }
+                })
+            },
+            decayFlashWhiteout: (dt: number) => {
+                const clampedDt = Math.max(0, Number(dt) || 0)
+                set((state: any) => ({
+                    temporaryFlashWhiteout: Math.max(0, Number(state.temporaryFlashWhiteout ?? 0) - clampedDt * 1.6),
+                }))
             },
             consumePlacementDestroyed: () => {
                 const events = (useStore.getState() as any).pendingPlacementDestroyed

@@ -40,6 +40,11 @@ interface TerrainProps {
 export default function Terrain({ uniformsRef, disableDither = false }: TerrainProps) {
     const [activeChunks, setActiveChunks] = useState([])
 
+    const disableGrassShader = useMemo(() => {
+        if (typeof window === 'undefined') return false
+        return new URLSearchParams(window.location.search).get('nograss') === '1'
+    }, [])
+
     const currentChunk = useRef({ x: 0, z: 0, size: 0 })
     const radiusAnimationRef = useRef(null)
     const prevPhaseRef = useRef(PHASES.loading)
@@ -155,6 +160,7 @@ export default function Terrain({ uniformsRef, disableDither = false }: TerrainP
         chunkSize,
         initialCircleRadius: START_CIRCLE_RADIUS,
         noiseTexture,
+        disableShader: disableGrassShader,
     })
 
     const stoneMaterial = useStonesMaterial({

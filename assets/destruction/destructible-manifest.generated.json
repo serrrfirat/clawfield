@@ -1,0 +1,1245 @@
+{
+  "generatedAt": "2026-02-15T12:56:24.623Z",
+  "source": "tools/generate-destruction-manifest.ts",
+  "count": 76,
+  "destructibles": [
+    {
+      "assetId": "pine-trees",
+      "assetPath": "/models/props/natural/Pine Trees.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "pine",
+      "assetPath": "/models/props/natural/Pine.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "birch-trees",
+      "assetPath": "/models/props/natural/Birch Trees.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "maple-trees",
+      "assetPath": "/models/props/natural/Maple Trees.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "palm-trees",
+      "assetPath": "/models/props/natural/Palm Trees.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "tree",
+      "assetPath": "/models/props/natural/Tree.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "trees",
+      "assetPath": "/models/props/natural/Trees.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "dead-tree",
+      "assetPath": "/models/props/natural/Dead Tree.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "dead-trees",
+      "assetPath": "/models/props/natural/Dead Trees.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "twisted-tree",
+      "assetPath": "/models/props/natural/Twisted Tree.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "bush",
+      "assetPath": "/models/props/natural/Bush.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "bushes",
+      "assetPath": "/models/props/natural/Bushes.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "bush-flowers",
+      "assetPath": "/models/props/natural/Bush with Flowers.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "fern",
+      "assetPath": "/models/props/natural/Fern.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "flower-group",
+      "assetPath": "/models/props/natural/Flower Group.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "flower-bushes",
+      "assetPath": "/models/props/natural/Flower Bushes.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "flowers",
+      "assetPath": "/models/props/natural/Flowers.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "grass",
+      "assetPath": "/models/props/natural/Grass.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "tall-grass",
+      "assetPath": "/models/props/natural/Tall Grass.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "rocks",
+      "assetPath": "/models/props/natural/Rocks.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "stone-medium",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "rock-medium",
+      "assetPath": "/models/props/natural/Rock Medium.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "stone-medium",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "pebbles",
+      "assetPath": "/models/props/natural/Pebble Round.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "plant",
+      "assetPath": "/models/props/natural/Plant.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "plant-big",
+      "assetPath": "/models/props/natural/Plant Big.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "mushroom",
+      "assetPath": "/models/props/natural/Mushroom.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "buildings",
+      "assetPath": "/models/props/urban/5 Buildings Low-Poly.glb",
+      "defaultProfile": "structure-house",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-house",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-house",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-house",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "car",
+      "assetPath": "/models/props/urban/Car.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "police-car",
+      "assetPath": "/models/props/urban/Police Car.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "suv",
+      "assetPath": "/models/props/urban/SUV.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "sports-car",
+      "assetPath": "/models/props/urban/Sports Car.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "taxi",
+      "assetPath": "/models/props/urban/Taxi.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "church",
+      "assetPath": "/models/props/france/Church of the Good Shepherd.glb",
+      "defaultProfile": "structure-house",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-house",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-house",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-house",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "square-tower",
+      "assetPath": "/models/props/france/Fougeres Square Tower 3D Model.glb",
+      "defaultProfile": "structure-house",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-house",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-house",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-house",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "guingamp-shop",
+      "assetPath": "/models/props/france/Guingamp Shop 1 France.glb",
+      "defaultProfile": "structure-house",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-house",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-house",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-house",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "tramain-house",
+      "assetPath": "/models/props/france/Tramain House 1 France.glb",
+      "defaultProfile": "structure-house",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-house",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-house",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-house",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "troyes-shop-7",
+      "assetPath": "/models/props/france/Troyes Shop 7 France.glb",
+      "defaultProfile": "structure-house",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-house",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-house",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-house",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "troyes-shop-8",
+      "assetPath": "/models/props/france/Troyes Shop 8 France.glb",
+      "defaultProfile": "structure-house",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-house",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-house",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-house",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "windmill",
+      "assetPath": "/models/props/france/Windmill 3D Model by KIFIR.glb",
+      "defaultProfile": "structure-house",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-house",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-house",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-house",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "hay-bale",
+      "assetPath": "/models/props/france/Hay Bale 3D Model.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "lavender",
+      "assetPath": "/models/props/france/Lavender 3D Model.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "sunflower",
+      "assetPath": "/models/props/france/Sunflower 3D Model.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "sunflower-small",
+      "assetPath": "/models/props/france/Sunflower 3D Model (1).glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "stone-bridge",
+      "assetPath": "/models/props/france/Stone Bridge 3D Model.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "fountain",
+      "assetPath": "/models/props/france/Simple Fountain 3D Model.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "wooden-fence",
+      "assetPath": "/models/props/france/Wooden Fence 3D Model.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "wooden-fence-simple",
+      "assetPath": "/models/props/france/Wooden Fence Simple.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "wood-planks",
+      "assetPath": "/models/props/france/Wood Planks Game Ready Asset.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-village-housing",
+      "assetPath": "/models/props/france/ai_gen/Connected Village Housing Model.glb",
+      "defaultProfile": "structure-house",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-house",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-house",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-house",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-stone-house",
+      "assetPath": "/models/props/france/ai_gen/Two Story Stone House.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-stone-building",
+      "assetPath": "/models/props/france/ai_gen/Two Story Stone Building.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-municipal-hall",
+      "assetPath": "/models/props/france/ai_gen/A_large_prominent_municipal_stone_building_in_the_Prism_30_e8bfb037.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-rural-barn",
+      "assetPath": "/models/props/france/ai_gen/Large Rural Barn Structure.glb",
+      "defaultProfile": "structure-wall",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-wall",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-wall",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-wall",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-logistics-compound",
+      "assetPath": "/models/props/france/ai_gen/Open Air Logistics Compound.glb",
+      "defaultProfile": "structure-wall",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-wall",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-wall",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-wall",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-masonry-bridge",
+      "assetPath": "/models/props/france/ai_gen/A_sturdy_arched_masonry_bridge_designed_for_vehicl_Prism_30_2b5979f4.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-stone-tower-windmill",
+      "assetPath": "/models/props/france/ai_gen/Tall Cylindrical Stone Tower Windmill.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-canvas-tent",
+      "assetPath": "/models/props/france/ai_gen/Beige Canvas Military Tent 3D Model.glb",
+      "defaultProfile": "structure-wall",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-wall",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-wall",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-wall",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-defensive-wall",
+      "assetPath": "/models/props/france/ai_gen/Waist High Defensive Wall Section.glb",
+      "defaultProfile": "structure-wall",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "structure-wall",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-defensive-obstacle",
+      "assetPath": "/models/props/france/ai_gen/Large Heavy Defensive Obstacle.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-barbed-wire",
+      "assetPath": "/models/props/france/ai_gen/Coiled Barbed Wire Prism 30.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-stone-retaining-wall",
+      "assetPath": "/models/props/france/ai_gen/Tall Dry Stack Stone Retaining Wall.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "stone-medium",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-streetlamp",
+      "assetPath": "/models/props/france/ai_gen/An_old_fashioned_tall_cast_iron_streetlamp_with_a_Prism_30_46804703.glb",
+      "defaultProfile": "wood-tree",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "wood-tree",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-ammo-stack",
+      "assetPath": "/models/props/france/ai_gen/Wooden Military Ammunition Stack.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-fuel-drums",
+      "assetPath": "/models/props/france/ai_gen/3D Model Group of Three 55 Gallon Fuel Drums.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-straight-road",
+      "assetPath": "/models/props/france/ai_gen/Straight Road Segment.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-dirt-ramp",
+      "assetPath": "/models/props/france/ai_gen/Sloped Dirt Ramp to Prism 30.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-grapevines",
+      "assetPath": "/models/props/france/ai_gen/Grapevines 3D Model.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-transport-vehicle",
+      "assetPath": "/models/props/france/ai_gen/Military Transport Vehicle.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-medium-tank",
+      "assetPath": "/models/props/france/ai_gen/A_medium_sized_tank_with_a_boxy_hull_and_a_promine_Prism_30_9c3c7fb9.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-wwii-south-prism",
+      "assetPath": "/models/props/france/ai_gen/WWII South Prism 3D Asset.glb",
+      "defaultProfile": "structure-wall",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-wall",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-wall",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-wall",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-wwii-south-meshy",
+      "assetPath": "/models/props/france/ai_gen/WWII South Meshy 3D Asset.glb",
+      "defaultProfile": "structure-wall",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-wall",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-wall",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-wall",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-wwii-south-prism-alt",
+      "assetPath": "/models/props/france/ai_gen/3D Game Asset WWII South Prism.glb",
+      "defaultProfile": "structure-wall",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "structure-wall",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "structure-wall",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "structure-wall",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-narrow-townhouse",
+      "assetPath": "/models/props/france/ai_gen/A_tall_very_narrow_three_story_stone_townhouse_It_Prism_30_d2545b28.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-wedge-stone-building",
+      "assetPath": "/models/props/france/ai_gen/Narrow Triangular Wedge Stone Building.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-stone-village-house",
+      "assetPath": "/models/props/france/ai_gen/Two Story Stone Village House.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    },
+    {
+      "assetId": "france-ai-water-canal-section",
+      "assetPath": "/models/props/france/ai_gen/A_concrete_and_stone_water_canal_section_featuring_Prism_30_016a4b28.glb",
+      "defaultProfile": "prop-generic",
+      "autoSections": [
+        {
+          "id": "root",
+          "profile": "prop-generic",
+          "notes": "Auto single-section fallback."
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "assetId": "france-ai-z-ruin",
+      "assetPath": "/models/props/france/ai_gen/Jagged Z Shape Stone Ruin.glb",
+      "defaultProfile": "stone-medium",
+      "autoSections": [
+        {
+          "id": "base",
+          "profile": "stone-medium",
+          "notes": "Ground/contact section. Confirm pass-through behavior."
+        },
+        {
+          "id": "mid",
+          "profile": "stone-medium",
+          "notes": "Middle structure mass."
+        },
+        {
+          "id": "top",
+          "profile": "stone-medium",
+          "notes": "Top section. Consider lower HP for dramatic collapse."
+        }
+      ],
+      "reviewRequired": true
+    }
+  ]
+}

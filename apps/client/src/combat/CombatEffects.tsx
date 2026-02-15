@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { ProjectileRenderer } from './projectile-renderer'
 import { ParticleSystem } from './particle-system'
 import { GrenadeRenderer } from './grenade-renderer'
@@ -142,20 +143,69 @@ export default function CombatEffects() {
     }
 
     const flashes = store.consumeFlashDetonations ? store.consumeFlashDetonations() : []
+    const localPos = store.ballPosition as any
+    const hasLocalPos =
+      localPos && Number.isFinite(localPos.x as number) &&
+      Number.isFinite(localPos.y as number) &&
+      Number.isFinite(localPos.z as number)
+    let whiteoutToAdd = 0
     for (const flash of flashes) {
       if (particles.current) {
         particles.current.emit({
           position: flash.position,
-          count: 34,
+          count: 46,
           speedMin: 1.5,
           speedMax: 6,
           spread: Math.PI * 2,
           lifetimeMin: 0.08,
           lifetimeMax: 0.28,
-          sizeMin: 0.08,
-          sizeMax: 0.26,
+          sizeMin: 0.14,
+          sizeMax: 0.44,
           colors: [[1, 1, 1], [1, 0.98, 0.82], [0.85, 0.95, 1]],
           gravityScale: 0,
+        })
+      }
+
+      if (hasLocalPos) {
+        const dx = flash.position.x - localPos.x
+        const dy = flash.position.y - localPos.y
+        const dz = flash.position.z - localPos.z
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+        const radius = Math.max(0.001, flash.radius)
+        whiteoutToAdd = Math.max(whiteoutToAdd, THREE.MathUtils.clamp(1 - dist / radius, 0, 1))
+      }
+
+      if (!hasLocalPos && whiteoutToAdd <= 0) {
+        whiteoutToAdd = 0.4
+      }
+    }
+
+    if (whiteoutToAdd > 0 && typeof store.addFlashWhiteout === 'function') {
+      store.addFlashWhiteout(whiteoutToAdd)
+    }
+
+    if (typeof store.decayFlashWhiteout === 'function') {
+      store.decayFlashWhiteout(clampedDt)
+    }
+
+    const smokeDeploys = store.consumeSmokeDeploys ? store.consumeSmokeDeploys() : []
+    for (const deploy of smokeDeploys) {
+      grenades.current?.addSmokeCloud(deploy.position, deploy.radius, deploy.duration)
+      if (particles.current) {
+        const burstScale = Math.max(0.2, Math.min(0.45, deploy.radius / 30))
+        particles.current.emit({
+          position: deploy.position,
+          count: 24,
+          direction: { x: 0, y: 1, z: 0 },
+          speedMin: 0.12,
+          speedMax: 0.9,
+          spread: Math.PI,
+          lifetimeMin: 0.9,
+          lifetimeMax: 2.1,
+          sizeMin: 0.18 * burstScale,
+          sizeMax: 0.62 * burstScale,
+          colors: [[0.68, 0.67, 0.62], [0.62, 0.6, 0.56], [0.54, 0.5, 0.47]],
+          gravityScale: -0.04,
         })
       }
     }

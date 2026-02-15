@@ -37,6 +37,7 @@ export default function Loader() {
     const [roomCodeInput, setRoomCodeInput] = useState('')
     const [seedInput, setSeedInput] = useState('1337')
     const [loadedMapInfo, setLoadedMapInfo] = useState<null | { name: string; seed: number; placements: number; heightCells: number }>(null)
+    const [quickStartPending, setQuickStartPending] = useState(false)
 
     const inLobby = phase === PHASES.warmup && lobbyPhase === 'lobby' && lobbyRoomCode
     const isHost = !!myId && myId === lobbyHostId
@@ -99,6 +100,12 @@ export default function Loader() {
 
     const handleQuickPlay = () => {
         if (phase !== PHASES.warmup) return
+        const hasCustomMap = Boolean(mapTerrain) || (mapPlacements?.length ?? 0) > 0
+        if (hasCustomMap && network?.createRoom) {
+            setQuickStartPending(true)
+            void network.createRoom(playerName || 'Player', 'tdm')
+            return
+        }
         network?.join(playerName || 'Player', 'tdm')
     }
 
@@ -138,7 +145,25 @@ export default function Loader() {
         }
     }, [mapTerrain, lobbySeed])
 
-    const handleStartGame = () => {
+    const buildLobbyPlacementColliders = useCallback(() => {
+        const enrichedPlacements = (mapPlacements ?? []).map((p: any) => {
+            const id = String(p?.componentId ?? '').toLowerCase()
+            const shouldBeDestructible =
+                id.includes('rock') || id.includes('stone') || id.includes('boulder') ||
+                id.includes('prop')
+
+            return {
+                ...p,
+                metadata: {
+                    ...(p?.metadata ?? {}),
+                    destructible: (p?.metadata?.destructible === true) || shouldBeDestructible,
+                },
+            }
+        })
+        return buildPlacementColliders(enrichedPlacements)
+    }, [mapPlacements])
+
+    const handleStartGame = useCallback(() => {
         if (network?.setLobbyMatchConfig) {
             const cfg = buildLobbyMatchConfig()
             if (cfg) {
@@ -146,11 +171,24 @@ export default function Loader() {
             }
         }
         if (network?.setLobbyPlacementColliders) {
-            const colliders = buildPlacementColliders(mapPlacements ?? [])
+            const colliders = buildLobbyPlacementColliders()
             network.setLobbyPlacementColliders(colliders)
         }
         network?.startGame?.()
-    }
+    }, [network, buildLobbyMatchConfig, buildLobbyPlacementColliders])
+
+    useEffect(() => {
+        if (!inLobby || !isHost) return
+        if (!network?.setLobbyPlacementColliders) return
+        network.setLobbyPlacementColliders(buildLobbyPlacementColliders())
+    }, [inLobby, isHost, network, buildLobbyPlacementColliders])
+
+    useEffect(() => {
+        if (!quickStartPending) return
+        if (!inLobby || !isHost) return
+        handleStartGame()
+        setQuickStartPending(false)
+    }, [quickStartPending, inLobby, isHost, handleStartGame])
 
     const handleSetTeam = (team: number) => {
         network?.setLobbyTeam?.(team)

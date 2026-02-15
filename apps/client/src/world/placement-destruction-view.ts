@@ -45,18 +45,22 @@ class PlacementDestructionView {
   private placements = new Map<string, PlacementEntry>()
   private pendingDestroyedById = new Map<string, PendingDestroyedEvent>()
   private fragments: ActiveFragment[] = []
+  private fracturedIds = new Set<string>()
   private tempVec = new THREE.Vector3()
   private scene: THREE.Scene | null = null
   private heightGetter: ((x: number, z: number) => number) | null = null
   private physicsWorld: any = null
   private rapier: any = null
+  private lastImpactAtById = new Map<string, number>()
 
   private getRubbleParams() {
     const p = (useStore.getState() as any).rubbleParameters ?? {}
+    const connected = (useStore.getState() as any).connected === true
     return {
-      physicsEnabled: p.physicsEnabled !== false,
-      maxFragments: Math.max(50, Math.floor(p.maxFragments ?? 420)),
-      ttlSec: Math.max(5, Number(p.ttlSec ?? 90)),
+      // Stability-first default in multiplayer: visual rubble, no rigid-body pileups.
+      physicsEnabled: (p.physicsEnabled !== false) && !connected,
+      maxFragments: Math.max(60, Math.floor(p.maxFragments ?? 260)),
+      ttlSec: Math.max(6, Number(p.ttlSec ?? 35)),
       colliderScale: Math.max(0.12, Number(p.colliderScale ?? 0.32)),
       linearDamping: Math.max(0, Number(p.linearDamping ?? 1.4)),
       angularDamping: Math.max(0, Number(p.angularDamping ?? 2.6)),
@@ -120,6 +124,8 @@ class PlacementDestructionView {
   clear(): void {
     this.placements.clear()
     this.pendingDestroyedById.clear()
+    this.lastImpactAtById.clear()
+    this.fracturedIds.clear()
     for (const f of this.fragments) {
       this.disposeFragment(f)
     }
@@ -127,33 +133,21 @@ class PlacementDestructionView {
   }
 
   handleImpact(position: Vec3, impulse: Vec3): void {
-    const hit = new THREE.Vector3(position.x, position.y, position.z)
-    console.log('[pinata] impact', { x: position.x.toFixed(2), y: position.y.toFixed(2), z: position.z.toFixed(2) }, 'registered=', this.placements.size)
-
-    let best: PlacementEntry | null = null
-    let bestDistSq = Infinity
-
-    for (const entry of this.placements.values()) {
-      if (entry.destroyed || !entry.object.visible) continue
-      const objPos = entry.object.getWorldPosition(this.tempVec)
-      const dx = hit.x - objPos.x
-      const dz = hit.z - objPos.z
-      const distSq = dx * dx + dz * dz
-      if (distSq > entry.radius * entry.radius * 3.2) continue
-
-      const dy = Math.abs(hit.y - objPos.y)
-      if (dy > Math.max(10, entry.radius * 4.5)) continue
-
-      if (distSq < bestDistSq) {
-        bestDistSq = distSq
-        best = entry
-      }
-    }
-
-    if (!best) {
-      console.log('[pinata] no registered placement matched impact')
+    const state = useStore.getState() as any
+    if (state.connected) {
+      // Multiplayer uses server-authoritative destruction visuals only.
       return
     }
+
+    const hit = new THREE.Vector3(position.x, position.y, position.z)
+    const best = this.findBestEntry(hit)
+    if (!best) return
+
+    const now = performance.now()
+    const last = this.lastImpactAtById.get(best.id) ?? -Infinity
+    if (now - last < 350) return
+    this.lastImpactAtById.set(best.id, now)
+
     this.fracturePlacement(best, hit, impulse)
   }
 
@@ -166,10 +160,46 @@ class PlacementDestructionView {
         impulse,
         createdAt: Date.now(),
       })
-      this.handleImpact(position, impulse)
+
+      // Fallback: if id registration lags behind, still fracture the nearest valid entry
+      // around server-authoritative impact position.
+      const hit = new THREE.Vector3(position.x, position.y, position.z)
+      const best = this.findBestEntry(hit)
+      if (best && !best.destroyed) {
+        this.fracturePlacement(best, hit, impulse)
+        return
+      }
+
+      // If registration truly hasn't arrived, show a minimal burst so feedback isn't lost.
+      const scene = this.scene
+      if (scene) {
+        const tempEntry: PlacementEntry = {
+          id,
+          object: new THREE.Group(),
+          radius: 0.8,
+          destroyed: true,
+          baseColor: new THREE.Color('#9b9b9b'),
+          groundY: position.y - 0.25,
+        }
+        this.spawnFallbackShards(
+          scene,
+          null,
+          tempEntry,
+          new THREE.Vector3(position.x, position.y, position.z),
+          impulse,
+          5,
+        )
+      }
       return
     }
-    if (entry.destroyed) return
+    if (entry.destroyed) {
+      if (!this.fracturedIds.has(id)) {
+        entry.destroyed = false
+        entry.object.visible = true
+      } else {
+        return
+      }
+    }
     this.fracturePlacement(
       entry,
       new THREE.Vector3(position.x, position.y, position.z),
@@ -184,6 +214,30 @@ class PlacementDestructionView {
         this.pendingDestroyedById.delete(id)
       }
     }
+  }
+
+  private findBestEntry(hit: THREE.Vector3): PlacementEntry | null {
+    let best: PlacementEntry | null = null
+    let bestDistSq = Infinity
+
+    for (const entry of this.placements.values()) {
+      if (entry.destroyed || !entry.object.visible) continue
+      const objPos = entry.object.getWorldPosition(this.tempVec)
+      const dx = hit.x - objPos.x
+      const dz = hit.z - objPos.z
+      const distSq = dx * dx + dz * dz
+      if (distSq > entry.radius * entry.radius * 3.6) continue
+
+      const dy = Math.abs(hit.y - objPos.y)
+      if (dy > Math.max(12, entry.radius * 5)) continue
+
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq
+        best = entry
+      }
+    }
+
+    return best
   }
 
   update(dt: number): void {
@@ -305,6 +359,14 @@ class PlacementDestructionView {
   }
 
   private computeFragmentCount(entry: PlacementEntry, sourceMesh: THREE.Mesh | null): number {
+    const id = entry.id.toLowerCase()
+    const rockLike =
+      id.startsWith('terrain-') ||
+      id.includes('stone') ||
+      id.includes('rock') ||
+      id.includes('boulder') ||
+      entry.radius <= 1.25
+
     let sizeScore = entry.radius
 
     if (sourceMesh) {
@@ -314,8 +376,13 @@ class PlacementDestructionView {
       sizeScore = Math.max(sizeScore, Math.cbrt(volume))
     }
 
-    const fragments = Math.round(8 + sizeScore * 12)
-    return Math.max(8, Math.min(48, fragments))
+    if (rockLike) {
+      const fragments = Math.round(8 + sizeScore * 9)
+      return Math.max(8, Math.min(24, fragments))
+    }
+
+    const fragments = Math.round(3 + sizeScore * 3.5)
+    return Math.max(3, Math.min(10, fragments))
   }
 
   private spawnFallbackShards(
@@ -324,6 +391,7 @@ class PlacementDestructionView {
     entry: PlacementEntry,
     worldPos: THREE.Vector3,
     impulse: Vec3,
+    forcedCount?: number,
   ): void {
     const size = new THREE.Vector3(entry.radius * 1.5, entry.radius * 1.25, entry.radius * 1.5)
     let color = new THREE.Color('#9b9b9b')
@@ -339,7 +407,7 @@ class PlacementDestructionView {
       }
     }
 
-    const count = this.computeFragmentCount(entry, sourceMesh)
+    const count = Math.max(3, Math.min(14, Math.floor(forcedCount ?? this.computeFragmentCount(entry, sourceMesh))))
     const floorY = entry.groundY ?? (worldPos.y - Math.max(0.2, entry.radius * 0.45))
     const { ttlSec } = this.getRubbleParams()
 
@@ -367,13 +435,13 @@ class PlacementDestructionView {
         .add(new THREE.Vector3((Math.random() - 0.5) * 1.4, Math.random() * 1.4 + 0.25, (Math.random() - 0.5) * 1.4))
       const angular = new THREE.Vector3((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9)
 
-      const body = this.createPhysicsBodyForMesh(shard, vel, angular)
+      const body = i < 6 ? this.createPhysicsBodyForMesh(shard, vel, angular) : null
       this.registerFragment({
         mesh: shard,
         velocity: vel,
         angular,
         life: 0,
-        ttl: ttlSec,
+        ttl: i < 6 ? ttlSec : Math.min(ttlSec, 16),
         groundY: floorY,
         clearance: Math.max(0.04, gy * 0.4),
         body,
@@ -389,7 +457,6 @@ class PlacementDestructionView {
     const sourceMesh = this.pickPrimaryMesh(entry.object)
 
     if (!sourceMesh) {
-      console.log('[pinata] fallback shards (no source mesh)', entry.id)
       this.spawnFallbackShards(scene, null, entry, baseWorldPos, impulse)
       entry.object.visible = false
       entry.destroyed = true
@@ -397,18 +464,21 @@ class PlacementDestructionView {
       return
     }
 
+    const worldPos = new THREE.Vector3()
+    const worldQuat = new THREE.Quaternion()
+    const worldScale = new THREE.Vector3()
+    sourceMesh.matrixWorld.decompose(worldPos, worldQuat, worldScale)
+
     const geometry = sourceMesh.geometry.clone()
+    const posAttr = geometry.getAttribute('position')
+    const triCount = geometry.index ? Math.floor(geometry.index.count / 3) : Math.floor((posAttr?.count ?? 0) / 3)
+    const heavyMesh = triCount > 1800 || entry.radius > 1.8
     const srcMat = Array.isArray(sourceMesh.material) ? sourceMesh.material[0] : sourceMesh.material
     const outerMaterial = (srcMat?.clone?.() as THREE.Material | undefined)
       ?? new THREE.MeshStandardMaterial({ color: '#9b9b9b' })
     const innerMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color('#7f7f7f'), roughness: 1, metalness: 0 })
 
     const destructible = new DestructibleMesh(geometry, outerMaterial, innerMaterial)
-
-    const worldPos = new THREE.Vector3()
-    const worldQuat = new THREE.Quaternion()
-    const worldScale = new THREE.Vector3()
-    sourceMesh.matrixWorld.decompose(worldPos, worldQuat, worldScale)
 
     destructible.position.copy(worldPos)
     destructible.quaternion.copy(worldQuat)
@@ -418,11 +488,13 @@ class PlacementDestructionView {
     const localImpact = destructible.worldToLocal(worldHit.clone())
     const options = new FractureOptions({
       fractureMethod: 'voronoi',
-      fragmentCount: this.computeFragmentCount(entry, sourceMesh),
+      fragmentCount: heavyMesh
+        ? Math.max(5, Math.min(10, Math.floor(this.computeFragmentCount(entry, sourceMesh) * 0.55)))
+        : this.computeFragmentCount(entry, sourceMesh),
       voronoiOptions: {
-        mode: '3D',
+        mode: heavyMesh ? '2.5D' : '3D',
         impactPoint: localImpact,
-        impactRadius: Math.max(0.2, entry.radius * 0.8),
+        impactRadius: Math.max(0.16, entry.radius * (heavyMesh ? 0.55 : 0.8)),
       },
     })
 
@@ -430,7 +502,6 @@ class PlacementDestructionView {
     try {
       fragments = destructible.fracture(options)
     } catch {
-      console.log('[pinata] fracture threw, using fallback shards', entry.id)
       this.spawnFallbackShards(scene, sourceMesh, entry, worldPos, impulse)
       entry.object.visible = false
       entry.destroyed = true
@@ -440,7 +511,6 @@ class PlacementDestructionView {
     }
 
     if (fragments.length === 0) {
-      console.log('[pinata] fracture returned 0 fragments, using fallback', entry.id)
       this.spawnFallbackShards(scene, sourceMesh, entry, worldPos, impulse)
       entry.object.visible = false
       entry.destroyed = true
@@ -451,8 +521,8 @@ class PlacementDestructionView {
 
     entry.object.visible = false
     entry.destroyed = true
+    this.fracturedIds.add(entry.id)
     entry.onDestroyed?.()
-    console.log('[pinata] fractured placement', entry.id)
 
     const impulseDir = new THREE.Vector3(impulse.x, impulse.y, impulse.z)
     if (impulseDir.lengthSq() < 1e-4) impulseDir.set(0, 0.2, 1)
@@ -486,13 +556,14 @@ class PlacementDestructionView {
         }
       }
 
-      const body = this.createPhysicsBodyForMesh(frag, vel, angular)
+      const physicsLimit = heavyMesh ? 4 : 14
+      const body = i < physicsLimit ? this.createPhysicsBodyForMesh(frag, vel, angular) : null
       this.registerFragment({
         mesh: frag,
         velocity: vel,
         angular,
         life: 0,
-        ttl: ttlSec,
+        ttl: i < physicsLimit ? ttlSec : Math.min(ttlSec, 22),
         groundY: floorY,
         clearance: fragClearance,
         body,
