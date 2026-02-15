@@ -1,4 +1,4 @@
-import type { Vec3, SmokeGrenadeState, CollisionDisc } from '@clawfield/shared';
+import type { Vec3, SmokeGrenadeState, CollisionDisc, HeightGetter } from '@clawfield/shared';
 import {
   GRAVITY,
   SMOKE_GRENADE_THROW_SPEED,
@@ -65,7 +65,12 @@ export class SmokeGrenadeManager {
    * Advance all smoke grenades by dt seconds.
    * Returns an array of deploy results for grenades whose fuse expired.
    */
-  update(dt: number, getVoxel: VoxelGetter, obstacles: CollisionDisc[] = []): SmokeDeployResult[] {
+  update(
+    dt: number,
+    getVoxel: VoxelGetter,
+    obstacles: CollisionDisc[] = [],
+    getTerrainHeight?: HeightGetter
+  ): SmokeDeployResult[] {
     const deploys: SmokeDeployResult[] = [];
 
     for (const grenade of this.grenades) {
@@ -94,15 +99,21 @@ export class SmokeGrenadeManager {
       }
 
       // Check Y axis
+      const terrainY = getTerrainHeight ? getTerrainHeight(grenade.position.x, grenade.position.z) : undefined;
+      const hitsTerrain = terrainY !== undefined && candidateY <= terrainY;
+
       const vyCheck = getVoxel(
         Math.floor(grenade.position.x),
         Math.floor(candidateY),
         Math.floor(grenade.position.z),
       );
-      if (vyCheck !== 0 && !isWater(vyCheck)) {
+      if ((hitsTerrain || (vyCheck !== 0 && !isWater(vyCheck))) && grenade.position.y > candidateY) {
         grenade.velocity.y = -grenade.velocity.y * SMOKE_GRENADE_BOUNCINESS;
         grenade.velocity.x *= 1 - SMOKE_GRENADE_BOUNCE_DRAG;
         grenade.velocity.z *= 1 - SMOKE_GRENADE_BOUNCE_DRAG;
+        if (hitsTerrain && terrainY !== undefined) {
+          grenade.position.y = Math.max(grenade.position.y, terrainY);
+        }
       } else {
         grenade.position.y = candidateY;
       }
@@ -147,6 +158,21 @@ export class SmokeGrenadeManager {
             grenade.velocity.z *= 1 - SMOKE_GRENADE_BOUNCE_DRAG;
             grenade.velocity.y *= 1 - SMOKE_GRENADE_BOUNCE_DRAG * 0.35;
           }
+        }
+      }
+
+      // Heightmap terrain can produce exact-boundary and slope transitions that are
+      // easier to treat as a flat floor in the final pass.
+      const terrainHeight = getTerrainHeight;
+      if (terrainHeight && terrainY !== undefined) {
+        const resolvedTerrainY = terrainHeight(grenade.position.x, grenade.position.z);
+        if (grenade.position.y < resolvedTerrainY) {
+          grenade.position.y = resolvedTerrainY;
+          if (grenade.velocity.y < 0) {
+            grenade.velocity.y = -grenade.velocity.y * SMOKE_GRENADE_BOUNCINESS;
+          }
+          grenade.velocity.x *= 1 - SMOKE_GRENADE_BOUNCE_DRAG * 0.5;
+          grenade.velocity.z *= 1 - SMOKE_GRENADE_BOUNCE_DRAG * 0.5;
         }
       }
 

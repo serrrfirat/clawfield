@@ -8,6 +8,7 @@ import { AnimState, deriveRemoteAnimState } from './animation-state'
 import { StateInterpolator } from './interpolation'
 import { SOLDIER_MODEL_Y_OFFSET } from './model-offset'
 import useStore from '../stores/useStore'
+import { isTargetVisibleToLocal, LOS_MEMORY_MS } from './visibility'
 
 interface RemotePlayerEntityProps {
   state: PlayerState
@@ -15,11 +16,8 @@ interface RemotePlayerEntityProps {
 }
 
 const TEAM_COLORS = [0x4488ff, 0xff6644] // Alpha=blue, Bravo=red
-const VISIBILITY_FOV_DEGREES = 185
-const VISIBILITY_FOV_COS = Math.cos((VISIBILITY_FOV_DEGREES * Math.PI) / 360)
 const LOS_FADE_IN_SPEED = 7.5
 const LOS_FADE_OUT_SPEED = 4.2
-const LOS_MEMORY_MS = 1200
 
 function setGroupOpacity(group: THREE.Group, alpha: number): void {
   const clamped = Math.max(0, Math.min(1, alpha))
@@ -41,24 +39,6 @@ function setGroupOpacity(group: THREE.Group, alpha: number): void {
       basic.needsUpdate = true
     }
   })
-}
-
-function segmentBlockedByDisc(ox: number, oz: number, tx: number, tz: number, disc: CollisionDisc): boolean {
-  const dx = tx - ox
-  const dz = tz - oz
-  const segLenSq = dx * dx + dz * dz
-  if (segLenSq < 1e-6) return false
-
-  const t = ((disc.x - ox) * dx + (disc.z - oz) * dz) / segLenSq
-  if (t <= 0 || t >= 1) return false
-
-  const closestX = ox + dx * t
-  const closestZ = oz + dz * t
-  const cx = disc.x - closestX
-  const cz = disc.z - closestZ
-  const distSq = cx * cx + cz * cz
-
-  return distSq <= disc.r * disc.r
 }
 
 export default function RemotePlayerEntity({ state, team }: RemotePlayerEntityProps) {
@@ -102,29 +82,12 @@ export default function RemotePlayerEntity({ state, team }: RemotePlayerEntityPr
       const oz = localPos.z
       const tx = interp.position.x
       const tz = interp.position.z
-      const toX = tx - ox
-      const toZ = tz - oz
-      const distSq = toX * toX + toZ * toZ
-      if (distSq >= 0.03) {
-        const dist = Math.sqrt(distSq)
-        const forwardX = Math.sin(localAimYaw)
-        const forwardZ = -Math.cos(localAimYaw)
-        const dot = (toX * forwardX + toZ * forwardZ) / dist
-        fullyVisible = dot >= VISIBILITY_FOV_COS
-
-        if (fullyVisible) {
-          for (let i = 0; i < obstacleDiscs.length; i++) {
-            const o = obstacleDiscs[i]
-            const sourceInside = (ox - o.x) * (ox - o.x) + (oz - o.z) * (oz - o.z) <= o.r * o.r
-            const targetInside = (tx - o.x) * (tx - o.x) + (tz - o.z) * (tz - o.z) <= o.r * o.r
-            if (sourceInside || targetInside) continue
-            if (segmentBlockedByDisc(ox, oz, tx, tz, o)) {
-              fullyVisible = false
-              break
-            }
-          }
-        }
-      }
+      fullyVisible = isTargetVisibleToLocal(
+        { x: ox, z: oz },
+        localAimYaw,
+        { x: tx, z: tz },
+        obstacleDiscs,
+      )
     }
 
     const now = performance.now()

@@ -48,12 +48,35 @@ export function Tree(props) {
     })
     const treeScale = (props.scale ?? 1) * 1.5
 
+    const treeShadowDepthMaterial = useMemo(() => {
+        const depthMat = new THREE.MeshDepthMaterial({
+            depthPacking: THREE.RGBADepthPacking,
+            alphaTest: treeParameters.bushAlphaTest,
+            side: THREE.DoubleSide,
+            map: props.treeMaterial?.uniforms?.uAlphaMap?.value ?? null,
+        })
+        ;(depthMat as any).skinning = true
+        return depthMat
+    }, [treeParameters.bushAlphaTest, props.treeMaterial])
+
+    useEffect(() => {
+        treeShadowDepthMaterial.map = props.treeMaterial?.uniforms?.uAlphaMap?.value ?? null
+        treeShadowDepthMaterial.alphaTest = treeParameters.bushAlphaTest ?? 0
+        treeShadowDepthMaterial.needsUpdate = true
+    }, [treeShadowDepthMaterial, props.treeMaterial?.uniforms?.uAlphaMap, treeParameters.bushAlphaTest])
+
     const boneRoot = useMemo(() => {
         if (nodes?.trunk_01?.isBone) return nodes.trunk_01
         if (nodes?.tree?.skeleton?.bones?.[0]) return nodes.tree.skeleton.bones[0]
         if (nodes?.Bone?.isBone) return nodes.Bone
         return null
     }, [nodes])
+
+    useEffect(() => {
+        return () => {
+            treeShadowDepthMaterial.dispose()
+        }
+    }, [treeShadowDepthMaterial])
 
     const trunkEntries = useMemo(() => {
         if (!boneRoot) return []
@@ -216,6 +239,7 @@ export function Tree(props) {
                         geometry={nodes.tree.geometry}
                         material={props.treeMaterial}
                         skeleton={nodes.tree.skeleton}
+                        customDepthMaterial={treeShadowDepthMaterial}
                         castShadow
                         receiveShadow
                         dispose={null}

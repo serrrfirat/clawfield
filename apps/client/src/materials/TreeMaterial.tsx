@@ -17,7 +17,7 @@ export default function useTreeMaterial({ chunkSize, initialCircleRadius, noiseT
     const pixelSize = useStore((s) => s.ditheringParameters.pixelSize)
     const ditherModeValue = useStore((s) => (s.ditheringParameters.ditherMode === 'Bayer' ? 1 : 0))
     const material = useMemo(() => {
-        return new CustomShaderMaterial({
+        const material = new CustomShaderMaterial({
             baseMaterial: THREE.MeshStandardMaterial,
             uniforms: {
                 uTime: { value: 0 },
@@ -62,6 +62,8 @@ export default function useTreeMaterial({ chunkSize, initialCircleRadius, noiseT
             roughness: 1.0,
             metalness: 0.0,
         })
+        ;(material as any).skinning = true
+        return material
     }, [])
 
     useEffect(() => {
@@ -92,15 +94,16 @@ export default function useTreeMaterial({ chunkSize, initialCircleRadius, noiseT
         u.uPixelSize.value = pixelSize
         u.uDitherMode.value = ditherModeValue
 
-        material.color.set(treeParameters.leavesColor)
+        ;(material as unknown as THREE.MeshStandardMaterial).color.set(treeParameters.leavesColor)
 
-        if (material.alphaMap !== null) {
-            material.alphaMap = null
-            material.needsUpdate = true
+        const meshMaterial = material as unknown as THREE.MeshStandardMaterial
+        if (meshMaterial.alphaMap !== null) {
+            meshMaterial.alphaMap = null
+            meshMaterial.needsUpdate = true
         }
-        if (material.alphaTest !== 0) {
-            material.alphaTest = 0
-            material.needsUpdate = true
+        if (meshMaterial.alphaTest !== 0) {
+            meshMaterial.alphaTest = 0
+            meshMaterial.needsUpdate = true
         }
     }, [
         material,

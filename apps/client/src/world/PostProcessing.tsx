@@ -6,9 +6,10 @@ import useStore from '../stores/useStore'
 import { getDayNightFactors, getFuzzySunPosition, getTimeOfDayTintFactors } from './dayNight'
 
 export default function PostProcessing() {
-    const post = useStore((s) => s.postProcessingParameters)
-    const dayNight = useStore((s) => s.dayNightParameters)
-    const sunRef = useRef<THREE.Mesh>(null)
+  const post = useStore((s) => s.postProcessingParameters)
+  const dayNight = useStore((s) => s.dayNightParameters)
+  const temporaryExplosionBloomSuppression = useStore((s: any) => Number(s.temporaryExplosionBloomSuppression ?? 0))
+  const sunRef = useRef<THREE.Mesh>(null)
 
     useFrame(({ clock }) => {
         if (!sunRef.current) return
@@ -22,11 +23,12 @@ export default function PostProcessing() {
     if (!post?.enabled) return null
 
     const sunPos = getFuzzySunPosition(dayNight.timeOfDay, 0, dayNight.sunRadius)
-    const sunHeightNorm = THREE.MathUtils.clamp(sunPos.y / Math.max(1, dayNight.sunRadius), -1, 1)
-    const { dayFactor } = getDayNightFactors(sunHeightNorm, true)
-    const raysWeight = post.godRaysWeight * dayFactor
-    const raysExposure = post.godRaysExposure * THREE.MathUtils.lerp(0.35, 1, dayFactor)
-    const tintStrength = post.screenTintStrength ?? 1
+  const sunHeightNorm = THREE.MathUtils.clamp(sunPos.y / Math.max(1, dayNight.sunRadius), -1, 1)
+  const { dayFactor } = getDayNightFactors(sunHeightNorm, true)
+  const explosionSuppression = THREE.MathUtils.clamp(temporaryExplosionBloomSuppression, 0, 1)
+  const raysWeight = post.godRaysWeight * dayFactor
+  const raysExposure = post.godRaysExposure * THREE.MathUtils.lerp(0.35, 1, dayFactor)
+  const tintStrength = post.screenTintStrength ?? 1
     const { morningOrange, middayYellow, afternoonOrangePurple, nightIndigo } = getTimeOfDayTintFactors(dayNight.timeOfDay)
 
     const hue = (morningOrange * 0.018 + middayYellow * 0.01 + afternoonOrangePurple * 0.038 - nightIndigo * 0.085) * tintStrength
@@ -52,14 +54,14 @@ export default function PostProcessing() {
                     blur
                 />
                 <Bloom
-                    intensity={post.bloomIntensity}
-                    luminanceThreshold={post.bloomThreshold}
+                    intensity={post.bloomIntensity * (1 - explosionSuppression * 0.95)}
+                    luminanceThreshold={THREE.MathUtils.lerp(1, post.bloomThreshold, 1 - explosionSuppression)}
                     luminanceSmoothing={post.bloomSmoothing}
                     height={Math.max(64, Math.floor(post.bloomHeight))}
                     mipmapBlur
                 />
                 <HueSaturation hue={hue} saturation={saturation} />
-                <BrightnessContrast brightness={brightness} contrast={contrast} />
+                <BrightnessContrast brightness={brightness - explosionSuppression * 0.08} contrast={contrast} />
             </EffectComposer>
         </>
     )

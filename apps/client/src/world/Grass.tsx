@@ -237,5 +237,5 @@ export default function Grass({ size, chunkX, chunkZ, chunkIndexX, chunkIndexZ, 
         }
     }, [grassGeometry])
 
-    return <mesh geometry={grassGeometry} material={grassMaterial} />
+    return <mesh geometry={grassGeometry} material={grassMaterial} castShadow={false} receiveShadow={false} />
 }

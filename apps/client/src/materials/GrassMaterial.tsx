@@ -9,6 +9,7 @@ export default function useGrassMaterial({
     chunkSize,
     initialCircleRadius,
     noiseTexture,
+    disableShader = false,
 }) {
     const grassParameters = useStore((s) => s.grassParameters)
     const windParameters = useStore((s) => s.windParameters)
@@ -21,22 +22,23 @@ export default function useGrassMaterial({
     const pixelSize = useStore((s) => s.ditheringParameters.pixelSize)
     const ditherModeValue = useStore((s) => (s.ditheringParameters.ditherMode === 'Bayer' ? 1 : 0))
 
-    const material = useMemo(
-        () =>
-            new THREE.ShaderMaterial({
+    const material = useMemo(() => {
+        if (disableShader) {
+            const defaultTopColor = new THREE.Color(grassParameters.colorTop)
+
+            return new THREE.ShaderMaterial({
                 uniforms: {
                     uPixelSize: { value: pixelSize },
-                    uDitherMode: { value: ditherModeValue }, // 0: Diamond, 1: Bayer
+                    uDitherMode: { value: ditherModeValue },
                     uTime: { value: 0 },
                     uGrassSegments: { value: grassParameters.segmentsCount },
                     uGrassChunkSize: { value: chunkSize },
                     uGrassWidth: { value: grassParameters.width },
                     uGrassHeight: { value: grassParameters.height },
                     uGrassBaseColor: { value: new THREE.Color(grassParameters.colorBase) },
-                    uGrassTopColor: { value: new THREE.Color(grassParameters.colorTop) },
+                    uGrassTopColor: { value: defaultTopColor },
                     uLeanFactor: { value: grassParameters.leanFactor },
 
-                    // Flowers (procedural)
                     uFlowersEnabled: { value: grassParameters.flowersEnabled ? 1.0 : 0.0 },
                     uFlowerDensity: { value: grassParameters.flowerDensity },
                     uFlowerNoiseScale: { value: grassParameters.flowerNoiseScale },
@@ -72,14 +74,118 @@ export default function useGrassMaterial({
                     uNightTint: { value: new THREE.Color('#606bc4') },
                     uDuskTint: { value: new THREE.Color('#ffb15a') },
                 },
-                vertexShader: grassVertexShader,
-                fragmentShader: grassFragmentShader,
+                vertexShader: `
+                    void main() {
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 uGrassTopColor;
+                    void main() {
+                        gl_FragColor = vec4(uGrassTopColor, 1.0);
+                    }
+                `,
                 side: THREE.FrontSide,
-            }),
-        []
-    )
+            })
+        }
+
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                uPixelSize: { value: pixelSize },
+                uDitherMode: { value: ditherModeValue }, // 0: Diamond, 1: Bayer
+                uTime: { value: 0 },
+                uGrassSegments: { value: grassParameters.segmentsCount },
+                uGrassChunkSize: { value: chunkSize },
+                uGrassWidth: { value: grassParameters.width },
+                uGrassHeight: { value: grassParameters.height },
+                uGrassBaseColor: { value: new THREE.Color(grassParameters.colorBase) },
+                uGrassTopColor: { value: new THREE.Color(grassParameters.colorTop) },
+                uLeanFactor: { value: grassParameters.leanFactor },
+
+                // Flowers (procedural)
+                uFlowersEnabled: { value: grassParameters.flowersEnabled ? 1.0 : 0.0 },
+                uFlowerDensity: { value: grassParameters.flowerDensity },
+                uFlowerNoiseScale: { value: grassParameters.flowerNoiseScale },
+                uFlowerHeightBoost: { value: grassParameters.flowerHeightBoost },
+                uFlowerTipStart: { value: grassParameters.flowerTipStart },
+                uFlowerBaseScale: { value: grassParameters.flowerBaseScale },
+                uFlowerExpand: { value: grassParameters.flowerExpand },
+                uFlowerColorA: { value: new THREE.Color(grassParameters.flowerColorA) },
+                uFlowerColorB: { value: new THREE.Color(grassParameters.flowerColorB) },
+                uFlowerColorC: { value: new THREE.Color(grassParameters.flowerColorC) },
+                uFlowerColorD: { value: new THREE.Color(grassParameters.flowerColorD) },
+
+                uWindDirection: { value: windParameters.direction },
+                uWindScale: { value: windParameters.scale },
+                uWindStrength: { value: windParameters.strength * (windParameters.globalMultiplier ?? 1) },
+                uWindSpeed: { value: windParameters.speed },
+                uTrailTexture: { value: null },
+                uBallPosition: { value: new THREE.Vector3() },
+                uCircleCenter: { value: new THREE.Vector3() },
+                uTrailCanvasSize: { value: trailCanvasSize },
+                uSobelMode: { value: grassParameters.sobelMode },
+
+                uNoiseTexture: { value: noiseTexture },
+                uNoiseStrength: { value: borderNoiseStrength },
+                uNoiseScale: { value: borderNoiseScale },
+                uCircleRadiusFactor: { value: initialCircleRadius },
+                uGrassFadeOffset: { value: borderGrassFadeOffset },
+                uGroundOffset: { value: borderGroundOffset },
+                uGroundFadeOffset: { value: borderGroundFadeOffset },
+                uDayFactor: { value: 1.0 },
+                uSunsetFactor: { value: 0.0 },
+                uNightFactor: { value: 0.0 },
+                uNightTint: { value: new THREE.Color('#606bc4') },
+                uDuskTint: { value: new THREE.Color('#ffb15a') },
+            },
+            vertexShader: grassVertexShader,
+            fragmentShader: grassFragmentShader,
+            side: THREE.FrontSide,
+        })
+    }, [
+        chunkSize,
+        initialCircleRadius,
+        pixelSize,
+        ditherModeValue,
+        disableShader,
+        trailCanvasSize,
+        grassParameters.colorBase,
+        grassParameters.colorTop,
+        grassParameters.segmentsCount,
+        grassParameters.width,
+        grassParameters.height,
+        grassParameters.leanFactor,
+        grassParameters.flowersEnabled,
+        grassParameters.flowerDensity,
+        grassParameters.flowerNoiseScale,
+        grassParameters.flowerHeightBoost,
+        grassParameters.flowerTipStart,
+        grassParameters.flowerBaseScale,
+        grassParameters.flowerExpand,
+        grassParameters.flowerColorA,
+        grassParameters.flowerColorB,
+        grassParameters.flowerColorC,
+        grassParameters.flowerColorD,
+        grassParameters.sobelMode,
+        windParameters.direction,
+        windParameters.scale,
+        windParameters.strength,
+        windParameters.globalMultiplier,
+        windParameters.speed,
+        noiseTexture,
+        borderNoiseStrength,
+        borderNoiseScale,
+        borderGrassFadeOffset,
+        borderGroundOffset,
+        borderGroundFadeOffset,
+    ])
 
     useEffect(() => {
+        if (!('uniforms' in material) || !material.uniforms) {
+            return
+        }
+
         const u = material.uniforms
         u.uPixelSize.value = pixelSize
         u.uDitherMode.value = ditherModeValue

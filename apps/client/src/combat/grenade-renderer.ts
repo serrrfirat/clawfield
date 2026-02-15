@@ -21,6 +21,16 @@ const EXPLOSION_LIFETIME = 0.5;
 /** Explosion initial sphere radius */
 const EXPLOSION_START_RADIUS = 0.5;
 
+/** Explosion visual intensity tuned for visible blast feedback */
+const EXPLOSION_MESH_OPACITY = 0.9;
+const EXPLOSION_LIGHT_INTENSITY = 3;
+const EXPLOSION_LIGHT_DISTANCE_SCALE = 2;
+
+/** Explosion particle counts and speed ranges */
+const EXPLOSION_SPARK_COUNT = 40;
+const EXPLOSION_DEBRIS_COUNT = 20;
+const EXPLOSION_SMOKE_COUNT = 16;
+
 /** Bright spark colors for explosion particles */
 const EXPLOSION_SPARK_COLORS: [number, number, number][] = [
   [1.0, 0.9, 0.3],
@@ -36,6 +46,11 @@ const EXPLOSION_DEBRIS_COLORS: [number, number, number][] = [
   [0.4, 0.3, 0.2],
   [0.15, 0.12, 0.08],
 ];
+
+/** Smoke cloud visuals for deployed smoke grenades */
+const SMOKE_CLOUD_OPACITY = 0.38;
+const SMOKE_CLOUD_MIN_DURATION = 4;
+const SMOKE_CLOUD_SEGMENTS = 10;
 
 /** Tracked grenade with mesh and interpolation data */
 interface TrackedGrenade {
@@ -85,6 +100,16 @@ interface TrackedExplosion {
   elapsed: number;
   lifetime: number;
   targetRadius: number;
+  lightIntensity: number;
+}
+
+interface TrackedSmokeCloud {
+  mesh: THREE.Mesh;
+  material: THREE.MeshBasicMaterial;
+  elapsed: number;
+  lifetime: number;
+  startRadius: number;
+  maxRadius: number;
 }
 
 /**
@@ -111,6 +136,8 @@ export class GrenadeRenderer {
   private readonly grenadeMaterial: THREE.MeshStandardMaterial;
   private readonly smokeGrenadeMaterial: THREE.MeshStandardMaterial;
   private readonly flashGrenadeMaterial: THREE.MeshStandardMaterial;
+  private readonly smokeCloudGeometry: THREE.SphereGeometry;
+  private readonly smokeCloudMaterial: THREE.MeshBasicMaterial;
   private fragGrenadeTemplate: THREE.Object3D | null = null;
   private smokeGrenadeTemplate: THREE.Object3D | null = null;
 
@@ -120,6 +147,8 @@ export class GrenadeRenderer {
   /** Count of currently active explosion lights */
   private activeExplosionLightCount = 0;
 
+  private smokeClouds: TrackedSmokeCloud[] = [];
+
   constructor(scene: THREE.Scene) {
     this.scene = scene;
 
@@ -128,6 +157,14 @@ export class GrenadeRenderer {
     this.grenadeMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
     this.smokeGrenadeMaterial = new THREE.MeshStandardMaterial({ color: 0x556b2f }); // olive green for smoke
     this.flashGrenadeMaterial = new THREE.MeshStandardMaterial({ color: 0xa8a8a8 });
+    this.smokeCloudGeometry = new THREE.SphereGeometry(1, SMOKE_CLOUD_SEGMENTS, SMOKE_CLOUD_SEGMENTS);
+    this.smokeCloudMaterial = new THREE.MeshBasicMaterial({
+      color: 0xf1efe8,
+      transparent: true,
+      opacity: SMOKE_CLOUD_OPACITY,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
 
     void this.loadGrenadeModelTemplates();
   }
@@ -272,6 +309,31 @@ export class GrenadeRenderer {
   }
 
   /**
+   * Spawn a persistent smoke cloud for a deployed smoke grenade.
+   */
+  addSmokeCloud(position: Vec3, radius: number, duration: number): void {
+    const safeRadius = Math.max(0.5, Number(radius) || 2.5);
+    const safeDuration = Math.max(SMOKE_CLOUD_MIN_DURATION, Number(duration) || SMOKE_CLOUD_MIN_DURATION);
+
+    const mesh = new THREE.Mesh(
+      this.smokeCloudGeometry,
+      this.smokeCloudMaterial.clone(),
+    );
+    mesh.position.set(position.x, position.y, position.z);
+    mesh.scale.set(safeRadius * 0.2, safeRadius * 0.2, safeRadius * 0.2);
+    this.scene.add(mesh);
+
+    this.smokeClouds.push({
+      mesh,
+      material: mesh.material as THREE.MeshBasicMaterial,
+      elapsed: 0,
+      lifetime: safeDuration,
+      startRadius: safeRadius * 0.2,
+      maxRadius: safeRadius,
+    });
+  }
+
+  /**
    * Add an explosion effect at the given position.
    * The explosion is a glowing sphere that quickly expands and fades out.
    */
@@ -282,9 +344,9 @@ export class GrenadeRenderer {
 
     // Glowing sphere material
     const material = new THREE.MeshBasicMaterial({
-      color: 0xff8800,
+      color: 0xff6e00,
       transparent: true,
-      opacity: 0.9,
+      opacity: EXPLOSION_MESH_OPACITY,
       depthWrite: false,
     });
 
@@ -294,10 +356,11 @@ export class GrenadeRenderer {
     mesh.position.set(position.x, position.y, position.z);
     this.scene.add(mesh);
 
-    // Bright point light for the flash
+    // Bright point light for the explosion glow
     let light: THREE.PointLight | null = null;
-    if (this.activeExplosionLightCount < MAX_EXPLOSION_LIGHTS) {
-      light = new THREE.PointLight(0xffaa00, 3, targetRadius * 2);
+    const lightIntensity = this.activeExplosionLightCount < MAX_EXPLOSION_LIGHTS ? EXPLOSION_LIGHT_INTENSITY : 0;
+    if (this.activeExplosionLightCount < MAX_EXPLOSION_LIGHTS && lightIntensity > 0) {
+      light = new THREE.PointLight(0xff8a1a, lightIntensity, targetRadius * EXPLOSION_LIGHT_DISTANCE_SCALE);
       light.position.set(position.x, position.y, position.z);
       this.scene.add(light);
       this.activeExplosionLightCount++;
@@ -310,6 +373,7 @@ export class GrenadeRenderer {
       elapsed: 0,
       lifetime: EXPLOSION_LIFETIME,
       targetRadius,
+      lightIntensity,
     });
 
     // Emit explosion particles: bright sparks + dark debris
@@ -317,7 +381,7 @@ export class GrenadeRenderer {
       // Bright sparks flying outward
       this.particles.emit({
         position,
-        count: 40,
+        count: EXPLOSION_SPARK_COUNT,
         speedMin: 6,
         speedMax: 20,
         spread: Math.PI * 2,
@@ -332,7 +396,7 @@ export class GrenadeRenderer {
       // Dark debris with heavier gravity
       this.particles.emit({
         position,
-        count: 20,
+        count: EXPLOSION_DEBRIS_COUNT,
         speedMin: 4,
         speedMax: 14,
         spread: Math.PI * 2,
@@ -342,6 +406,26 @@ export class GrenadeRenderer {
         sizeMax: 0.4,
         colors: EXPLOSION_DEBRIS_COLORS,
         gravityScale: 1.0,
+      });
+
+      // Fast expanding smoke puff
+      this.particles.emit({
+        position: { x: position.x, y: position.y + 0.15, z: position.z },
+        count: EXPLOSION_SMOKE_COUNT,
+        direction: { x: 0, y: 1, z: 0 },
+        speedMin: 0.5,
+        speedMax: 2.8,
+        spread: Math.PI,
+        lifetimeMin: 0.85,
+        lifetimeMax: 1.7,
+        sizeMin: 0.28,
+        sizeMax: 0.72,
+        colors: [
+          [0.36, 0.34, 0.3],
+          [0.28, 0.27, 0.25],
+          [0.22, 0.21, 0.2],
+        ],
+        gravityScale: -0.2,
       });
     }
   }
@@ -421,11 +505,11 @@ export class GrenadeRenderer {
       exp.mesh.scale.set(uniformScale, uniformScale, uniformScale);
 
       // Fade out opacity: fast initial brightness, then fades
-      exp.material.opacity = 0.9 * (1 - progress);
+      exp.material.opacity = EXPLOSION_MESH_OPACITY * (1 - progress);
 
       // Fade out light intensity
       if (exp.light) {
-        exp.light.intensity = 3 * (1 - progress);
+        exp.light.intensity = exp.lightIntensity * (1 - progress);
       }
 
       // Shift color from bright yellow-orange toward dark red as it fades
@@ -449,6 +533,26 @@ export class GrenadeRenderer {
         this.explosions.splice(i, 1);
       }
     }
+
+    // --- Update smoke clouds ---
+    for (let i = this.smokeClouds.length - 1; i >= 0; i--) {
+      const cloud = this.smokeClouds[i]!;
+      cloud.elapsed += dt;
+
+      const progress = Math.min(1, cloud.elapsed / cloud.lifetime);
+      const radius = cloud.startRadius + (cloud.maxRadius - cloud.startRadius) * (1 - Math.pow(1 - progress, 2));
+      cloud.mesh.scale.set(radius, radius, radius);
+
+      const baseOpacity = THREE.MathUtils.lerp(SMOKE_CLOUD_OPACITY, 0.0, progress);
+      cloud.material.opacity = THREE.MathUtils.clamp(baseOpacity, 0, 1);
+
+      if (progress >= 1) {
+        this.scene.remove(cloud.mesh);
+        cloud.material.dispose();
+        this.smokeClouds.splice(i, 1);
+      }
+    }
+
   }
 
   /** Clean up all grenades, explosions, and shared resources. */
@@ -478,10 +582,18 @@ export class GrenadeRenderer {
     }
     this.explosions.length = 0;
 
+    for (const cloud of this.smokeClouds) {
+      this.scene.remove(cloud.mesh);
+      cloud.material.dispose();
+    }
+    this.smokeClouds.length = 0;
+
     this.grenadeGeometry.dispose();
     this.grenadeMaterial.dispose();
     this.smokeGrenadeMaterial.dispose();
     this.flashGrenadeMaterial.dispose();
+    this.smokeCloudGeometry.dispose();
+    this.smokeCloudMaterial.dispose();
   }
 
   // ── Private helpers ─────────────────────────────────────────────
@@ -577,7 +689,7 @@ export class GrenadeRenderer {
     velocity: Vec3,
     fuseRemaining: number,
   ): void {
-    const mesh = this.createThrowableObject(this.fragGrenadeTemplate, this.flashGrenadeMaterial);
+    const mesh = this.createThrowableObject(this.smokeGrenadeTemplate, this.flashGrenadeMaterial);
     mesh.position.set(position.x, position.y, position.z);
     this.scene.add(mesh);
 

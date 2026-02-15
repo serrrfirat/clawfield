@@ -37,6 +37,11 @@ import { sampleHeightDelta } from '../editor/heightmap-utils'
 const BALL_RADIUS = 0.4
 const MAX_AIM_DISTANCE = 45
 const AIM_ORIGIN_FORWARD_OFFSET = 0
+const RECOIL_RANDOM_SCALE = 14
+const MAX_RECOIL_CHAOS = 0.3
+const HIP_SPREAD_PENALTY = 1.15
+const ADS_STANCE_PENALTY = 1.03
+const HIP_STANCE_PENALTY = 1.15
 
 function solveBallisticPitch(horizontalDistance: number, deltaY: number, speed: number): number {
   const d = Math.max(0.001, horizontalDistance)
@@ -129,10 +134,10 @@ function getVisualEffectiveSpreadForWeapon(
   flash: number,
 ): number {
   const hipSpread = weapon.spread + bloom
-  const hipFirePenalty = adsActive ? 1 : 1.4
+  const hipFirePenalty = adsActive ? 1 : HIP_SPREAD_PENALTY
   const adsMultiplier = adsActive ? weapon.adsSpreadMultiplier : 1
-  const recoilChaos = 1 + Math.min(0.75, weapon.recoilRandom * 30)
-  const stanceChaos = adsActive ? 1.05 : 1.45
+  const recoilChaos = 1 + Math.min(MAX_RECOIL_CHAOS, weapon.recoilRandom * RECOIL_RANDOM_SCALE)
+  const stanceChaos = adsActive ? ADS_STANCE_PENALTY : HIP_STANCE_PENALTY
   const suppressionChaos = 1 + THREE.MathUtils.clamp(suppression, 0, 1) * 0.9
   const flashChaos = 1 + THREE.MathUtils.clamp(flash, 0, 1) * 1.1
 
@@ -192,6 +197,7 @@ export default function PlayerController() {
   const reloading = useStore((s) => s.reloading)
   const ammo = useStore((s: any) => s.ammo)
   const weaponName = useStore((s: any) => s.weaponName)
+  const isMapOpen = useStore((s: any) => s.isMapOpen)
   const [displayWeaponName, setDisplayWeaponName] = useState<string>(weaponName ?? 'Rifle')
   const [adsVisual, setAdsVisual] = useState(false)
   const adsVisualRef = useRef(false)
@@ -354,6 +360,9 @@ export default function PlayerController() {
     inputCapture.yaw = aimYaw
     useStore.setState({ localAimYaw: aimYaw })
     const input = inputCapture.consume()
+    if (isMapOpen) {
+      input.shoot = false
+    }
     const aimAdsActive = !!(input.scope && !reloading)
     if (aimAdsActive !== adsVisualRef.current) {
       adsVisualRef.current = aimAdsActive

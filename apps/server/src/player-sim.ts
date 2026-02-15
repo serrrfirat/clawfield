@@ -433,14 +433,17 @@ export class PlayerSim {
     const w = this.activeWeapon;
     const hipSpread = w.spread + this.currentBloom;
     const adsActive = !!(this.latestInput?.scope && !this.isCurrentWeaponReloading());
-    const hipFirePenalty = adsActive ? 1 : 1.4;
+    const hipFirePenalty = adsActive ? 1 : 1.15;
     const adsMultiplier = adsActive ? w.adsSpreadMultiplier : 1;
+    const recoilChaos = 1 + Math.min(0.3, w.recoilRandom * 14);
+    const stanceChaos = adsActive ? 1.03 : 1.15;
 
     const now = Date.now();
     const suppressionPenalty = 1 + this.getSuppressionLevel(now) * 0.9;
     const flashPenalty = 1 + this.getFlashLevel(now) * 1.1;
 
-    return hipSpread * hipFirePenalty * adsMultiplier * suppressionPenalty * flashPenalty;
+    const spread = hipSpread * hipFirePenalty * adsMultiplier * recoilChaos * stanceChaos * suppressionPenalty * flashPenalty;
+    return spread;
   }
 
   applySuppression(nowMs: number, durationMs: number): void {

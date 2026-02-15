@@ -40,7 +40,7 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.55) 48%, rgba(255, 255, 255, 0.12) 100%);
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.35) 48%, rgba(255, 255, 255, 0.06) 100%);
     mix-blend-mode: screen;
     z-index: 120;
 }
@@ -243,7 +243,7 @@
     place-items: center;
     background: rgba(8, 10, 14, 0.55);
     backdrop-filter: blur(2px);
-    pointer-events: none;
+    pointer-events: auto;
 }
 
 .game-hud__map-sheet {
@@ -267,6 +267,16 @@
     background: #d8d4c5;
     border: 0.12rem solid rgba(30, 30, 26, 0.58);
     overflow: hidden;
+    cursor: crosshair;
+    user-select: none;
+}
+
+.game-hud__map-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
 .game-hud__map-grid {
@@ -309,6 +319,25 @@
     box-shadow: 0 0 0.16rem rgba(0, 0, 0, 0.34);
 }
 
+.game-hud__map-spawn {
+    position: absolute;
+    width: 0.56rem;
+    height: 0.56rem;
+    transform: translate(-50%, -50%);
+    border-radius: 0.12rem;
+    box-shadow: 0 0 0.16rem rgba(0, 0, 0, 0.35);
+}
+
+.game-hud__map-ping {
+    position: absolute;
+    width: 0.54rem;
+    height: 0.54rem;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    border: 0.08rem solid rgba(16, 16, 16, 0.7);
+    box-shadow: 0 0 0.16rem rgba(0, 0, 0, 0.35);
+}
+
 .game-hud__map-player--self {
     width: 0.74rem;
     height: 0.74rem;
@@ -344,6 +373,16 @@
 .game-hud__map-legend i.cp {
     background: rgba(252, 251, 248, 0.95);
     border-color: rgba(78, 76, 70, 0.9);
+}
+
+.game-hud__map-legend i.spawn {
+    background: #6f6a5a;
+    border-color: rgba(22, 20, 16, 0.9);
+}
+
+.game-hud__map-legend i.ping {
+    background: #56a5ff;
+    border-color: rgba(7, 7, 12, 0.9);
 }
 
 @keyframes cpPulse {
