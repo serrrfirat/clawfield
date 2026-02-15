@@ -188,15 +188,39 @@ function FoliageTypeRenderer({
 }) {
   const groupRef = useRef<THREE.Group>(null!)
   const patchedMatsRef = useRef<THREE.Material[]>([])
+  const shadowDepthMatsRef = useRef<THREE.Material[]>([])
+
+  const makeShadowDepthMaterial = (sourceMaterial: THREE.Material) => {
+    const source = sourceMaterial as THREE.MeshBasicMaterial & {
+      map?: THREE.Texture | null
+      alphaMap?: THREE.Texture | null
+      alphaTest?: number
+      side?: THREE.Side
+    }
+
+    const shadowMat = new THREE.MeshDepthMaterial({
+      depthPacking: THREE.RGBADepthPacking,
+      map: source.alphaMap ?? source.map ?? null,
+      alphaTest: source.alphaTest ?? 0,
+      side: source.side ?? THREE.DoubleSide,
+    })
+    ;(shadowMat as any).skinning = (source as any).skinning ?? false
+
+    return shadowMat
+  }
 
   const clones = useMemo(() => {
     const patched: THREE.Material[] = []
+    const shadowDepths: THREE.Material[] = []
     const result = instances.slice(0, MAX_INSTANCES_PER_TYPE).map((inst) => {
       const clone = SkeletonUtils.clone(scene)
       // Clone and patch each mesh's material with dithering
       clone.traverse((child) => {
         const mesh = child as THREE.Mesh
         if (!mesh.isMesh) return
+        mesh.castShadow = true
+        mesh.receiveShadow = true
+
         if (Array.isArray(mesh.material)) {
           mesh.material = mesh.material.map((m) => {
             const cloned = m.clone()
@@ -204,16 +228,27 @@ function FoliageTypeRenderer({
             patched.push(cloned)
             return cloned
           })
+
+          if (mesh.material[0]) {
+            const shadowDepth = makeShadowDepthMaterial(mesh.material[0])
+            mesh.customDepthMaterial = shadowDepth
+            shadowDepths.push(shadowDepth)
+          }
         } else {
           const cloned = mesh.material.clone()
           patchMaterialWithDither(cloned, ditherUniforms)
           patched.push(cloned)
           mesh.material = cloned
+
+          const shadowDepth = makeShadowDepthMaterial(cloned)
+          mesh.customDepthMaterial = shadowDepth
+          shadowDepths.push(shadowDepth)
         }
       })
       return { clone, ...inst }
     })
     patchedMatsRef.current = patched
+    shadowDepthMatsRef.current = shadowDepths
     return result
   }, [scene, instances, ditherUniforms])
 
@@ -222,6 +257,9 @@ function FoliageTypeRenderer({
     return () => {
       for (const mat of patchedMatsRef.current) mat.dispose()
       patchedMatsRef.current = []
+
+      for (const mat of shadowDepthMatsRef.current) mat.dispose()
+      shadowDepthMatsRef.current = []
     }
   }, [clones])
 

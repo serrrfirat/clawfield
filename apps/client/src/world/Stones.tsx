@@ -7,6 +7,15 @@ import useStore from '../stores/useStore'
 export default function Stones({ stones, maxCount, stoneMaterial, stoneGeometry, chunkWorldX = 0, chunkWorldZ = 0, enableColliders = true }) {
     const obstacleDiscs = useStore((s: any) => s.obstacleDiscs ?? [])
 
+    const stoneShadowDepthMaterial = useMemo(
+        () =>
+            new THREE.MeshDepthMaterial({
+                depthPacking: THREE.RGBADepthPacking,
+                side: THREE.DoubleSide,
+            }),
+        [],
+    )
+
     const terrainObstacles = useMemo(
         () => (obstacleDiscs as any[]).filter((o) => typeof o?.id === 'string' && o.id.startsWith('terrain-')),
         [obstacleDiscs],
@@ -83,6 +92,12 @@ export default function Stones({ stones, maxCount, stoneMaterial, stoneGeometry,
         }
     }, [destructionEntries])
 
+    useEffect(() => {
+        return () => {
+            stoneShadowDepthMaterial.dispose()
+        }
+    }, [stoneShadowDepthMaterial])
+
     if (!instances || instances.length === 0) {
         return null
     }
@@ -95,6 +110,7 @@ export default function Stones({ stones, maxCount, stoneMaterial, stoneGeometry,
                 frustumCulled={false}
                 castShadow
                 receiveShadow
+                customDepthMaterial={stoneShadowDepthMaterial}
             />
         </InstancedRigidBodies>
     )
