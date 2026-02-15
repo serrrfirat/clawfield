@@ -2,8 +2,25 @@ import * as THREE from 'three'
 import { DestructibleMesh, FractureOptions } from '@dgreenheck/three-pinata'
 import type { Vec3 } from '@clawfield/shared'
 import useStore from '../stores/useStore'
+import { fractureWorkerManager } from './destruction/fracture-worker-manager'
+import { serializeGeometry } from './destruction/serialization'
+import type { ParticleSystem } from '../combat/particle-system'
+import type { ExplosionVFXSystem } from '../combat/explosion-vfx'
+import type { MaterialType } from '../combat/debris-meshes'
 
 const GRAVITY = -4
+
+/** Infer material type from a placement ID for material-aware debris VFX. */
+function inferMaterialType(id: string): MaterialType {
+  const lower = id.toLowerCase()
+  if (lower.includes('tree') || lower.includes('wood') || lower.includes('plank') || lower.includes('fence') || lower.includes('crate')) {
+    return 'wood'
+  }
+  if (lower.includes('metal') || lower.includes('vehicle') || lower.includes('barrel') || lower.includes('pipe') || lower.includes('car') || lower.includes('tank')) {
+    return 'metal'
+  }
+  return 'concrete'
+}
 
 interface PlacementEntry {
   id: string
@@ -13,6 +30,7 @@ interface PlacementEntry {
   onDestroyed?: () => void
   baseColor: THREE.Color
   groundY?: number
+  materialType: MaterialType
 }
 
 interface ActiveFragment {
@@ -24,6 +42,7 @@ interface ActiveFragment {
   groundY: number
   clearance: number
   body?: any
+  _placeholderTag?: string
 }
 
 interface RegisterPlacementOptions {
@@ -31,6 +50,7 @@ interface RegisterPlacementOptions {
   baseColor?: THREE.ColorRepresentation
   groundY?: number
   destroyed?: boolean
+  materialType?: MaterialType
 }
 
 interface PendingDestroyedEvent {
@@ -52,6 +72,9 @@ class PlacementDestructionView {
   private physicsWorld: any = null
   private rapier: any = null
   private lastImpactAtById = new Map<string, number>()
+  private nextPlaceholderTag = 1
+  private particles: ParticleSystem | null = null
+  private explosionVFX: ExplosionVFXSystem | null = null
 
   private getRubbleParams() {
     const p = (useStore.getState() as any).rubbleParameters ?? {}
@@ -83,6 +106,17 @@ class PlacementDestructionView {
 
   setScene(scene: THREE.Scene | null): void {
     this.scene = scene
+    if (scene) {
+      fractureWorkerManager.init()
+    }
+  }
+
+  setExplosionVFX(vfx: ExplosionVFXSystem | null): void {
+    this.explosionVFX = vfx
+  }
+
+  setParticleSystem(ps: ParticleSystem | null): void {
+    this.particles = ps
   }
 
   setHeightGetter(getter: ((x: number, z: number) => number) | null): void {
@@ -109,6 +143,7 @@ class PlacementDestructionView {
       onDestroyed: options.onDestroyed,
       baseColor: nextColor,
       groundY: Number.isFinite(options.groundY as number) ? options.groundY : prev?.groundY,
+      materialType: options.materialType ?? prev?.materialType ?? inferMaterialType(id),
     })
 
     if (pendingDestroyed) {
@@ -130,6 +165,7 @@ class PlacementDestructionView {
       this.disposeFragment(f)
     }
     this.fragments = []
+    fractureWorkerManager.dispose()
   }
 
   handleImpact(position: Vec3, impulse: Vec3): void {
@@ -180,6 +216,7 @@ class PlacementDestructionView {
           destroyed: true,
           baseColor: new THREE.Color('#9b9b9b'),
           groundY: position.y - 0.25,
+          materialType: inferMaterialType(id),
         }
         this.spawnFallbackShards(
           scene,
@@ -240,10 +277,10 @@ class PlacementDestructionView {
     return best
   }
 
-  update(dt: number): void {
-    if (this.fragments.length === 0) return
-
+  update(dt: number, _camera?: THREE.Camera): void {
     const clamped = Math.min(0.05, Math.max(0.001, dt))
+
+    if (this.fragments.length === 0) return
 
     for (let i = this.fragments.length - 1; i >= 0; i--) {
       const f = this.fragments[i]
@@ -296,10 +333,10 @@ class PlacementDestructionView {
       const floorY = Math.max(f.groundY, terrainY + f.clearance)
       if (f.mesh.position.y < floorY) {
         f.mesh.position.y = floorY
-        if (f.velocity.y < 0) f.velocity.y *= -0.18
-        f.velocity.x *= 0.8
-        f.velocity.z *= 0.8
-        f.angular.multiplyScalar(0.86)
+        if (f.velocity.y < 0) f.velocity.y *= -0.05
+        f.velocity.x *= 0.6
+        f.velocity.z *= 0.6
+        f.angular.multiplyScalar(0.7)
         if (Math.abs(f.velocity.y) < 0.06) f.velocity.y = 0
       }
 
@@ -392,6 +429,7 @@ class PlacementDestructionView {
     worldPos: THREE.Vector3,
     impulse: Vec3,
     forcedCount?: number,
+    placeholderTag?: string,
   ): void {
     const size = new THREE.Vector3(entry.radius * 1.5, entry.radius * 1.25, entry.radius * 1.5)
     let color = new THREE.Color('#9b9b9b')
@@ -445,6 +483,7 @@ class PlacementDestructionView {
         groundY: floorY,
         clearance: Math.max(0.04, gy * 0.4),
         body,
+        _placeholderTag: placeholderTag,
       })
     }
   }
@@ -464,6 +503,15 @@ class PlacementDestructionView {
       return
     }
 
+    // --- Frame 0: hide object + VFX burst to mask computation --------------
+    entry.object.visible = false
+    entry.destroyed = true
+    this.fracturedIds.add(entry.id)
+    entry.onDestroyed?.()
+
+    this.spawnDestructionVFX(baseWorldPos, entry.radius, impulse, entry.materialType)
+
+    // --- Prepare fracture data -------------------------------------------
     const worldPos = new THREE.Vector3()
     const worldQuat = new THREE.Quaternion()
     const worldScale = new THREE.Vector3()
@@ -473,63 +521,165 @@ class PlacementDestructionView {
     const posAttr = geometry.getAttribute('position')
     const triCount = geometry.index ? Math.floor(geometry.index.count / 3) : Math.floor((posAttr?.count ?? 0) / 3)
     const heavyMesh = triCount > 1800 || entry.radius > 1.8
+
+    const tempObj = new THREE.Object3D()
+    tempObj.position.copy(worldPos)
+    tempObj.quaternion.copy(worldQuat)
+    tempObj.scale.copy(worldScale)
+    tempObj.updateMatrixWorld(true)
+    const localImpact = tempObj.worldToLocal(worldHit.clone())
+
+    const fragmentCount = heavyMesh
+      ? Math.max(5, Math.min(10, Math.floor(this.computeFragmentCount(entry, sourceMesh) * 0.55)))
+      : this.computeFragmentCount(entry, sourceMesh)
+
     const srcMat = Array.isArray(sourceMesh.material) ? sourceMesh.material[0] : sourceMesh.material
     const outerMaterial = (srcMat?.clone?.() as THREE.Material | undefined)
       ?? new THREE.MeshStandardMaterial({ color: '#9b9b9b' })
     const innerMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color('#7f7f7f'), roughness: 1, metalness: 0 })
 
-    const destructible = new DestructibleMesh(geometry, outerMaterial, innerMaterial)
+    const floorY = entry.groundY ?? (worldPos.y - Math.max(0.2, entry.radius * 0.45))
+    const impactRadius = Math.max(0.16, entry.radius * (heavyMesh ? 0.55 : 0.8))
 
+    // --- Try async worker first, fall back to main-thread -----------------
+    const serializedGeom = serializeGeometry(geometry)
+
+    fractureWorkerManager
+      .requestFracture(
+        serializedGeom,
+        { x: worldPos.x, y: worldPos.y, z: worldPos.z },
+        { x: worldQuat.x, y: worldQuat.y, z: worldQuat.z, w: worldQuat.w },
+        { x: worldScale.x, y: worldScale.y, z: worldScale.z },
+        { x: localImpact.x, y: localImpact.y, z: localImpact.z },
+        fragmentCount,
+        heavyMesh ? '2.5D' : '3D',
+        impactRadius,
+      )
+      .then((serializedFragments) => {
+        geometry.dispose()
+        if (!this.scene || serializedFragments.length === 0) return
+        this.spawnFragmentsFromSerialized(
+          scene, serializedFragments, outerMaterial, innerMaterial,
+          impulse, floorY, heavyMesh,
+        )
+      })
+      .catch(() => {
+        // Worker unavailable — run synchronously on main thread
+        if (!this.scene) { geometry.dispose(); return }
+        this.spawnFragmentsMainThread(
+          scene, geometry, worldPos, worldQuat, worldScale, localImpact,
+          fragmentCount, heavyMesh ? '2.5D' as const : '3D' as const,
+          impactRadius, outerMaterial, innerMaterial, impulse, floorY, heavyMesh,
+        )
+      })
+  }
+
+  /** Spawn destruction VFX via the new ExplosionVFXSystem (replaces old smoke planes + inline particles). */
+  private spawnDestructionVFX(position: THREE.Vector3, radius: number, impulse: Vec3, materialType: MaterialType = 'concrete'): void {
+    if (this.explosionVFX) {
+      // Structure destruction uses 'medium' tier by default; scale up for large objects
+      const tier = radius > 3 ? 'large' as const : radius > 1.5 ? 'medium' as const : 'small' as const
+      this.explosionVFX.spawnExplosion(position, tier, materialType, impulse)
+    }
+  }
+
+  /** Reconstruct fragment meshes from serialized worker output. */
+  private spawnFragmentsFromSerialized(
+    scene: THREE.Scene,
+    serializedFragments: import('./destruction/serialization').SerializedFragment[],
+    outerMaterial: THREE.Material,
+    innerMaterial: THREE.Material,
+    impulse: Vec3,
+    floorY: number,
+    heavyMesh: boolean,
+  ): void {
+    const impulseDir = new THREE.Vector3(impulse.x, impulse.y, impulse.z)
+    if (impulseDir.lengthSq() < 1e-4) impulseDir.set(0, 0.2, 1)
+    impulseDir.normalize()
+
+    const { ttlSec } = this.getRubbleParams()
+    const physicsLimit = heavyMesh ? 4 : 14
+
+    for (let i = 0; i < serializedFragments.length; i++) {
+      const sf = serializedFragments[i]
+      const geom = new THREE.BufferGeometry()
+      geom.setAttribute('position', new THREE.BufferAttribute(sf.geometry.position, 3))
+      if (sf.geometry.normal) geom.setAttribute('normal', new THREE.BufferAttribute(sf.geometry.normal, 3))
+      if (sf.geometry.uv) geom.setAttribute('uv', new THREE.BufferAttribute(sf.geometry.uv, 2))
+      if (sf.geometry.index) geom.setIndex(new THREE.BufferAttribute(sf.geometry.index, 1))
+      for (const g of sf.geometry.groups) geom.addGroup(g.start, g.count, g.materialIndex)
+
+      const materials = sf.geometry.groups.length > 1
+        ? [outerMaterial.clone(), innerMaterial.clone()]
+        : [outerMaterial.clone()]
+      const frag = new THREE.Mesh(geom, materials.length === 1 ? materials[0] : materials)
+      frag.castShadow = true
+      frag.receiveShadow = true
+      frag.position.set(sf.center.x, sf.center.y, sf.center.z)
+      scene.add(frag)
+
+      const vel = impulseDir.clone()
+        .multiplyScalar(1.0 + Math.random() * 1.4)
+        .add(new THREE.Vector3((Math.random() - 0.5) * 0.6, Math.random() * 0.8 + 0.15, (Math.random() - 0.5) * 0.6))
+      const angular = new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5)
+
+      geom.computeBoundingBox()
+      const bb = geom.boundingBox
+      const fragClearance = bb ? Math.max(0.04, bb.getSize(new THREE.Vector3()).y * 0.35) : 0.08
+
+      const body = i < physicsLimit ? this.createPhysicsBodyForMesh(frag, vel, angular) : null
+      this.registerFragment({
+        mesh: frag, velocity: vel, angular, life: 0,
+        ttl: i < physicsLimit ? ttlSec : Math.min(ttlSec, 22),
+        groundY: floorY, clearance: fragClearance, body,
+      })
+    }
+  }
+
+  /** Main-thread fallback — runs synchronous pinata fracture. */
+  private spawnFragmentsMainThread(
+    scene: THREE.Scene,
+    geometry: THREE.BufferGeometry,
+    worldPos: THREE.Vector3,
+    worldQuat: THREE.Quaternion,
+    worldScale: THREE.Vector3,
+    localImpact: THREE.Vector3,
+    fragmentCount: number,
+    voronoiMode: '3D' | '2.5D',
+    impactRadius: number,
+    outerMaterial: THREE.Material,
+    innerMaterial: THREE.Material,
+    impulse: Vec3,
+    floorY: number,
+    heavyMesh: boolean,
+  ): void {
+    const destructible = new DestructibleMesh(geometry, outerMaterial, innerMaterial)
     destructible.position.copy(worldPos)
     destructible.quaternion.copy(worldQuat)
     destructible.scale.copy(worldScale)
     destructible.updateMatrixWorld(true)
 
-    const localImpact = destructible.worldToLocal(worldHit.clone())
-    const options = new FractureOptions({
-      fractureMethod: 'voronoi',
-      fragmentCount: heavyMesh
-        ? Math.max(5, Math.min(10, Math.floor(this.computeFragmentCount(entry, sourceMesh) * 0.55)))
-        : this.computeFragmentCount(entry, sourceMesh),
-      voronoiOptions: {
-        mode: heavyMesh ? '2.5D' : '3D',
-        impactPoint: localImpact,
-        impactRadius: Math.max(0.16, entry.radius * (heavyMesh ? 0.55 : 0.8)),
-      },
-    })
-
     let fragments: DestructibleMesh[] = []
     try {
-      fragments = destructible.fracture(options)
+      fragments = destructible.fracture(new FractureOptions({
+        fractureMethod: 'voronoi',
+        fragmentCount,
+        voronoiOptions: { mode: voronoiMode, impactPoint: localImpact, impactRadius },
+      }))
     } catch {
-      this.spawnFallbackShards(scene, sourceMesh, entry, worldPos, impulse)
-      entry.object.visible = false
-      entry.destroyed = true
-      entry.onDestroyed?.()
+      geometry.dispose()
       destructible.dispose()
       return
     }
 
-    if (fragments.length === 0) {
-      this.spawnFallbackShards(scene, sourceMesh, entry, worldPos, impulse)
-      entry.object.visible = false
-      entry.destroyed = true
-      entry.onDestroyed?.()
-      destructible.dispose()
-      return
-    }
-
-    entry.object.visible = false
-    entry.destroyed = true
-    this.fracturedIds.add(entry.id)
-    entry.onDestroyed?.()
+    if (fragments.length === 0) { geometry.dispose(); destructible.dispose(); return }
 
     const impulseDir = new THREE.Vector3(impulse.x, impulse.y, impulse.z)
     if (impulseDir.lengthSq() < 1e-4) impulseDir.set(0, 0.2, 1)
     impulseDir.normalize()
 
-    const floorY = entry.groundY ?? (worldPos.y - Math.max(0.2, entry.radius * 0.45))
     const { ttlSec } = this.getRubbleParams()
+    const physicsLimit = heavyMesh ? 4 : 14
 
     for (let i = 0; i < fragments.length; i++) {
       const frag = fragments[i]
@@ -537,36 +687,24 @@ class PlacementDestructionView {
       frag.receiveShadow = true
       scene.add(frag)
 
-      const random = new THREE.Vector3((Math.random() - 0.5) * 1.2, Math.random() * 1.2 + 0.2, (Math.random() - 0.5) * 1.2)
-      const vel = impulseDir.clone().multiplyScalar(3.2 + Math.random() * 2.8).add(random)
-      const angular = new THREE.Vector3(
-        (Math.random() - 0.5) * 8,
-        (Math.random() - 0.5) * 8,
-        (Math.random() - 0.5) * 8,
-      )
+      const vel = impulseDir.clone()
+        .multiplyScalar(1.0 + Math.random() * 1.4)
+        .add(new THREE.Vector3((Math.random() - 0.5) * 0.6, Math.random() * 0.8 + 0.15, (Math.random() - 0.5) * 0.6))
+      const angular = new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5)
 
       const fragMesh = frag as unknown as THREE.Mesh
       let fragClearance = 0.08
       if (fragMesh.geometry) {
         fragMesh.geometry.computeBoundingBox()
         const bb = fragMesh.geometry.boundingBox
-        if (bb) {
-          const size = bb.getSize(new THREE.Vector3())
-          fragClearance = Math.max(0.04, size.y * Math.max(1, fragMesh.scale.y) * 0.35)
-        }
+        if (bb) fragClearance = Math.max(0.04, bb.getSize(new THREE.Vector3()).y * Math.max(1, fragMesh.scale.y) * 0.35)
       }
 
-      const physicsLimit = heavyMesh ? 4 : 14
       const body = i < physicsLimit ? this.createPhysicsBodyForMesh(frag, vel, angular) : null
       this.registerFragment({
-        mesh: frag,
-        velocity: vel,
-        angular,
-        life: 0,
+        mesh: frag, velocity: vel, angular, life: 0,
         ttl: i < physicsLimit ? ttlSec : Math.min(ttlSec, 22),
-        groundY: floorY,
-        clearance: fragClearance,
-        body,
+        groundY: floorY, clearance: fragClearance, body,
       })
     }
 
