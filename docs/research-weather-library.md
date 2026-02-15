@@ -4,7 +4,7 @@
 
 Clawfield uses vanilla Three.js v0.170.0 with the built-in `three/examples/jsm/postprocessing/EffectComposer` pipeline (SSAO, custom god rays, FXAA). The game already has:
 
-- Custom height + distance fog shader (`apps/client/src/voxel/world-renderer.ts`)
+- Custom height + distance fog shader (`apps/client/src/cell/world-renderer.ts`)
 - Custom god rays shader pass (`apps/client/src/shaders/god-rays.ts`)
 - Pooled GPU-instanced particle system (`apps/client/src/combat/particle-system.ts`)
 

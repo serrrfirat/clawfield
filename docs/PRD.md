@@ -9,7 +9,7 @@
 
 ## 1. Vision & Overview
 
-**Clawfield** is a browser-based voxel battlefield game for 24v24 players, inspired by Ravenfield's accessible, casual battlefield gameplay. What sets Clawfield apart is an **AI Game Master** powered by LLMs (OpenClaw/Claude) that reads the battle state and real-world context to dynamically generate world events during matches — airstrikes, weather shifts, supply drops, objective changes, and more.
+**Clawfield** is a browser-based cell battlefield game for 24v24 players, inspired by Ravenfield's accessible, casual battlefield gameplay. What sets Clawfield apart is an **AI Game Master** powered by LLMs (LLM provider stack) that reads the battle state and real-world context to dynamically generate world events during matches — airstrikes, weather shifts, supply drops, objective changes, and more.
 
 **Product focus reset (2026):** Clawfield is not trying to out-Battlefield Battlefield. The near-term product is a polished **AI-directed combat sandbox** where the Game Master creates memorable match turns. Shooter parity features are secondary to AI direction quality.
 
@@ -17,7 +17,7 @@
 
 1. **Accessible Warfare** — Casual Battlefield feel. Easy to pick up, satisfying to master. Not milsim, not twitch-arcade.
 2. **AI-Driven Chaos** — An LLM game master that watches the match and creates dramatic, fair, game-changing events.
-3. **Voxel Aesthetic** — Chunky, readable art style (Ravenfield-tier fidelity). Architecturally designed for future destructibility.
+3. **Cell Aesthetic** — Chunky, readable art style (Ravenfield-tier fidelity). Architecturally designed for future destructibility.
 4. **Browser-Native** — No downloads. Click a link, join a fight. WebGL/WebGPU rendering.
 5. **Multiplayer-First** — 24v24 from day one. Cloud-hosted, low-latency sessions.
 
@@ -50,7 +50,7 @@ Four infantry classes at launch. Each has a primary weapon, secondary, gadget, a
 |-------|------|-----------------|---------|---------------|
 | **Assault** | Frontline fighter | ARs, SMGs | Frag grenades, smoke grenades | Sprint boost (short burst of extra speed) |
 | **Medic** | Team sustain | SMGs, Shotguns | Medkit, bandages | Heal aura (small AOE heal over time) |
-| **Engineer** | Utility/support | Carbines, PDWs | Ammo box, repair tool | Deploy cover (place a temporary voxel wall) |
+| **Engineer** | Utility/support | Carbines, PDWs | Ammo box, repair tool | Deploy cover (place a temporary cell wall) |
 | **Recon** | Long-range intel | Sniper rifles, DMRs | Spotting scope, claymores | Mark targets (tagged enemies visible to team) |
 
 **Design notes:**
@@ -264,11 +264,11 @@ The AI Game Master must operate within strict bounds:
 - **Rate limiting:** 1 AI call per minute per match (30 calls max per 30-minute match). Cost-efficient by design.
 - **Match duration:** 30 minutes maximum. Time-limited to control AI costs and keep matches focused.
 
-### 4.6 Generative World Actions (Voxel Compiler)
+### 4.6 Generative World Actions (Cell Compiler)
 
-To support more dynamic AI interventions, the AI Game Master can emit **world action intents** that are compiled into safe voxel edits.
+To support more dynamic AI interventions, the AI Game Master can emit **world action intents** that are compiled into safe cell edits.
 
-**Key principle:** AI proposes intent; server compiler owns final voxel changes.
+**Key principle:** AI proposes intent; server compiler owns final cell changes.
 
 ```json
 {
@@ -296,17 +296,17 @@ To support more dynamic AI interventions, the AI Game Master can emit **world ac
 1. Parse and schema-validate AI output
 2. Resolve target area to world coordinates
 3. Run safety checks (spawn protection, objective overlap, pathing constraints)
-4. Enforce per-event and per-minute voxel budgets
-5. Generate deterministic voxel diff (seeded)
+4. Enforce per-event and per-minute cell budgets
+5. Generate deterministic cell diff (seeded)
 6. Dry-run validation on server snapshot
-7. Commit voxel diff + broadcast `voxel_update` + event warning
+7. Commit cell diff + broadcast `voxel_update` (cell update event) + event warning
 
 **Safety constraints:**
 
-- AI cannot directly write arbitrary voxels
+- AI cannot directly write arbitrary cells
 - No edits inside protected spawn volumes
 - No full hard-lock of objective approach paths
-- Max voxel delta per action + per minute
+- Max cell delta per action + per minute
 - Automatic rollback on failed validation
 
 **Initial intent set (MVP):**
@@ -325,20 +325,20 @@ To support more dynamic AI interventions, the AI Game Master can emit **world ac
 
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
-| **Rendering** | Three.js (WebGL2, WebGPU-ready) | Most mature browser 3D library. Voxel-friendly. |
+| **Rendering** | Three.js (WebGL2, WebGPU-ready) | Most mature browser 3D library. Cell-friendly. |
 | **UI** | HTML/CSS overlay + React | HUD, menus, chat. Separate from 3D canvas. |
 | **Client Language** | TypeScript | Type safety, tooling, team scalability |
-| **Physics (Movement)** | Custom AABB vs voxel grid | Tight FPS feel. Direct voxel lookup, no collider objects. Same code on client+server. |
-| **Physics (Dynamic)** | Rapier.js (WASM+SIMD) | Grenades, future vehicles, ragdolls. Native voxel collider (`ColliderDesc.voxels`). Cross-platform deterministic. |
+| **Physics (Movement)** | Custom AABB vs cell grid | Tight FPS feel. Direct cell lookup, no collider objects. Same code on client+server. |
+| **Physics (Dynamic)** | Rapier.js (WASM+SIMD) | Grenades, future vehicles, ragdolls. Native cell collider (`ColliderDesc.cells`). Cross-platform deterministic. |
 | **Networking** | WebSocket + WebRTC DataChannels | WS for reliable (chat, events), WebRTC for unreliable (positions, inputs) |
 | **Server** | Node.js (game logic) | JS/TS isomorphism with client. Shared types/validation. |
 | **Server Framework** | Custom ECS game loop | Entity-Component-System for game state. Not a web framework. |
 | **AI Backend** | Claude API / OpenClaw | LLM game master. HTTP calls from server. |
-| **Map Authoring** | MagicaVoxel + custom .vox pipeline | Hand-craft assets in MagicaVoxel, parse .vox directly into chunk data. |
-| **Map Pipeline CLI** | Vengi voxconvert | Batch format conversion, Lua scripting for asset transforms. |
+| **Map Authoring** | authoring tools + custom .vox pipeline | Hand-craft assets in authoring tools, parse .vox directly into chunk data. |
+| **Map Pipeline CLI** | Vengi map-convert | Batch format conversion, Lua scripting for asset transforms. |
 | **Infrastructure** | Cloud VMs (fly.io / Railway / AWS) | Auto-scaling game server instances |
 | **Database** | PostgreSQL (persistent) + Redis (session) | Player accounts, match history. Redis for matchmaking/lobby. |
-| **CDN** | Cloudflare | Static assets, voxel map data |
+| **CDN** | Cloudflare | Static assets, cell map data |
 | **Auth** | JWT + OAuth (Google/Discord) | Passwordless preferred |
 
 ### 5.2 Client Architecture
@@ -351,7 +351,7 @@ To support more dynamic AI interventions, the AI Game Master can emit **world ac
 │  │  Renderer     │  │  Game State  │  │  Network Manager  │  │
 │  │  (Three.js)   │  │  (ECS)       │  │  (WS + WebRTC)    │  │
 │  │              │  │              │  │                   │  │
-│  │  - Voxel mesh │  │  - Entities  │  │  - Input sending  │  │
+│  │  - Cell mesh │  │  - Entities  │  │  - Input sending  │  │
 │  │  - Lighting   │  │  - Components│  │  - State receiving│  │
 │  │  - Particles  │  │  - Systems   │  │  - Interpolation  │  │
 │  │  - Camera     │  │  - Prediction│  │  - Prediction     │  │
@@ -404,52 +404,52 @@ To support more dynamic AI interventions, the AI Game Master can emit **world ac
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 5.4 Voxel Engine Design
+### 5.4 Cell Engine Design
 
-#### 5.4.1 Voxel Representation
+#### 5.4.1 Cell Representation
 
 **Chunk-based system** (like Minecraft but tuned for combat):
 
-- **Voxel size:** 0.5m x 0.5m x 0.5m (human = ~4 voxels tall)
-- **Chunk size:** 16x16x16 voxels
-- **Map size:** ~64x16x64 chunks = 512x128x512 voxels = 256m x 64m x 256m per map section
-- **Voxel data:** 1 byte per voxel (material ID, 0 = air). Compact.
+- **Cell size:** 0.5m x 0.5m x 0.5m (human = ~4 cells tall)
+- **Chunk size:** 16x16x16 cells
+- **Map size:** ~64x16x64 chunks = 512x128x512 cells = 256m x 64m x 256m per map section
+- **Cell data:** 1 byte per cell (material ID, 0 = air). Compact.
 
 ```typescript
 interface Chunk {
   position: { x: number; y: number; z: number }; // chunk coords
-  voxels: Uint8Array; // 16*16*16 = 4096 bytes
+  cells: Uint8Array; // 16*16*16 = 4096 bytes
   mesh: THREE.Mesh | null; // generated mesh, cached
   dirty: boolean; // needs remeshing
 }
 
-interface VoxelWorld {
+interface TerrainWorld {
   chunks: Map<string, Chunk>; // key = "x,y,z"
-  materials: VoxelMaterial[]; // palette of materials (grass, stone, metal, etc.)
+  materials: TerrainMaterial[]; // palette of materials (grass, stone, metal, etc.)
 }
 ```
 
 #### 5.4.2 Rendering Pipeline
 
 1. **Greedy meshing** — Combine adjacent same-material faces into larger quads. Critical for performance.
-2. **Face culling** — Only generate faces between solid and air voxels. Interior faces are invisible.
+2. **Face culling** — Only generate faces between solid and air cells. Interior faces are invisible.
 3. **Chunk LOD** — Distant chunks use simplified meshes (1/4 resolution).
 4. **Frustum culling** — Only render chunks in camera view.
 5. **Instanced rendering** — For repeated decorative elements (grass tufts, debris).
-6. **Texture atlas** — Single texture with all voxel material UVs. One draw call per chunk.
+6. **Texture atlas** — Single texture with all cell material UVs. One draw call per chunk.
 
 **Target:** 60fps with 48 players on mid-range hardware (GTX 1060 / integrated GPU equivalent).
 
 #### 5.4.3 Destruction System (Implemented)
 
-Voxel destruction is live with the following capabilities:
+Cell destruction is live with the following capabilities:
 
-- **Voxel modification API:** `setVoxel(x, y, z, materialId)` + `getVoxel()` for real-time terrain changes
-- **Chunk dirty flag:** Triggers remeshing when voxels change (both server-side voxel_update and client-side)
-- **Explosion destruction:** Grenades/explosions remove destructible voxels in a sphere; terrain materials (grass, dirt, stone) are indestructible ground anchors
-- **Bullet destruction:** Hitscan bullets destroy 1-3 voxels along the bullet direction if bullet damage >= material hardness
-- **Structural integrity (BFS):** After voxels are removed, a flood-fill connectivity check detects unsupported sections. Disconnected groups either crumble (small) or collapse as rigid bodies (large)
-- **Visual debris (Rapier):** Destroyed voxels become Rapier physics bodies that fly outward from explosions with mass-proportional impulses, then settle on terrain. Varied chunk sizes (1x1, 2x2, 3x3) for visual variety
+- **Cell modification API:** `setCell(x, y, z, materialId)` + `getCell()` for real-time terrain changes
+- **Chunk dirty flag:** Triggers remeshing when cells change (server-side `voxel_update` event and client-side changes)
+- **Explosion destruction:** Grenades/explosions remove destructible cells in a sphere; terrain materials (grass, dirt, stone) are indestructible ground anchors
+- **Bullet destruction:** Hitscan bullets destroy 1-3 cells along the bullet direction if bullet damage >= material hardness
+- **Structural integrity (BFS):** After cells are removed, a flood-fill connectivity check detects unsupported sections. Disconnected groups either crumble (small) or collapse as rigid bodies (large)
+- **Visual debris (Rapier):** Destroyed cells become Rapier physics bodies that fly outward from explosions with mass-proportional impulses, then settle on terrain. Varied chunk sizes (1x1, 2x2, 3x3) for visual variety
 - **Server-authoritative debris sync:** Server broadcasts debris transform state to clients; client renders with interpolation/extrapolation smoothing
 - **DestructionManager:** Server-side manager handles all destruction logic, structural checks, pending drops, and crush zones
 
@@ -469,30 +469,30 @@ Two-layer physics system: custom AABB for movement, Rapier.js for dynamic object
 
 #### Layer 1: Custom AABB (Player Movement + Hitscan)
 
-- **Player-vs-world collision:** AABB swept against voxel grid. Direct lookup into chunk arrays — O(1) per axis. No collider objects to create/destroy.
-- **Hitscan weapons:** DDA (Digital Differential Analyzer) raycasting through voxel grid. Faster and more precise than general-purpose physics raycasting for grid-aligned worlds.
-- **Step-up:** Players can step onto voxels ≤1 voxel high without jumping (staircase feel).
-- **Slope handling:** Voxel terrain is inherently blocky — no slope math needed.
+- **Player-vs-world collision:** AABB swept against cell grid. Direct lookup into chunk arrays — O(1) per axis. No collider objects to create/destroy.
+- **Hitscan weapons:** DDA (Digital Differential Analyzer) raycasting through cell grid. Faster and more precise than general-purpose physics raycasting for grid-aligned worlds.
+- **Step-up:** Players can step onto cells ≤1 cell high without jumping (staircase feel).
+- **Slope handling:** Cell terrain is inherently blocky — no slope math needed.
 - **Runs identically on client and server:** Pure TypeScript, no WASM dependency for this layer. Deterministic by construction.
 
-Reference implementation: [voxel-physics-engine](https://github.com/fenomas/voxel-physics-engine)
+Reference implementation: [cell-physics-engine](https://github.com/fenomas/cell-physics-engine)
 
 #### Layer 2: Rapier.js (Dynamic Objects)
 
 - **Grenades:** Projectile arcs with bounce, friction, and explosion radius.
 - **Future vehicles:** Wheel physics, suspension springs.
-- **Terrain collider:** Uses Rapier's native `ColliderDesc.voxels` shape (added v0.16.0, April 2025). Updated via `Collider.setVoxel()` when terrain changes.
+- **Terrain collider:** Uses Rapier's native `ColliderDesc.cells` shape (added v0.16.0, April 2025). Updated via `Collider.setCell()` when terrain changes.
 - **Packages:**
   - Client: `@dimforge/rapier3d-simd` (SIMD-accelerated, best performance)
   - Server: `@dimforge/rapier3d-deterministic` (cross-platform deterministic)
-- **Note:** Rapier's voxel support is experimental — shape-casting on voxels and voxel-vs-voxel collision are not yet supported. This is fine for MVP (grenades-vs-terrain only).
+- **Note:** Rapier's cell support is experimental — shape-casting on cells and cell-vs-cell collision are not yet supported. This is fine for MVP (grenades-vs-terrain only).
 
 ### 5.6 Map Authoring Pipeline
 
 #### Workflow
 
 ```
-MagicaVoxel (hand-craft)     TypeScript (procedural)
+authoring tools (hand-craft)     TypeScript (procedural)
         │                            │
         ▼                            ▼
     .vox files                   .vox files
@@ -524,41 +524,41 @@ MagicaVoxel (hand-craft)     TypeScript (procedural)
         CDN → Client streams chunks on load
 ```
 
-#### MagicaVoxel Capabilities & Limits
+#### authoring tools Capabilities & Limits
 
-- **Per-model max:** 256x256x256 voxels
+- **Per-model max:** 256x256x256 cells
 - **World editor:** 2000x2000x1000 total (tiles multiple models)
-- **Our map size:** ~1000x128x1000 voxels → fits as 4x1x4 = 16 tiles of 256x128x256
+- **Our map size:** ~1000x128x1000 cells → fits as 4x1x4 = 16 tiles of 256x128x256
 - **Supports:** Multi-story buildings, tunnels, bridges, complex interiors — all confirmed
 - **Scripting:** GLSL shaders for procedural generation (noise, mazes, patterns) — GUI-only, no CLI
-- **Export:** OBJ, PLY, QB, XRAW. No native glTF (use Vengi voxconvert for conversion)
+- **Export:** OBJ, PLY, QB, XRAW. No native glTF (use Vengi map-convert for conversion)
 
-#### .vox Parser Strategy
+#### .vox Import Strategy
 
 The .vox format is simple (RIFF-style chunks). We write our own parser:
 
 ```typescript
-// Core .vox reading — no dependency on MagicaVoxel at runtime
-interface VoxModel {
+// Core .vox reading — no dependency on authoring tools at runtime
+interface CellModel {
   size: { x: number; y: number; z: number };
-  voxels: Array<{ x: number; y: number; z: number; colorIndex: number }>;
+  cells: Array<{ x: number; y: number; z: number; colorIndex: number }>;
   palette: Uint8Array; // 256 * 4 (RGBA)
 }
 
-function parseVox(buffer: ArrayBuffer): VoxModel[] { /* ... */ }
+function parseVox(buffer: ArrayBuffer): CellModel[] { /* ... */ }
 ```
 
-Existing libraries for reference: `parse-magica-voxel` (read), `vox-file-generator` (write).
+Existing libraries for reference: `parse-magica-cell` (read), `terrain-file-generator` (write).
 
-#### Vengi voxconvert (Pipeline Automation)
+#### Vengi map-convert (Pipeline Automation)
 
 For batch operations, Vengi's CLI tool handles format conversion and asset transforms:
 ```bash
 # Convert .vox to glTF (if needed for external tools)
-voxconvert --input map.vox --output map.gltf
+map-convert --input map.vox --output map.gltf
 
 # Apply Lua script effects (snow, grass, etc.)
-voxconvert --input building.vox --script add_snow.lua --output building_snow.vox
+map-convert --input building.vox --script add_snow.lua --output building_snow.vox
 ```
 
 ### 5.7 Networking Model
@@ -606,13 +606,13 @@ Delta compression and binary encoding bring this well within budget.
 
 ### 5.8 Map Data Format
 
-Maps are authored as voxel data and stored as compressed binary:
+Maps are authored as cell data and stored as compressed binary:
 
 ```
 map_name/
   meta.json          # Map metadata (name, size, spawn points, objectives)
   chunks/
-    0_0_0.bin        # Compressed voxel data per chunk
+    0_0_0.bin        # Compressed cell data per chunk
     0_0_1.bin
     ...
   lightmap.bin        # Pre-baked ambient occlusion
@@ -620,8 +620,8 @@ map_name/
 ```
 
 - **Loading:** Chunks stream progressively. Nearest chunks first.
-- **Size:** ~2-5MB per map compressed (voxel data compresses extremely well)
-- **Authoring:** Custom voxel editor (future), or MagicaVoxel export pipeline
+- **Size:** ~2-5MB per map compressed (cell data compresses extremely well)
+- **Authoring:** Custom cell editor (future), or authoring tools export pipeline
 
 ---
 
@@ -697,14 +697,14 @@ CREATE TABLE match_players (
 **Goal:** Bare-bones engine proof-of-concept
 
 - [x] Project scaffolding (monorepo: client + server + shared)
-- [x] Voxel chunk system with greedy meshing
+- [x] Cell chunk system with greedy meshing
 - [x] Basic Three.js renderer with camera controls
 - [x] Load a test map (flat ground + simple buildings)
 - [x] Player entity: WASD movement, mouse look, jumping
 - [x] WebSocket connection between client and server
 - [x] Server-authoritative position sync for 2 players
 
-**Exit criteria:** Two browser tabs showing two players moving in a voxel world, synced.
+**Exit criteria:** Two browser tabs showing two players moving in a cell world, synced.
 
 ### Phase 1: Combat Core (Weeks 5-8) ✅ COMPLETE
 **Goal:** Shooting works, people can die
@@ -736,11 +736,11 @@ CREATE TABLE match_players (
 ### Phase 2: Map & Polish (Weeks 9-12) 🔶 IN PROGRESS
 **Goal:** Reach baseline readability for one map while preserving velocity
 
-- [x] "Shoreline" map — full design with buildings, tunnels, bridges (MagicaVoxel → .vox → chunked .map pipeline)
+- [x] "Shoreline" map — full design with buildings, tunnels, bridges (authoring tools → .vox → chunked .map pipeline)
 - [x] Audio system scaffolding (sound-manager.ts with spatial audio, sound packs)
 - [ ] Sound effects integration (gunfire, footsteps, ambient — wired into gameplay)
-- [ ] Voxel material system (different block types, textures)
-- [ ] Texture atlas for voxel rendering
+- [ ] Cell material system (different block types, textures)
+- [ ] Texture atlas for cell rendering
 - [ ] Basic lighting (directional sun + ambient)
 - [x] Chunk LOD for distant terrain
 - [ ] Scoreboard overlay (Tab key — player list with KDA stats)
@@ -769,7 +769,7 @@ CREATE TABLE match_players (
 **Goal:** AI can safely modify battlefield geometry through constrained intents
 
 - [ ] Define `world_action` schema and validation
-- [ ] Build ActionCompiler (intent -> voxel diffs)
+- [ ] Build ActionCompiler (intent -> cell diffs)
 - [ ] Add safety checks (spawn protection, pathing, budget)
 - [ ] Add rollback and server veto hooks
 - [ ] Ship 2 production intents (`build_cover_line`, `open_breach`)
@@ -865,7 +865,7 @@ CREATE TABLE match_players (
 ## 11. Open Questions & Decisions Needed
 
 ### Resolved
-- ~~Map editor tooling~~ → **MagicaVoxel** with export pipeline to custom .vox loader
+- ~~Map editor tooling~~ → **authoring tools** with export pipeline to custom .vox loader
 - ~~Physics engine~~ → **Hybrid: Custom AABB (movement) + Rapier.js WASM (dynamic objects)**
 - ~~Monetization~~ → Deferred. Not a concern for MVP.
 - ~~Squads~~ → No squads for MVP. Simple two-team structure.
@@ -875,13 +875,13 @@ CREATE TABLE match_players (
 ### Still Open
 1. **Audio engine:** Web Audio API directly or use Howler.js?
 2. **AI model choice:** Claude API vs self-hosted vs hybrid? Cost implications at scale.
-3. **MagicaVoxel map pipeline:** Custom .vox parser → chunk data. Vengi voxconvert for batch ops. Pipeline defined in PRD 5.6.
+3. **authoring tools map pipeline:** Custom .vox parser → chunk data. Vengi map-convert for batch ops. Pipeline defined in PRD 5.6.
 
 ---
 
 ## 12. Reference System Catalog
 
-Design and technical systems extracted from reference games for future porting into Clawfield. Two primary references: **Ravenfield** (gameplay/design) and **OpenSpades** (voxel engine/netcode).
+Design and technical systems extracted from reference games for future porting into Clawfield. Two primary references: **Ravenfield** (gameplay/design) and **OpenSpades** (cell engine/netcode).
 
 ### 12.1 Ravenfield Systems
 
@@ -915,7 +915,7 @@ Player sprint speed:     9.6 m/s (1.6x)
 Player crouch speed:     3.0 m/s (0.5x)
 Jump velocity:           5.0 m/s
 Gravity:                 -9.8 m/s²
-Step-up height:          0.5 voxels
+Step-up height:          0.5 cells
 
 AR damage:               30 (4-hit kill)
 SMG damage:              22 (5-hit kill)
@@ -930,13 +930,13 @@ Capture radius:          10m
 
 ### 12.2 OpenSpades Systems
 
-Source: [OpenSpades](https://github.com/yvt/openspades) (GPL-3.0, C++). Technical reference for voxel engine, destruction, and netcode.
+Source: [OpenSpades](https://github.com/yvt/openspades) (GPL-3.0, C++). Technical reference for cell engine, destruction, and netcode.
 
-#### Voxel Destruction with Structural Integrity
-The most valuable system from OpenSpades. When voxels are destroyed, a **BFS (Breadth-First Search) connectivity graph** determines if remaining blocks are still connected to the ground. Disconnected clusters collapse as debris.
+#### Cell Destruction with Structural Integrity
+The most valuable system from OpenSpades. When cells are destroyed, a **BFS (Breadth-First Search) connectivity graph** determines if remaining blocks are still connected to the ground. Disconnected clusters collapse as debris.
 
 **Algorithm:**
-1. On voxel removal, identify all neighboring solid voxels
+1. On cell removal, identify all neighboring solid cells
 2. For each neighbor, run BFS/flood-fill downward toward ground (y=0)
 3. If any neighbor cluster cannot reach ground → it's unsupported
 4. Unsupported clusters become dynamic debris (falling particles)
@@ -944,21 +944,21 @@ The most valuable system from OpenSpades. When voxels are destroyed, a **BFS (Br
 
 **Key Parameters:**
 ```
-Max flood-fill radius:     64 voxels (prevent runaway checks)
-Ground connection:         Any voxel touching y=0 plane
+Max flood-fill radius:     64 cells (prevent runaway checks)
+Ground connection:         Any cell touching y=0 plane
 Debris lifetime:           3 seconds (fade + remove)
 Debris physics:            Simple gravity, no inter-debris collision
-Check frequency:           On voxel change only (event-driven, not per-tick)
+Check frequency:           On cell change only (event-driven, not per-tick)
 ```
 
 **Clawfield Integration Notes:**
 - Implement as `StructuralIntegrity` class in `packages/shared/src/structural.ts`
-- Wire into `setVoxel()` — when a voxel is removed, trigger connectivity check
-- Keep check radius bounded (max 64 voxels) to prevent frame drops
+- Wire into `setCell()` — when a cell is removed, trigger connectivity check
+- Keep check radius bounded (max 64 cells) to prevent frame drops
 - Debris particles use existing projectile renderer pattern (small colored cubes)
 
 #### Chunk Rendering with Per-Vertex Ambient Occlusion
-OpenSpades pre-computes AO per vertex using an **8-neighbor mask** — for each vertex of a voxel face, check the 3 adjacent solid voxels (corner + 2 edges). This creates the characteristic soft shadows at voxel edges.
+OpenSpades pre-computes AO per vertex using an **8-neighbor mask** — for each vertex of a cell face, check the 3 adjacent solid cells (corner + 2 edges). This creates the characteristic soft shadows at cell edges.
 
 **Algorithm:**
 ```
@@ -976,7 +976,7 @@ For each face vertex:
 ```
 
 **Clawfield Integration Notes:**
-- Add to `apps/client/src/voxel/mesher.ts` during face generation
+- Add to `apps/client/src/cell/mesher.ts` during face generation
 - Encode AO as vertex color brightness multiplier
 - Zero runtime cost (baked during mesh generation)
 - Dramatic visual improvement for minimal complexity
@@ -1025,18 +1025,18 @@ Refraction: Distorted underwater view through water plane
 ```
 
 **Clawfield Integration Notes (Post-MVP):**
-- Add as shader effect in renderer, not voxel data
+- Add as shader effect in renderer, not cell data
 - Water level defined per-map in metadata
 - Useful for Shoreline map (harbor, beach)
 - AI Game Master "Floodgate" event can raise water level dynamically
 
 #### Building/Construction System
-Players can place and remove voxels in real-time:
+Players can place and remove cells in real-time:
 
 **Rules:**
 ```
-Placement:     Must be adjacent to existing solid voxel
-Range:          5 voxels from player
+Placement:     Must be adjacent to existing solid cell
+Range:          5 cells from player
 Material:       Team-colored blocks (limited supply)
 Block pool:     50 blocks per life (replenished on respawn)
 Removal:        Destroy own team's blocks instantly, enemy blocks take 3 hits
@@ -1044,8 +1044,8 @@ Removal:        Destroy own team's blocks instantly, enemy blocks take 3 hits
 
 **Clawfield Integration Notes:**
 - Maps to Engineer class "deploy cover" ability
-- Use existing `setVoxel()` + chunk dirty flag + remesh pipeline
-- Sync via `voxel_change` network event (position + material)
+- Use existing `setCell()` + chunk dirty flag + remesh pipeline
+- Sync via `voxel_change` network event (`cell_change` payload)
 - Structural integrity system prevents floating block exploits
 
 ### 12.3 System Priority Matrix
@@ -1060,7 +1060,7 @@ Which reference systems to implement next, ordered by impact/effort:
 | 4 | Damage indicators | Ravenfield | Combat feel | Low | Phase 2 |
 | 5 | Hitbox system | Ravenfield | Combat depth | Medium | Phase 2 |
 | 6 | Binary protocol | OpenSpades | Performance | Medium | Phase 4 |
-| 7 | Voxel destruction | OpenSpades | Core feature | High | Post-MVP |
+| 7 | Cell destruction | OpenSpades | Core feature | High | Post-MVP |
 | 8 | Water rendering | OpenSpades | Visual polish | Medium | Post-MVP |
 | 9 | Building system | OpenSpades | Engineer class | Medium | Post-MVP |
 | 10 | Vehicles | Ravenfield | Content | High | Post-MVP |
@@ -1072,9 +1072,9 @@ Which reference systems to implement next, ordered by impact/effort:
 | Term | Definition |
 |------|------------|
 | **ECS** | Entity-Component-System — data-oriented architecture for game objects |
-| **Greedy Meshing** | Algorithm that combines adjacent voxel faces into larger polygons |
+| **Greedy Meshing** | Algorithm that combines adjacent cell faces into larger polygons |
 | **Tick** | One server simulation step (50ms at 20Hz) |
-| **Chunk** | 16x16x16 group of voxels, the unit of loading and rendering |
+| **Chunk** | 16x16x16 group of cells, the unit of loading and rendering |
 | **Client-side Prediction** | Client simulates own movement immediately, server corrects later |
 | **Entity Interpolation** | Smoothly moving other players between known server positions |
 | **Lag Compensation** | Rewinding server state to account for network latency on hit detection |

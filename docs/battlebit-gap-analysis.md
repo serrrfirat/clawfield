@@ -186,13 +186,13 @@ Gameplay-affecting equipment slots (not cosmetic):
 
 | Advantage                | Why It Matters                                                  |
 | ------------------------ | --------------------------------------------------------------- |
-| **True voxel destruction** | Every single block removable — more granular than BattleBit   |
+| **True cell destruction** | Every single block removable — more granular than BattleBit   |
 | **Browser-based**        | Zero install, instant play — no Steam required                  |
 | **AI Game Master**       | Dynamic world events mid-match — BattleBit has nothing like it  |
-| **Voxel building**       | Place individual blocks, not just prefab fortifications          |
+| **Cell building**       | Place individual blocks, not just prefab fortifications          |
 
-Our voxel engine is the key differentiator. BattleBit's destruction is impressive but
-constrained by mesh-based rendering. Our voxel grid supports destruction *natively* —
+Our cell engine is the key differentiator. BattleBit's destruction is impressive but
+constrained by mesh-based rendering. Our cell grid supports destruction *natively* —
 every block is independently addressable. This should be our headline feature.
 
 ---
@@ -201,18 +201,18 @@ every block is independently addressable. This should be our headline feature.
 
 ### Tier 1 — Core Differentiators (Implement First)
 
-These features have the highest gameplay impact and play to our voxel engine strengths.
+These features have the highest gameplay impact and play to our cell engine strengths.
 
-**1. Voxel Destruction**
-- Explosions (grenades, RPGs) remove voxels from the world in a blast radius
-- Weapons deal minor voxel damage (shotguns chip walls, snipers punch through)
+**1. Cell Destruction**
+- Explosions (grenades, RPGs) remove cells from the world in a blast radius
+- Weapons deal minor cell damage (shotguns chip walls, snipers punch through)
 - Structural integrity check: unsupported blocks collapse under gravity
 - Buildings degrade and eventually collapse when too much structure is removed
 - Dust/debris particle effects on destruction
 - *Why first:* Our engine is built for this. It's the single most transformative feature.
 
 **2. Building / Fortification System**
-- Build menu with voxel-based structures (walls, sandbags, barriers)
+- Build menu with cell-based structures (walls, sandbags, barriers)
 - Squad points as currency (earned through squad play)
 - Support class builds instantly, others build over time
 - Placement preview (green transparent ghost)
@@ -307,7 +307,7 @@ These features add polish and retention.
 
 ## Design Principles (Learned from BattleBit)
 
-1. **Function over form.** The low-poly/voxel style isn't a limitation — it enables
+1. **Function over form.** The low-poly/cell style isn't a limitation — it enables
    destruction, scale, and fast iteration. Lean into it.
 
 2. **Accessible depth.** Position gameplay between arcade (CoD) and simulation (Squad).
@@ -334,7 +334,7 @@ These features add polish and retention.
 The minimum feature set that puts Clawfield in the same category as BattleBit while
 maintaining our unique identity:
 
-- **Voxel Destruction** + **Building** (our headline differentiator)
+- **Cell Destruction** + **Building** (our headline differentiator)
 - **Revive System** (transforms team play)
 - **Squad System** (coordination layer)
 - **Rush Game Mode** (second core mode)
@@ -343,4 +343,4 @@ maintaining our unique identity:
 These five features, combined with our existing Conquest/TDM, 4-class system, and
 8-weapon arsenal, create a complete multiplayer FPS experience that can stand alongside
 BattleBit while offering something BattleBit doesn't: browser-based instant play,
-true voxel manipulation, and AI-driven dynamic events.
+true cell manipulation, and AI-driven dynamic events.

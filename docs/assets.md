@@ -1,34 +1,34 @@
-# Free Voxel Assets
+# Free Cell Assets
 
-Curated list of free voxel assets compatible with Clawfield's pipeline (`.vox` → chunked `.map`).
+Curated list of free cell assets compatible with Clawfield's pipeline (`.vox` → chunked `.map`).
 
-## Texture Packs (for voxel atlas)
+## Texture Packs (for cell atlas)
 
-### Kenney Voxel Pack
-- **URL**: https://www.kenney.nl/assets/voxel-pack
+### Kenney Cell Pack
+- **URL**: https://www.kenney.nl/assets/cell-pack
 - **License**: CC0 (public domain) — no attribution required, commercial use OK
 - **Contents**: 190 assets — terrain tiles (grass, dirt, sand, stone, brick, snow, gravel), items, characters, skybox, particles, sun/moon
 - **Format**: PNG (individual tiles + spritesheet)
-- **Use case**: Texture atlas for voxel materials — replaces flat vertex colors with textured block faces
+- **Use case**: Texture atlas for cell materials — replaces flat vertex colors with textured block faces
 
 ### ProgrammerArt
 - **URL**: https://github.com/deathcap/ProgrammerArt
 - **License**: Free for any use
-- **Contents**: Original textures designed for voxel/block games — terrain, ores, wood, leaves, water
+- **Contents**: Original textures designed for cell/block games — terrain, ores, wood, leaves, water
 - **Format**: PNG (individual tiles)
 - **Use case**: Alternative/supplementary terrain textures
 
 ## 3D Models & Props (`.vox` format)
 
-### Gorlaks Voxel Assets
-- **URL**: https://gorlaks.itch.io/voxel-assets
+### Gorlaks Cell Assets
+- **URL**: https://gorlaks.itch.io/cell-assets
 - **License**: Free
-- **Contents**: Miscellaneous props and environment pieces made in MagicaVoxel
+- **Contents**: Miscellaneous props and environment pieces made in authoring tools
 - **Format**: `.vox` (direct pipeline compatibility)
-- **Use case**: Map decoration — drop into MagicaVoxel scenes before converting
+- **Use case**: Map decoration — drop into authoring tools scenes before converting
 
-### Enkisoftware Voxel Models
-- **URL**: https://github.com/enkisoftware/voxel-models
+### Enkisoftware Cell Models
+- **URL**: https://github.com/enkisoftware/cell-models
 - **License**: CC BY 4.0 (some CC0 from MountainLabs)
 - **Contents**: Buildings, environment props, trees
 - **Format**: `.vox`
@@ -36,36 +36,36 @@ Curated list of free voxel assets compatible with Clawfield's pipeline (`.vox` �
 
 ## Weapons & Items
 
-### Miventech Voxel Weapon Pack
-- **URL**: https://miventech.itch.io/voxel-weapon-pack
+### Miventech Cell Weapon Pack
+- **URL**: https://miventech.itch.io/cell-weapon-pack
 - **License**: Free
-- **Contents**: Multiple weapon models, editable in MagicaVoxel
+- **Contents**: Multiple weapon models, editable in authoring tools
 - **Format**: `.vox`, OBJ, FBX
 - **Use case**: First-person weapon viewmodels (requires separate Three.js model loader)
 
-### itch.io Free Voxel Weapons
-- **URL**: https://itch.io/game-assets/free/tag-voxel/tag-weapons
+### itch.io Free Cell Weapons
+- **URL**: https://itch.io/game-assets/free/tag-cell/tag-weapons
 - **License**: Varies per asset
-- **Contents**: Various voxel weapon models (guns, RPG, fantasy)
+- **Contents**: Various cell weapon models (guns, RPG, fantasy)
 - **Use case**: Browse for FPS-relevant weapon models
 
 ## Vehicles & Military
 
-### itch.io Free Voxel Assets (Military)
-- **URL**: https://itch.io/game-assets/free/tag-voxel
+### itch.io Free Cell Assets (Military)
+- **URL**: https://itch.io/game-assets/free/tag-cell
 - **License**: Varies per asset
 - **Contents**: Tanks, APCs, military vehicles (6 vehicles, 3 textures each in some packs)
 - **Use case**: Map decoration or future drivable vehicles
 
 ## Browse More
 
-- **itch.io Voxel Assets**: https://itch.io/game-assets/free/tag-voxel
-- **itch.io MagicaVoxel Assets**: https://itch.io/game-assets/free/tag-magicavoxel
-- **OpenGameArt Voxel**: https://opengameart.org/art-search-advanced?keys=voxel
+- **itch.io Cell Assets**: https://itch.io/game-assets/free/tag-cell
+- **itch.io authoring tools Assets**: https://itch.io/game-assets/free/tag-magicavoxel
+- **OpenGameArt Cell**: https://opengameart.org/art-search-advanced?keys=cell
 
 ## Pipeline Notes
 
-Assets in `.vox` format can be placed into MagicaVoxel scenes and baked into maps via the existing pipeline:
+Assets in `.vox` format can be placed into authoring tools scenes and baked into maps via the existing pipeline:
 ```
 .vox → vox-converter.ts → .chunks.json + .palette.json → map-packer.ts → .map
 ```

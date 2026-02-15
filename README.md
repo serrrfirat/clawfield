@@ -1,28 +1,35 @@
 # Clawfield
 
-Browser-based voxel battlefield game for 24v24 multiplayer. Accessible, casual FPS gameplay with an AI Game Master that dynamically generates world events during matches.
+Clawfield is a browser-first, AI-directed cell combat sandbox for 24v24 teams. The game is built around readable team FPS action, dynamic terrain, and a strong server-authoritative simulation.
+
+## Current Objective
+
+- Keep the gameplay accessible and tactical while improving battlefield readability.
+- Preserve deterministic outcomes through authoritative server logic and bounded client prediction.
+- Differentiate with an AI Game Master that creates memorable but fair Incursion match events.
+- Maintain a pragmatic web-first stack for fast iteration and stable performance.
 
 ## Tech Stack
 
 - **Language**: TypeScript (strict mode)
-- **Client**: Vite + Three.js + Howler.js
-- **Server**: Node.js + WebSocket (20Hz authoritative tick)
+- **Client**: Vite + Three.js + React
+- **Server**: Node.js + WebSocket/WebRTC (20Hz authoritative tick)
 - **Monorepo**: pnpm workspaces
-- **Voxel Tools**: Python + TypeScript converters
+- **Cell Tools**: Python + TypeScript map conversion utilities
 
 ## Project Structure
 
-```
+```text
 apps/
   client/          # Vite + Three.js frontend
   server/          # Node.js authoritative game server
 packages/
-  shared/          # Shared types, constants, physics, weapon/class definitions
+  shared/          # Shared types, constants, physics, combat, and data contracts
 assets/
-  vox/             # MagicaVoxel source files
+  vox/             # Source `.vox` files for map import
   maps/            # Compiled chunked map data
 tools/             # Map generation & conversion utilities
-docs/              # PRD, reference docs
+docs/              # PRD and reference documentation
 ```
 
 ## Getting Started
@@ -31,7 +38,7 @@ docs/              # PRD, reference docs
 
 - Node.js 18+
 - pnpm (`npm install -g pnpm`)
-- Python 3 (for map generation)
+- Python 3 (for map generation tools)
 
 ### Development
 
@@ -39,14 +46,14 @@ docs/              # PRD, reference docs
 # Install dependencies
 pnpm install
 
-# Start the game server (port 3000)
+# Start server (port 3000)
 pnpm run dev:server
 
-# In another terminal, start the client (port 5173)
+# Start client in another terminal (port 5173)
 pnpm run dev:client
 ```
 
-Open http://localhost:5173 in your browser. Click to play — WASD to move, mouse to aim, left-click to shoot, Tab for scoreboard.
+Open `http://localhost:5173` and start a local match.
 
 ### Build
 
@@ -57,62 +64,63 @@ pnpm run build
 ### Map Generation
 
 ```bash
-# Build the Shoreline map (generate voxels -> convert -> pack)
+# Build Shoreline map assets (`.vox` -> converter -> packed chunks)
 pnpm run build:shoreline-map
 
-# Convert a .vox file manually
+# Manual conversion helper
 pnpm run convert:map
 ```
+
+Controls: `WASD`, mouse look, left-click to fire, `Tab` opens player list.
 
 ## Gameplay
 
 ### Classes
 
-| Class | Primary | Gadgets | Ability |
-|-------|---------|---------|---------|
-| **Assault** | Assault Rifle / SMG | Frag & Smoke Grenades | Sprint Boost |
-| **Medic** | SMG / Shotgun | Medkit / Bandage | Heal Aura (AOE) |
-| **Engineer** | Carbine / PDW | Ammo Box / Repair Tool | Deploy Cover |
-| **Recon** | Sniper / DMR | Spotting Scope / Claymore | Mark Targets |
+| Class | Primary | Gadgets | Signature Ability |
+|-------|---------|---------|------------------|
+| Assault | Assault Rifle / SMG | Frag, Smoke Grenades | Sprint Burst |
+| Medic | SMG / Shotgun | Medkit, Bandage | Heal Aura |
+| Engineer | Carbine / PDW | Ammo Box, Repair Tool | Deploy Cover |
+| Recon | Sniper / DMR | Spotting Scope, Claymore | Mark Targets |
 
 ### Game Modes
 
 - **TDM** — 75 tickets per team, kills drain enemy tickets
-- **Conquest** — Capture and hold 3 flags, earn points over time
-- **Rush** — Attackers destroy M-COM stations, defenders hold the line
-- **Incursion** (planned) — Conquest + AI Game Master generating dynamic events
+- **Conquest** — Capture and hold zones to generate a slow, stable score race
+- **Rush** — Attackers destroy objectives, defenders hold territory
+- **Incursion** — Conquest baseline with AI Game Master event cadence
 
-### Key Mechanics
+### Core Systems
 
-- Server-authoritative hit detection with client-side prediction
-- Hitscan (close-mid range) and projectile (long range) weapons
-- Grenade physics with bounce, fuse timer, and explosion radius
-- Chunked voxel world with greedy meshing for efficient rendering
-- AI bots with configurable difficulty
+- Server-authoritative combat with client-side prediction
+- Hitscan and projectile weapons with local feedback + server reconciliation
+- Destructible cell world with chunked streaming
+- Grenade physics (bounce, fuse, blast)
+- AI bot behaviors and bot difficulty tuning
+- Comms / audio cues and HUD-focused combat feedback
 
 ## Architecture
 
-```
-Client (Browser)               Server (Node.js)
-┌──────────────────┐           ┌──────────────────┐
-│ Input → Predict  │──WebSocket──▶ Validate & Sim  │
-│ Render (Three.js)│◀──────────│ Broadcast State   │
-│ Interpolate      │           │ 20Hz Game Loop    │
-│ HUD / Audio      │           │ Bot AI            │
-└──────────────────┘           └──────────────────┘
-        ▲                              ▲
-        └──────── shared/ ─────────────┘
-          Types, Physics, Constants,
-          Weapons, Classes, Combat
+```text
+Client (Browser)                   Server (Node.js)
+┌────────────────────────────┐     ┌───────────────────────────┐
+│ Input + Prediction         │ WS  │ Validation + Simulation   │
+│ Render (Three.js)          │◀────│ 20Hz Authoritative Tick   │
+│ Client interpolation/Audio  │     │ AI Game Master Director   │
+└────────────────────────────┘     └───────────────────────────┘
+                ▲                              ▲
+                └──────────── shared/ ──────────┘
+             Types, Physics, Combat, Assets
 ```
 
-The server runs at a fixed 20Hz tick rate and is the authority on all game state. Clients send inputs, predict locally, and reconcile with server snapshots. Voxel chunks are streamed to clients based on proximity.
+The server is authoritative for game state. Clients run prediction locally and reconcile from periodic server snapshots. Cell chunks are streamed by proximity for performance.
 
 ## Development Status
 
-Currently in **Phase 2 (Polish & Content)**. Core gameplay, combat, classes, bots, grenades, capture points, minimap, and the Shoreline map are complete. Sound, gadgets, the AI Game Master (Phase 3), and 24v24 scaling (Phase 4) are upcoming.
+Currently in **Phase 2.5 (AI Vertical Slice Reset)**. Core combat systems, movement, bots, grenades, capture mechanics, minimap, and Shoreline baseline content are complete. Current focus is on stable AI event systems, comms readability, and scaling path toward 24v24.
 
-See [docs/PRD.md](docs/PRD.md) for the full product spec and [tasks/todo.md](tasks/todo.md) for phase tracking.
+See [docs/PRD.md](docs/PRD.md) for full specs and [tasks/todo.md](tasks/todo.md) for phase tracking.
 
 ## License
 

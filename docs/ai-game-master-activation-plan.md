@@ -149,5 +149,5 @@ Exit criteria:
 ## Notes
 
 - Keep gameplay authority fully server-side; AI only proposes intents.
-- Do not allow AI-generated freeform voxel edits directly in Phase 1/2.
+- Do not allow AI-generated freeform cell edits directly in Phase 1/2.
 - Keep deterministic fallback as a permanent reliability layer, not a temporary migration crutch.
