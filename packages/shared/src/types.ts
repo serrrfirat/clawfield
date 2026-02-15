@@ -65,6 +65,8 @@ export interface PlayerState {
   suppression: number;
   /** 0..1 flash intensity (server-authoritative) */
   flash: number;
+  /** True when player is inside a smoke cloud */
+  inSmoke?: boolean;
 }
 
 /** Input state captured on the client each frame */

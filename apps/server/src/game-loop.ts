@@ -69,6 +69,7 @@ import { RocketManager } from './rocket-manager.js';
 import { DestructionManager } from './destruction-manager.js';
 import { SmokeGrenadeManager } from './smoke-grenade-manager.js';
 import { FlashGrenadeManager } from './flash-grenade-manager.js';
+import { SmokeZoneTracker } from './smoke-zone-tracker.js';
 // Dynamic import — Rapier WASM may not load in all environments (e.g. tsx)
 let DebrisPhysicsManager: typeof import('./debris-physics-manager.js').DebrisPhysicsManager | null = null;
 let initRapier: (() => Promise<void>) | null = null;
@@ -115,6 +116,7 @@ const LAG_COMPENSATION_MS = 0;
 const POSITION_HISTORY_WINDOW_MS = 1500;
 const TERRAIN_STONE_DESTRUCTIBLE_RADIUS_MIN = 0.55;
 const ENVIRONMENT_DESTRUCTION_WEAPONS = new Set<string>([
+  'assault_rifle',
   'rocket_launcher',
   'tank_cannon',
   'tank_shell',
@@ -142,6 +144,7 @@ export class GameLoop {
   private grenadeManager = new GrenadeManager();
   private smokeGrenadeManager = new SmokeGrenadeManager();
   private flashGrenadeManager = new FlashGrenadeManager();
+  private smokeZones = new SmokeZoneTracker();
   private gadgetManager = new GadgetManager();
   private rocketManager = new RocketManager();
   private destructionManager!: DestructionManager;
@@ -407,6 +410,7 @@ export class GameLoop {
     this.grenadeManager = new GrenadeManager();
     this.smokeGrenadeManager = new SmokeGrenadeManager();
     this.flashGrenadeManager = new FlashGrenadeManager();
+    this.smokeZones = new SmokeZoneTracker();
     this.rocketManager = new RocketManager();
     this.gadgetManager = new GadgetManager();
     this.sentChunks.clear();
@@ -1554,7 +1558,9 @@ export class GameLoop {
           duration: deploy.duration,
         },
       });
+      this.smokeZones.addZone(deploy.position, deploy.radius, deploy.duration);
     }
+    this.smokeZones.update();
 
     const flashDetonations = this.flashGrenadeManager.update(
       TICK_INTERVAL / 1000,
@@ -1774,7 +1780,13 @@ export class GameLoop {
     // Build state snapshot (exclude disconnected players)
     const players = Array.from(this.players.values())
       .filter((s) => !s.disconnected)
-      .map((s) => s.getState());
+      .map((s) => {
+        const state = s.getState();
+        if (this.smokeZones.pointInSmoke(state.position)) {
+          state.inSmoke = true;
+        }
+        return state;
+      });
 
     // Get projectile states for broadcasting
     const projectileStates = this.projectileManager.getStates();

@@ -6,6 +6,7 @@ import { ParticleSystem } from './particle-system'
 import { GrenadeRenderer } from './grenade-renderer'
 import { GunSmokeSystem } from './gun-smoke-system'
 import { ImpactSystem } from './impact-system'
+import { BillboardSmokeSystem } from './billboard-smoke-system'
 import { soundManager, SoundId } from '../audio/sound-manager'
 import useStore from '../stores/useStore'
 import { placementDestructionView } from '../world/placement-destruction-view'
@@ -20,12 +21,14 @@ export const combatSystems: {
   grenades: GrenadeRenderer | null
   gunSmoke: GunSmokeSystem | null
   impacts: ImpactSystem | null
+  billboardSmoke: BillboardSmokeSystem | null
 } = {
   projectiles: null,
   particles: null,
   grenades: null,
   gunSmoke: null,
   impacts: null,
+  billboardSmoke: null,
 }
 
 /**
@@ -41,6 +44,7 @@ export default function CombatEffects() {
   const grenades = useRef<GrenadeRenderer | null>(null)
   const gunSmoke = useRef<GunSmokeSystem | null>(null)
   const impacts = useRef<ImpactSystem | null>(null)
+  const billboardSmoke = useRef<BillboardSmokeSystem | null>(null)
 
   // Initialize combat systems on mount
   useEffect(() => {
@@ -65,13 +69,18 @@ export default function CombatEffects() {
     const gs = new GunSmokeSystem(scene)
     gunSmoke.current = gs
 
+    const bs = new BillboardSmokeSystem(scene)
+    billboardSmoke.current = bs
+
     // Expose to other components (e.g. PlayerController for local projectile spawning)
     combatSystems.projectiles = pr
     combatSystems.particles = ps
     combatSystems.grenades = gr
     combatSystems.gunSmoke = gs
     combatSystems.impacts = impactSystem
+    combatSystems.billboardSmoke = bs
     placementDestructionView.setScene(scene)
+    placementDestructionView.setParticleSystem(ps)
 
     // Initialize audio context on first interaction
     const initAudio = () => {
@@ -89,11 +98,14 @@ export default function CombatEffects() {
       combatSystems.grenades = null
       combatSystems.gunSmoke = null
       combatSystems.impacts = null
+      combatSystems.billboardSmoke = null
       pr.dispose()
       ps.dispose()
       gr.dispose()
       gs.dispose()
       impactSystem.dispose()
+      bs.dispose()
+      placementDestructionView.setParticleSystem(null)
       placementDestructionView.setScene(null)
       window.removeEventListener('click', initAudio)
       window.removeEventListener('keydown', initAudio)
@@ -190,7 +202,9 @@ export default function CombatEffects() {
 
     const smokeDeploys = store.consumeSmokeDeploys ? store.consumeSmokeDeploys() : []
     for (const deploy of smokeDeploys) {
-      grenades.current?.addSmokeCloud(deploy.position, deploy.radius, deploy.duration)
+      // Old volumetric raymarched smoke disabled — using billboard particle system instead
+      // grenades.current?.addSmokeCloud(deploy.position, deploy.radius, deploy.duration)
+      billboardSmoke.current?.addCloud(deploy.position, deploy.radius, deploy.duration)
       if (particles.current) {
         const burstScale = Math.max(0.2, Math.min(0.45, deploy.radius / 30))
         particles.current.emit({
@@ -270,7 +284,11 @@ export default function CombatEffects() {
       impacts.current.update(clampedDt)
     }
 
-    placementDestructionView.update(clampedDt)
+    if (billboardSmoke.current) {
+      billboardSmoke.current.update(clampedDt, camera)
+    }
+
+    placementDestructionView.update(clampedDt, camera)
 
     // Update audio listener position
     soundManager.updateListener(
