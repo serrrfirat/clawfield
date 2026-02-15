@@ -1,4 +1,4 @@
-import type { Vec3, ProjectileState } from '@clawfield/shared';
+import type { Vec3, ProjectileState, PlacementCollider } from '@clawfield/shared';
 import {
   Team,
   GRAVITY,
@@ -56,6 +56,38 @@ export interface ProjectileHit {
 export interface ProjectileVoxelHit {
   position: Vec3;
   direction: Vec3;
+}
+
+export interface ProjectileObstacleHit {
+  colliderId: string;
+  position: Vec3;
+  direction: Vec3;
+}
+
+function rayDiscHitDistance(origin: Vec3, dir: Vec3, maxDist: number, obstacle: PlacementCollider): number {
+  const dx = dir.x;
+  const dz = dir.z;
+  const a = dx * dx + dz * dz;
+  if (a < 1e-8) return Infinity;
+
+  const fx = origin.x - obstacle.x;
+  const fz = origin.z - obstacle.z;
+  const r = Math.max(0.01, obstacle.r);
+
+  const b = 2 * (fx * dx + fz * dz);
+  const c = fx * fx + fz * fz - r * r;
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return Infinity;
+
+  const sqrtDisc = Math.sqrt(disc);
+  const t1 = (-b - sqrtDisc) / (2 * a);
+  const t2 = (-b + sqrtDisc) / (2 * a);
+
+  let t = Infinity;
+  if (t1 >= 0) t = t1;
+  else if (t2 >= 0) t = t2;
+
+  return t <= maxDist ? t : Infinity;
 }
 
 /**
@@ -238,12 +270,14 @@ export class ProjectileManager {
     dt: number,
     getHeight: HeightGetter,
     players: Map<string, PlayerSim>,
+    obstacles: PlacementCollider[] = [],
     nowMs?: number,
     lagCompMs: number = 0,
     getHistoricalPosition?: (playerId: string, targetTimeMs: number) => Vec3 | undefined,
-  ): { playerHits: ProjectileHit[]; voxelHits: ProjectileVoxelHit[] } {
+  ): { playerHits: ProjectileHit[]; voxelHits: ProjectileVoxelHit[]; obstacleHits: ProjectileObstacleHit[] } {
     const playerHits: ProjectileHit[] = [];
     const voxelHits: ProjectileVoxelHit[] = [];
+    const obstacleHits: ProjectileObstacleHit[] = [];
 
     for (const proj of this.projectiles) {
       if (!proj.alive) continue;
@@ -270,9 +304,19 @@ export class ProjectileManager {
 
       // Terrain collision via heightmap ray march
       const terrainHitDist = rayHeightmapMarch(oldPos, dir, stepDist, getHeight);
+      let closestObstacleDist = terrainHitDist;
+      let closestObstacleId: string | null = null;
+
+      for (const obstacle of obstacles) {
+        const hitDist = rayDiscHitDistance(oldPos, dir, stepDist, obstacle);
+        if (hitDist < closestObstacleDist) {
+          closestObstacleDist = hitDist;
+          closestObstacleId = obstacle.id;
+        }
+      }
 
       // Player collision
-      let closestPlayerDist = terrainHitDist;
+      let closestPlayerDist = closestObstacleDist;
       let closestPlayerId: string | null = null;
 
       for (const target of players.values()) {
@@ -305,6 +349,18 @@ export class ProjectileManager {
           y: oldPos.y + dir.y * closestPlayerDist,
           z: oldPos.z + dir.z * closestPlayerDist,
         };
+      } else if (closestObstacleId !== null && closestObstacleDist < stepDist) {
+        proj.alive = false;
+        proj.position = {
+          x: oldPos.x + dir.x * closestObstacleDist,
+          y: oldPos.y + dir.y * closestObstacleDist,
+          z: oldPos.z + dir.z * closestObstacleDist,
+        };
+        obstacleHits.push({
+          colliderId: closestObstacleId,
+          position: { ...proj.position },
+          direction: { ...dir },
+        });
       } else if (terrainHitDist < stepDist) {
         proj.alive = false;
         proj.position = {
@@ -331,7 +387,7 @@ export class ProjectileManager {
     }
 
     this.projectiles = this.projectiles.filter((p) => p.alive);
-    return { playerHits, voxelHits };
+    return { playerHits, voxelHits, obstacleHits };
   }
 
   /** Get all alive projectile states for broadcasting to clients */

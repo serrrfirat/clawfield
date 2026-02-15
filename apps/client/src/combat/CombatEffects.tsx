@@ -7,6 +7,7 @@ import { GunSmokeSystem } from './gun-smoke-system'
 import { ImpactSystem } from './impact-system'
 import { soundManager, SoundId } from '../audio/sound-manager'
 import useStore from '../stores/useStore'
+import { placementDestructionView } from '../world/placement-destruction-view'
 
 /**
  * Global refs to combat systems so PlayerController can spawn local projectiles.
@@ -32,7 +33,7 @@ export const combatSystems: {
  * Renders nothing declaratively — all visuals are added imperatively to the scene.
  */
 export default function CombatEffects() {
-  const { scene, camera } = useThree()
+  const { scene, camera, gl } = useThree()
 
   const particles = useRef<ParticleSystem | null>(null)
   const projectiles = useRef<ProjectileRenderer | null>(null)
@@ -47,6 +48,9 @@ export default function CombatEffects() {
 
     const pr = new ProjectileRenderer(scene)
     pr.setParticleSystem(ps)
+    pr.setOnImpact((position, impulse) => {
+      placementDestructionView.handleImpact(position, impulse)
+    })
     projectiles.current = pr
 
     const impactSystem = new ImpactSystem(scene)
@@ -66,6 +70,7 @@ export default function CombatEffects() {
     combatSystems.grenades = gr
     combatSystems.gunSmoke = gs
     combatSystems.impacts = impactSystem
+    placementDestructionView.setScene(scene)
 
     // Initialize audio context on first interaction
     const initAudio = () => {
@@ -88,6 +93,7 @@ export default function CombatEffects() {
       gr.dispose()
       gs.dispose()
       impactSystem.dispose()
+      placementDestructionView.setScene(null)
       window.removeEventListener('click', initAudio)
       window.removeEventListener('keydown', initAudio)
     }
@@ -154,6 +160,11 @@ export default function CombatEffects() {
       }
     }
 
+    const destroyedPlacements = store.consumePlacementDestroyed ? store.consumePlacementDestroyed() : []
+    for (const event of destroyedPlacements) {
+      placementDestructionView.handleDestroyedPlacement(event.colliderId, event.position, event.impulse)
+    }
+
     // Process hit confirmations: play ding sound + emit hit particles at target
     const hitConfirms = store.consumeHitConfirms()
     for (const hit of hitConfirms) {
@@ -202,12 +213,14 @@ export default function CombatEffects() {
     }
 
     if (gunSmoke.current) {
-      gunSmoke.current.update(clampedDt)
+      gunSmoke.current.update(clampedDt, gl, camera)
     }
 
     if (impacts.current) {
       impacts.current.update(clampedDt)
     }
+
+    placementDestructionView.update(clampedDt)
 
     // Update audio listener position
     soundManager.updateListener(

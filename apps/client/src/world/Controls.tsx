@@ -1,4 +1,4 @@
-import { useControls } from 'leva'
+import { button, useControls } from 'leva'
 import useStore from '../stores/useStore'
 
 export default function Controls() {
@@ -9,6 +9,7 @@ export default function Controls() {
     const windParameters = useStore((state) => state.windParameters)
     const windLineParameters = useStore((state) => state.windLineParameters)
     const stoneParameters = useStore((state) => state.stoneParameters)
+    const rubbleParameters = useStore((state: any) => state.rubbleParameters ?? {})
     const treeParameters = useStore((state) => state.treeParameters)
     const ballFadeParameters = useStore((state) => state.ballFadeParameters)
     const postProcessingParameters = useStore((state) => state.postProcessingParameters)
@@ -28,6 +29,106 @@ export default function Controls() {
             },
         }))
     }
+
+    const applyPreset = (preset) => {
+        if (preset === 'original') {
+            useStore.setState((state) => ({
+                postProcessingParameters: {
+                    ...state.postProcessingParameters,
+                    enabled: true,
+                    dynamicPostFX: false,
+                    dynamicLighting: false,
+                    dynamicShaderTint: false,
+                    screenTintEnabled: false,
+                    screenTintStrength: 1,
+                },
+                dayNightParameters: {
+                    ...state.dayNightParameters,
+                    enabled: false,
+                    autoCycle: false,
+                    timeOfDay: 14,
+                },
+                cloudShadowParameters: {
+                    ...state.cloudShadowParameters,
+                    enabled: true,
+                    intensity: 0.55,
+                },
+                grassParameters: {
+                    ...state.grassParameters,
+                    colorBase: '#669019',
+                    colorTop: '#acc125',
+                },
+                treeParameters: {
+                    ...state.treeParameters,
+                    leavesColor: '#204a11',
+                },
+            }))
+            return
+        }
+
+        if (preset === 'sunny') {
+            useStore.setState((state) => ({
+                postProcessingParameters: {
+                    ...state.postProcessingParameters,
+                    enabled: false,
+                    dynamicPostFX: false,
+                    dynamicLighting: false,
+                    dynamicShaderTint: false,
+                    screenTintEnabled: false,
+                },
+                dayNightParameters: {
+                    ...state.dayNightParameters,
+                    enabled: false,
+                    autoCycle: false,
+                    timeOfDay: 14,
+                },
+                cloudShadowParameters: {
+                    ...state.cloudShadowParameters,
+                    enabled: false,
+                    intensity: 0.08,
+                },
+                grassParameters: {
+                    ...state.grassParameters,
+                    colorBase: '#739f22',
+                    colorTop: '#c7df62',
+                },
+                treeParameters: {
+                    ...state.treeParameters,
+                    leavesColor: '#2f7f2a',
+                },
+            }))
+            return
+        }
+
+        useStore.setState((state) => ({
+            postProcessingParameters: {
+                ...state.postProcessingParameters,
+                enabled: true,
+                dynamicPostFX: true,
+                dynamicLighting: true,
+                dynamicShaderTint: true,
+                screenTintEnabled: true,
+                screenTintStrength: 1.35,
+            },
+            dayNightParameters: {
+                ...state.dayNightParameters,
+                enabled: true,
+                autoCycle: false,
+                timeOfDay: 17.35,
+            },
+            cloudShadowParameters: {
+                ...state.cloudShadowParameters,
+                enabled: true,
+                intensity: 0.22,
+            },
+        }))
+    }
+
+    useControls('Look Presets', {
+        original: button(() => applyPreset('original')),
+        sunny: button(() => applyPreset('sunny')),
+        cinematic: button(() => applyPreset('cinematic')),
+    })
 
     /**
      * General parameters
@@ -280,6 +381,22 @@ export default function Controls() {
         enabled: {
             value: postProcessingParameters.enabled,
             onChange: setParam('postProcessingParameters', 'enabled'),
+        },
+        dynamicPostFX: {
+            value: postProcessingParameters.dynamicPostFX ?? false,
+            onChange: setParam('postProcessingParameters', 'dynamicPostFX'),
+        },
+        dynamicLighting: {
+            value: postProcessingParameters.dynamicLighting ?? false,
+            onChange: setParam('postProcessingParameters', 'dynamicLighting'),
+        },
+        dynamicShaderTint: {
+            value: postProcessingParameters.dynamicShaderTint ?? false,
+            onChange: setParam('postProcessingParameters', 'dynamicShaderTint'),
+        },
+        screenTintEnabled: {
+            value: postProcessingParameters.screenTintEnabled ?? false,
+            onChange: setParam('postProcessingParameters', 'screenTintEnabled'),
         },
         godRaysDensity: {
             value: postProcessingParameters.godRaysDensity,
@@ -616,6 +733,62 @@ export default function Controls() {
             max: 3.0,
             step: 0.01,
             onChange: setParam('stoneParameters', 'grassFadeWidth'),
+        },
+    })
+
+    useControls('Rubble', {
+        physicsEnabled: {
+            value: rubbleParameters.physicsEnabled ?? true,
+            onChange: setParam('rubbleParameters', 'physicsEnabled'),
+        },
+        maxFragments: {
+            value: rubbleParameters.maxFragments ?? 420,
+            min: 50,
+            max: 1200,
+            step: 10,
+            onChange: setParam('rubbleParameters', 'maxFragments'),
+        },
+        ttlSec: {
+            value: rubbleParameters.ttlSec ?? 90,
+            min: 5,
+            max: 300,
+            step: 1,
+            onChange: setParam('rubbleParameters', 'ttlSec'),
+        },
+        colliderScale: {
+            value: rubbleParameters.colliderScale ?? 0.32,
+            min: 0.12,
+            max: 0.75,
+            step: 0.01,
+            onChange: setParam('rubbleParameters', 'colliderScale'),
+        },
+        linearDamping: {
+            value: rubbleParameters.linearDamping ?? 1.4,
+            min: 0,
+            max: 6,
+            step: 0.05,
+            onChange: setParam('rubbleParameters', 'linearDamping'),
+        },
+        angularDamping: {
+            value: rubbleParameters.angularDamping ?? 2.6,
+            min: 0,
+            max: 8,
+            step: 0.05,
+            onChange: setParam('rubbleParameters', 'angularDamping'),
+        },
+        friction: {
+            value: rubbleParameters.friction ?? 1.15,
+            min: 0,
+            max: 2,
+            step: 0.01,
+            onChange: setParam('rubbleParameters', 'friction'),
+        },
+        restitution: {
+            value: rubbleParameters.restitution ?? 0.04,
+            min: 0,
+            max: 0.6,
+            step: 0.01,
+            onChange: setParam('rubbleParameters', 'restitution'),
         },
     })
 

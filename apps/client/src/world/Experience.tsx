@@ -15,6 +15,7 @@ import useStore from '../stores/useStore'
 import { TerrainUniformsContext, type TerrainUniformsRef } from './TerrainUniformsContext'
 import PostProcessing from './PostProcessing'
 import TrailRenderer from './TrailRenderer'
+import DestructionPhysicsBridge from './DestructionPhysicsBridge'
 
 export default function Experience() {
     const perfVisible = useStore((state) => state.perfVisible)
@@ -30,6 +31,7 @@ export default function Experience() {
             {perfVisible && <Perf position="top-left" />}
 
             <Physics debug={physicsDebug}>
+                <DestructionPhysicsBridge />
                 <Lights />
                 <Terrain uniformsRef={terrainUniformsRef} />
                 <MapPlacements />

@@ -23,6 +23,7 @@ import noiseTextureUrl from '../assets/textures/noiseTexture.png'
 import alphaLeavesUrl from '../assets/textures/alpha_leaves.png'
 import { createSeededNoise2D } from './utils/worldNoise'
 import { getDayNightFactors, getFuzzySunPosition } from './dayNight'
+import { placementDestructionView } from './placement-destruction-view'
 
 const START_CIRCLE_RADIUS = 0.07
 const START_RADIUS_DELAY = 1.1
@@ -53,6 +54,8 @@ export default function Terrain({ uniformsRef, disableDither = false }: TerrainP
     const mapTerrain = useStore((s: any) => s.mapTerrain)
     const mapPlacements = useStore((s: any) => s.mapPlacements ?? [])
     const mapRoads = useStore((s: any) => s.mapRoads ?? [])
+    const obstacleDiscs = useStore((s: any) => s.obstacleDiscs ?? [])
+    const destroyedPlacementColliders = useStore((s: any) => s.destroyedPlacementColliders ?? [])
     const borderCircleRadius = useStore((s) => s.borderParameters.circleRadiusFactor)
     const windParameters = useStore((s) => s.windParameters)
     const windLineParameters = useStore((s) => s.windLineParameters)
@@ -92,6 +95,13 @@ export default function Terrain({ uniformsRef, disableDither = false }: TerrainP
         }
     }, [noise2D, effectiveTerrainScale, effectiveTerrainAmplitude, heightDeltaSampler])
 
+    useEffect(() => {
+        placementDestructionView.setHeightGetter(terrainHeightGetter)
+        return () => {
+            placementDestructionView.setHeightGetter(null)
+        }
+    }, [terrainHeightGetter])
+
     const hasVisibleWater = useMemo(() => {
         if (typeof effectiveWaterLevel !== 'number') return false
         if (!activeChunks.length) return false
@@ -114,6 +124,15 @@ export default function Terrain({ uniformsRef, disableDither = false }: TerrainP
 
         return false
     }, [activeChunks, effectiveWaterLevel, chunkSize, noise2D, effectiveTerrainScale, effectiveTerrainAmplitude, heightDeltaSampler])
+
+    const destroyedTerrainDiscs = useMemo(() => {
+        if (!destroyedPlacementColliders.length || !obstacleDiscs.length) return []
+        const destroyedSet = new Set<string>(destroyedPlacementColliders)
+        return obstacleDiscs.filter((d: any) => {
+            const id = typeof d?.id === 'string' ? d.id : ''
+            return id.startsWith('terrain-') && destroyedSet.has(id)
+        })
+    }, [obstacleDiscs, destroyedPlacementColliders])
 
     // Textures
     const noiseTexture = useTexture(noiseTextureUrl)
@@ -260,14 +279,15 @@ export default function Terrain({ uniformsRef, disableDither = false }: TerrainP
 
     useFrame(({ clock }) => {
         const state = useStore.getState()
+        const dynamicShaderTint = Boolean(state.postProcessingParameters?.dynamicShaderTint)
         const dn = state.dayNightParameters ?? { enabled: false, timeOfDay: 14, sunRadius: 140 }
-        const sunPos = dn.enabled
+        const sunPos = dynamicShaderTint && dn.enabled
             ? getFuzzySunPosition(dn.timeOfDay, clock.elapsedTime, dn.sunRadius)
             : new THREE.Vector3(45, 90, 28)
-        const sunHeightNorm = dn.enabled
+        const sunHeightNorm = dynamicShaderTint && dn.enabled
             ? THREE.MathUtils.clamp(sunPos.y / Math.max(1, dn.sunRadius), -1, 1)
             : 1
-        const { dayFactor, sunsetFactor, nightFactor } = getDayNightFactors(sunHeightNorm, dn.enabled)
+        const { dayFactor, sunsetFactor, nightFactor } = getDayNightFactors(sunHeightNorm, dynamicShaderTint && dn.enabled)
 
         // Update terrain material uniforms
         terrainMaterial.uniforms.uTime.value = clock.elapsedTime
@@ -363,6 +383,7 @@ export default function Terrain({ uniformsRef, disableDither = false }: TerrainP
                     heightDeltaSampler={heightDeltaSampler}
                     roads={mapRoads}
                     placements={mapPlacements}
+                    destroyedTerrainDiscs={destroyedTerrainDiscs}
                 />
             ))}
             <RoadLayer roads={mapRoads} heightGetter={terrainHeightGetter} />

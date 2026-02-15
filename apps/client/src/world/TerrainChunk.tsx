@@ -30,6 +30,7 @@ export default function TerrainChunk({
     heightDeltaSampler,
     roads,
     placements,
+    destroyedTerrainDiscs = [],
 }) {
     const terrainParameters = useStore((s) => s.terrainParameters)
     const stoneParameters = useStore((s) => s.stoneParameters)
@@ -46,6 +47,24 @@ export default function TerrainChunk({
     const { stoneField } = useMemo(() => {
         return generateChunkData(x, z, size, noise2D, stoneParameters, { scale: terrainScale, amplitude: terrainAmplitude }, worldSeed)
     }, [x, z, size, noise2D, stoneParameters, terrainScale, terrainAmplitude, worldSeed])
+
+    const visibleStones = useMemo(() => {
+        if (!stoneField.currentStones?.length) return stoneField.currentStones
+        if (!destroyedTerrainDiscs.length) return stoneField.currentStones
+
+        const chunkWorldX = x * size
+        const chunkWorldZ = z * size
+        return stoneField.currentStones.filter((s) => {
+            const wx = chunkWorldX + s.x
+            const wz = chunkWorldZ + s.z
+            return !destroyedTerrainDiscs.some((d) => {
+                const r = Math.max(0.15, Number(d?.r ?? 0.8))
+                const dx = wx - Number(d?.x ?? 0)
+                const dz = wz - Number(d?.z ?? 0)
+                return dx * dx + dz * dz <= (r * 0.65) * (r * 0.65)
+            })
+        })
+    }, [stoneField.currentStones, destroyedTerrainDiscs, x, z, size])
 
     const geometry = useMemo(() => {
         const geo = new THREE.PlaneGeometry(size, size, terrainSegments, terrainSegments)
@@ -92,10 +111,12 @@ export default function TerrainChunk({
 
             <Stones
                 key={stonesKey}
-                stones={stoneField.currentStones}
+                stones={visibleStones}
                 maxCount={stoneField.capacity}
                 stoneMaterial={stoneMaterial}
                 stoneGeometry={stoneGeometry}
+                chunkWorldX={x * size}
+                chunkWorldZ={z * size}
                 enableColliders={obstacleCollisionsEnabled}
             />
 

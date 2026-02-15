@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import * as THREE from 'three'
-import type { CollisionDisc, GameMode, PlacementCollider, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, FlashGrenadeState, ExplosionEvent, SmokeDeployEvent, FlashDetonateEvent, MatchConfig, Vec3, LobbyPlayer, ServerPhase } from '@clawfield/shared'
+import type { GameMode, PlacementCollider, PlayerState, KillEntry, CapturePointState, ScoreboardEntry, ServerMessage, ProjectileState, GrenadeState, SmokeGrenadeState, FlashGrenadeState, ExplosionEvent, SmokeDeployEvent, FlashDetonateEvent, MatchConfig, Vec3, LobbyPlayer, ServerPhase, SpawnPointOption, SquadTargetMarker } from '@clawfield/shared'
 import type { MapdefPlacement } from '../editor/editor-types'
 import type { TerrainHeightmap } from '../editor/editor-types'
 import type { RoadSpline } from '../editor/editor-types'
@@ -37,6 +37,9 @@ type ThemeName = keyof typeof THEMES
 
 const DEFAULT_THEME: ThemeName = 'light'
 const DEFAULT_COLORS = THEMES[DEFAULT_THEME]
+
+const pruneExpiredSquadTargets = (targets: SquadTargetMarker[], now: number): SquadTargetMarker[] =>
+    (targets ?? []).filter((target) => (typeof target.expiresAt !== 'number' ? true : target.expiresAt > now))
 
 const createStore = () =>
     create(
@@ -133,6 +136,10 @@ const createStore = () =>
 
             postProcessingParameters: {
                 enabled: true,
+                dynamicPostFX: false,
+                dynamicLighting: false,
+                dynamicShaderTint: false,
+                screenTintEnabled: false,
                 godRaysDensity: 0.96,
                 godRaysWeight: 0.3,
                 godRaysDecay: 0.95,
@@ -188,6 +195,17 @@ const createStore = () =>
                 noiseThreshold: 0.55,
                 grassClearRadiusMultiplier: 0.8,
                 grassFadeWidth: 0.4,
+            },
+
+            rubbleParameters: {
+                physicsEnabled: true,
+                maxFragments: 420,
+                ttlSec: 90,
+                colliderScale: 0.32,
+                linearDamping: 1.4,
+                angularDamping: 2.6,
+                friction: 1.15,
+                restitution: 0.04,
             },
 
             trailParameters: {
@@ -308,6 +326,8 @@ const createStore = () =>
             sessionToken: null as string | null,
             scoreboard: [] as ScoreboardEntry[],
             matchConfig: null as MatchConfig | null,
+            availableSpawns: [] as SpawnPointOption[],
+            squadTargets: [] as SquadTargetMarker[],
             lobbyPlayers: [] as LobbyPlayer[],
             lobbyHostId: '' as string,
             lobbyRoomCode: '' as string,
@@ -316,7 +336,8 @@ const createStore = () =>
             lobbyAvailableMaps: [] as { id: string; name: string }[],
             lobbySeed: 1337,
             placementColliders: [] as PlacementCollider[],
-            obstacleDiscs: [] as CollisionDisc[],
+            destroyedPlacementColliders: [] as string[],
+            obstacleDiscs: [] as PlacementCollider[],
             lobbyError: '' as string,
             pendingRespawnPosition: null as Vec3 | null,
             respawnEndsAt: 0,
@@ -347,6 +368,7 @@ const createStore = () =>
             pendingExplosions: [] as ExplosionEvent[],
             pendingSmokeDeploys: [] as SmokeDeployEvent[],
             pendingFlashDetonations: [] as FlashDetonateEvent[],
+            pendingPlacementDestroyed: [] as { colliderId: string; position: Vec3; impulse: Vec3 }[],
             /** Consume pending explosions (called by CombatEffects each frame) */
             consumeExplosions: () => {
                 const exps = (useStore.getState() as any).pendingExplosions
@@ -364,18 +386,30 @@ const createStore = () =>
                 if (flashes.length > 0) set({ pendingFlashDetonations: [] })
                 return flashes as FlashDetonateEvent[]
             },
+            consumePlacementDestroyed: () => {
+                const events = (useStore.getState() as any).pendingPlacementDestroyed
+                if (events.length > 0) set({ pendingPlacementDestroyed: [] })
+                return events as { colliderId: string; position: Vec3; impulse: Vec3 }[]
+            },
 
             // ── Server Message Handler ─────────────────────────────
             handleServerMessage: (msg: ServerMessage) => {
                 switch (msg.type) {
                     case 'welcome':
-                        set({
+                        {
+                        const destroyed = msg.destroyedPlacementColliders ?? []
+                        const destroyedSet = new Set(destroyed)
+                        const filteredPlacementColliders = (msg.placementColliders ?? []).filter((c) => !destroyedSet.has(c.id))
+                            set({
                             myId: msg.id,
                             myTeam: msg.team,
                             gameMode: msg.gameMode,
                             sessionToken: msg.sessionToken ?? null,
                             matchConfig: msg.matchConfig ?? null,
-                            placementColliders: msg.placementColliders ?? [],
+                            availableSpawns: [],
+                            squadTargets: [],
+                            placementColliders: filteredPlacementColliders,
+                            destroyedPlacementColliders: destroyed,
                             obstacleDiscs: msg.obstacleDiscs ?? [],
                             connected: true,
                             respawnEndsAt: 0,
@@ -383,6 +417,7 @@ const createStore = () =>
                             lobbyError: '',
                         })
                         break
+                        }
 
                     case 'room_created':
                         set({
@@ -392,6 +427,7 @@ const createStore = () =>
                             connected: false,
                             lobbyPhase: 'lobby',
                             placementColliders: [],
+                            destroyedPlacementColliders: [],
                             obstacleDiscs: [],
                             lobbyError: '',
                         })
@@ -430,13 +466,29 @@ const createStore = () =>
                         set({ placementColliders: msg.colliders })
                         break
 
+                    case 'placement_destroyed':
+                        set((state: any) => ({
+                            destroyedPlacementColliders: state.destroyedPlacementColliders.includes(msg.colliderId)
+                                ? state.destroyedPlacementColliders
+                                : [...state.destroyedPlacementColliders, msg.colliderId],
+                            placementColliders: (state.placementColliders ?? []).filter((c: any) => c.id !== msg.colliderId),
+                            pendingPlacementDestroyed: [
+                                ...state.pendingPlacementDestroyed,
+                                { colliderId: msg.colliderId, position: msg.position, impulse: msg.impulse },
+                            ],
+                        }))
+                        break
+
                     case 'return_to_lobby':
                         set({
                             connected: false,
                             myId: null,
                             remotePlayers: new Map<string, PlayerState>(),
+                            availableSpawns: [],
+                            squadTargets: [],
                             lobbyPhase: 'lobby',
                             placementColliders: [],
+                            destroyedPlacementColliders: [],
                             obstacleDiscs: [],
                         })
                         break
@@ -446,11 +498,14 @@ const createStore = () =>
                             connected: false,
                             myId: null,
                             remotePlayers: new Map<string, PlayerState>(),
+                            availableSpawns: [],
+                            squadTargets: [],
                             lobbyPlayers: [],
                             lobbyHostId: '',
                             lobbyRoomCode: '',
                             lobbyPhase: 'idle',
                             placementColliders: [],
+                            destroyedPlacementColliders: [],
                             obstacleDiscs: [],
                             lobbyError: 'Room closed by host.',
                         })
@@ -459,6 +514,7 @@ const createStore = () =>
                     case 'state': {
                         const myId = (useStore.getState() as any).myId
                         const remote = new Map<string, PlayerState>()
+                        const now = Date.now()
                         let localUpdate: Partial<Record<string, any>> = {}
                         for (const p of msg.players) {
                             if (p.id === myId) {
@@ -479,7 +535,11 @@ const createStore = () =>
                                 remote.set(p.id, p)
                             }
                         }
-                        set({ remotePlayers: remote, ...localUpdate })
+                        set((state: any) => ({
+                            remotePlayers: remote,
+                            ...localUpdate,
+                            squadTargets: pruneExpiredSquadTargets((state.squadTargets ?? []) as SquadTargetMarker[], now),
+                        }))
                         break
                     }
 
@@ -531,6 +591,46 @@ const createStore = () =>
                     case 'capture_points':
                         set({ capturePoints: msg.points })
                         break
+
+                    case 'available_spawns':
+                        set({ availableSpawns: msg.spawns })
+                        break
+
+                    case 'squad_targets': {
+                        const now = Date.now()
+                        const normalizedTargets = (msg.targets ?? []).map((target: SquadTargetMarker) => ({
+                            ...target,
+                            expiresAt: target.expiresAt ?? now + 10000,
+                        }))
+                        set((state: any) => {
+                            const visible = pruneExpiredSquadTargets(state.squadTargets ?? [], now)
+                            const merged = new Map<string, SquadTargetMarker>()
+                            for (const existing of visible) merged.set(existing.id, existing)
+                            for (const next of normalizedTargets) merged.set(next.id, next)
+                            return { squadTargets: Array.from(merged.values()) }
+                        })
+                        break
+                    }
+
+                    case 'enemy_spotted': {
+                        const now = Date.now()
+                        const spotted = msg.positions.map((position: Vec3, index: number) => ({
+                            id: `${now}-${index}`,
+                            position,
+                            type: 'enemy_spotted',
+                            sourceTeam: Number((useStore.getState() as any).myTeam),
+                            team: 1 - Number((useStore.getState() as any).myTeam),
+                            expiresAt: now + Number(msg.duration) * 1000,
+                        }))
+                        set((state: any) => {
+                            const visible = pruneExpiredSquadTargets((state.squadTargets ?? []) as SquadTargetMarker[], now)
+                            const merged = new Map<string, SquadTargetMarker>()
+                            for (const existing of visible) merged.set(existing.id, existing)
+                            for (const next of spotted) merged.set(next.id, next)
+                            return { squadTargets: Array.from(merged.values()) }
+                        })
+                        break
+                    }
 
                     case 'conquest_score':
                         set({ conquestScoreAlpha: msg.alpha, conquestScoreBravo: msg.bravo })

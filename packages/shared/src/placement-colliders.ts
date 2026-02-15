@@ -6,8 +6,14 @@ export interface PlacementLike {
   scale: [number, number, number];
   metadata?: {
     collidable?: boolean;
+    destructible?: boolean;
     [key: string]: unknown;
   };
+}
+
+function inferDestructible(componentId: string): boolean {
+  const id = componentId.toLowerCase();
+  return id.includes('rock') || id.includes('stone') || id.includes('boulder');
 }
 
 function inferBaseRadius(componentId: string): number {
@@ -50,6 +56,7 @@ export function buildPlacementColliders(placements: PlacementLike[]): PlacementC
       x: p.position[0],
       z: p.position[2],
       r,
+      destructible: p.metadata?.destructible === true || inferDestructible(p.componentId),
     });
   }
 

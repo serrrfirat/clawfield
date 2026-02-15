@@ -28,6 +28,7 @@ export interface PlacementCollider {
   x: number;
   z: number;
   r: number;
+  destructible?: boolean;
 }
 
 export interface CollisionDisc {
@@ -139,6 +140,21 @@ export interface MapObjective {
   id: string;
   type: string;
   position: Vec3;
+}
+
+/** Squad marker shared for tactical map overlays */
+export interface SquadTargetMarker {
+  id: string;
+  /** Optional team the marker should be associated with */
+  team?: number;
+  /** Optional team that placed the marker */
+  sourceTeam?: number;
+  label?: string;
+  position: Vec3;
+  /** Milliseconds from epoch when the marker expires */
+  expiresAt?: number;
+  /** Marker icon style hint (eg. squad order, intel ping) */
+  type?: string;
 }
 
 /** Grenade state for network sync */
@@ -337,7 +353,7 @@ export type ClientMessage =
   | { type: 'lobby_set_placement_colliders'; colliders: PlacementCollider[] }
   | { type: 'start_game' }
   | { type: 'return_to_menu' };
-
+      
 export type ServerMessage =
   | {
       type: 'welcome';
@@ -355,7 +371,8 @@ export type ServerMessage =
       glbBuildings?: { glbPath: string; position: { x: number; y: number; z: number }; rotation?: number }[];
       matchConfig?: MatchConfig;
       placementColliders?: PlacementCollider[];
-      obstacleDiscs?: CollisionDisc[];
+      destroyedPlacementColliders?: string[];
+      obstacleDiscs?: PlacementCollider[];
       gameMode: GameMode;
     }
   | { type: 'player_joined'; id: string; name: string; team: number }
@@ -382,20 +399,22 @@ export type ServerMessage =
   | { type: 'debris_states'; debris: DebrisState[] }
   | { type: 'enemy_spotted'; positions: Vec3[]; duration: number }
   | { type: 'voxel_update'; changes: { x: number; y: number; z: number; material: number }[] }
-  | { type: 'destruction_event'; events: DestructionEvent[] }
-  | { type: 'chunks'; chunks: ChunkData[] }
-  | { type: 'smoke_grenades'; grenades: SmokeGrenadeState[] }
-  | { type: 'smoke_deploy'; event: SmokeDeployEvent }
-  | { type: 'flash_grenades'; grenades: FlashGrenadeState[] }
-  | { type: 'flash_detonate'; event: FlashDetonateEvent }
-  | { type: 'director_event'; event: DirectorEvent }
-  | { type: 'match_timer'; timeRemaining: number; timeLimit: number }
-  | { type: 'dynamic_objectives'; objectives: DynamicObjective[] }
-  | { type: 'objective_completed'; objectiveId: string; team: number; bonusScore: number }
+      | { type: 'destruction_event'; events: DestructionEvent[] }
+      | { type: 'chunks'; chunks: ChunkData[] }
+      | { type: 'smoke_grenades'; grenades: SmokeGrenadeState[] }
+      | { type: 'smoke_deploy'; event: SmokeDeployEvent }
+      | { type: 'flash_grenades'; grenades: FlashGrenadeState[] }
+      | { type: 'flash_detonate'; event: FlashDetonateEvent }
+      | { type: 'director_event'; event: DirectorEvent }
+      | { type: 'squad_targets'; targets: SquadTargetMarker[]; team?: number }
+      | { type: 'match_timer'; timeRemaining: number; timeLimit: number }
+      | { type: 'dynamic_objectives'; objectives: DynamicObjective[] }
+      | { type: 'objective_completed'; objectiveId: string; team: number; bonusScore: number }
   | { type: 'room_created'; roomCode: string; playerId: string }
   | { type: 'room_joined'; roomCode: string; playerId: string; hostId: string }
   | { type: 'room_error'; message: string }
   | { type: 'placement_colliders'; colliders: PlacementCollider[] }
+  | { type: 'placement_destroyed'; colliderId: string; position: Vec3; impulse: Vec3 }
   | { type: 'lobby_state'; players: LobbyPlayer[]; gameMode: GameMode; hostId: string; roomCode: string; phase: ServerPhase; mapName: string; availableMaps: { id: string; name: string }[]; seed?: number; placementColliderCount?: number }
   | { type: 'game_starting'; countdown: number }
   | { type: 'return_to_lobby' }

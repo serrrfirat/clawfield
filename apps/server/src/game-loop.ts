@@ -51,7 +51,7 @@ import {
   SUPPRESSION_MAX_DURATION,
   SUPPRESSION_NEAR_MISS_RADIUS,
 } from '@clawfield/shared';
-import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode, DirectorEvent, WeatherState, DynamicObjective, HeightGetter, MatchConfig, PlacementCollider, CollisionDisc } from '@clawfield/shared';
+import type { ClientMessage, ChunkData, MapObjective, Vec3, SpawnPointOption, GameMode, DirectorEvent, WeatherState, DynamicObjective, HeightGetter, MatchConfig, PlacementCollider } from '@clawfield/shared';
 import { createTerrainHeight, DEFAULT_HEIGHTMAP_CONFIG } from '@clawfield/shared';
 import { buildHeightmapObstacleDiscs, resolveDiscObstacleCollision } from '@clawfield/shared';
 import { NetworkServer, type Client } from './network.js';
@@ -113,6 +113,7 @@ const OUT_OF_BOUNDS_MARGIN = 8;
 const OUT_OF_BOUNDS_FALL_DEPTH = 24;
 const LAG_COMPENSATION_MS = 0;
 const POSITION_HISTORY_WINDOW_MS = 1500;
+const TERRAIN_STONE_DESTRUCTIBLE_RADIUS_MIN = 1.0;
 
 /** Lobby player info passed to GameLoop at start */
 export interface LobbyPlayerInfo {
@@ -203,8 +204,9 @@ export class GameLoop {
   heightmapMode = false;
   private terrainHeightGetter: HeightGetter = createTerrainHeight();
   private matchConfig: MatchConfig | null = null;
-  private heightmapObstacles: CollisionDisc[] = [];
+  private heightmapObstacles: PlacementCollider[] = [];
   private placementColliders: PlacementCollider[] = [];
+  private destroyedPlacementColliders = new Set<string>();
 
   // --- AI Director (deterministic fallback) ---
   private directorCurrentWeather: WeatherState = 'clear';
@@ -316,6 +318,10 @@ export class GameLoop {
       glbBuildings: this.glbBuildings.length > 0 ? this.glbBuildings : undefined,
       matchConfig: this.heightmapMode ? (this.matchConfig ?? undefined) : undefined,
       placementColliders: this.placementColliders.length > 0 ? this.placementColliders : undefined,
+      destroyedPlacementColliders:
+        this.destroyedPlacementColliders.size > 0
+          ? Array.from(this.destroyedPlacementColliders)
+          : undefined,
       obstacleDiscs: this.heightmapMode ? this.heightmapObstacles : undefined,
       gameMode: this.gameMode,
     });
@@ -435,6 +441,7 @@ export class GameLoop {
         };
     this.matchConfig = cfg;
     this.heightmapMode = true;
+    this.destroyedPlacementColliders.clear();
     this.terrainHeightGetter = createTerrainHeight(
       cfg.terrain.scale,
       cfg.terrain.amplitude,
@@ -442,7 +449,13 @@ export class GameLoop {
       cfg.heightmap,
     );
     this.heightmapObstacles = [
-      ...buildHeightmapObstacleDiscs(cfg),
+      ...buildHeightmapObstacleDiscs(cfg).map((disc, i) => ({
+        id: `terrain-${i}`,
+        x: disc.x,
+        z: disc.z,
+        r: disc.r,
+        destructible: disc.r >= TERRAIN_STONE_DESTRUCTIBLE_RADIUS_MIN,
+      })),
       ...this.placementColliders,
     ];
 
@@ -1198,6 +1211,10 @@ export class GameLoop {
       glbBuildings: this.glbBuildings.length > 0 ? this.glbBuildings : undefined,
       matchConfig: this.heightmapMode ? (this.matchConfig ?? undefined) : undefined,
       placementColliders: this.placementColliders.length > 0 ? this.placementColliders : undefined,
+      destroyedPlacementColliders:
+        this.destroyedPlacementColliders.size > 0
+          ? Array.from(this.destroyedPlacementColliders)
+          : undefined,
       obstacleDiscs: this.heightmapMode ? this.heightmapObstacles : undefined,
       gameMode: this.gameMode,
     });
@@ -1363,24 +1380,34 @@ export class GameLoop {
     this.processShooting(now);
 
     // Advance projectiles and collect hits
-    const { playerHits: projectileHits, voxelHits: projectileVoxelHits } =
-      this.heightmapMode
-        ? this.projectileManager.updateHeightmap(
-            TICK_INTERVAL / 1000,
-            this.terrainHeightGetter,
-            this.players,
-            undefined,
-            LAG_COMPENSATION_MS,
-            undefined,
-          )
-        : this.projectileManager.update(
-            TICK_INTERVAL / 1000,
-            voxelGetter,
-            this.players,
-            undefined,
-            LAG_COMPENSATION_MS,
-            undefined,
-          );
+    let projectileHits: import('./projectile-manager.js').ProjectileHit[] = [];
+    let projectileVoxelHits: import('./projectile-manager.js').ProjectileVoxelHit[] = [];
+    let projectileObstacleHits: import('./projectile-manager.js').ProjectileObstacleHit[] = [];
+    if (this.heightmapMode) {
+      const update = this.projectileManager.updateHeightmap(
+        TICK_INTERVAL / 1000,
+        this.terrainHeightGetter,
+        this.players,
+        this.heightmapObstacles,
+        undefined,
+        LAG_COMPENSATION_MS,
+        undefined,
+      );
+      projectileHits = update.playerHits;
+      projectileVoxelHits = update.voxelHits;
+      projectileObstacleHits = update.obstacleHits;
+    } else {
+      const update = this.projectileManager.update(
+        TICK_INTERVAL / 1000,
+        voxelGetter,
+        this.players,
+        undefined,
+        LAG_COMPENSATION_MS,
+        undefined,
+      );
+      projectileHits = update.playerHits;
+      projectileVoxelHits = update.voxelHits;
+    }
 
     // Advance pending rubble drops (delayed voxel placement for falling sections)
     this.destructionManager.update(now);
@@ -1403,6 +1430,24 @@ export class GameLoop {
     }
 
     // Bullet voxel destruction disabled — only explosions destroy terrain for now
+    if (this.heightmapMode && projectileObstacleHits.length > 0) {
+      for (const hit of projectileObstacleHits) {
+        const collider = this.heightmapObstacles.find((c) => c.id === hit.colliderId);
+        if (!collider || collider.destructible !== true) continue;
+        if (this.destroyedPlacementColliders.has(collider.id)) continue;
+
+        this.destroyedPlacementColliders.add(collider.id);
+        this.placementColliders = this.placementColliders.filter((c) => c.id !== collider.id);
+        this.heightmapObstacles = this.heightmapObstacles.filter((c) => c.id !== collider.id);
+
+        this.network.broadcast({
+          type: 'placement_destroyed',
+          colliderId: collider.id,
+          position: hit.position,
+          impulse: hit.direction,
+        });
+      }
+    }
 
     // Process projectile hits: apply damage, send confirmations, handle kills
     for (const hit of projectileHits) {
@@ -1651,6 +1696,27 @@ export class GameLoop {
 
     // Send spotted enemies only to the spotter's team
     if (gadgetResult.spottedPositions && gadgetResult.spotterTeam >= 0) {
+      const now = Date.now()
+      const squadTargets = gadgetResult.spottedPositions.map((position, index) => ({
+        id: `spot-${gadgetResult.spotterTeam}-${now}-${index}`,
+        sourceTeam: gadgetResult.spotterTeam,
+        team: 1 - gadgetResult.spotterTeam,
+        label: 'SQUAD SPOT',
+        position,
+        type: 'enemy_spotted',
+        expiresAt: now + 10_000,
+      }))
+      this.network.broadcastToTeam(
+        gadgetResult.spotterTeam,
+        {
+          type: 'squad_targets',
+          team: gadgetResult.spotterTeam,
+          targets: squadTargets,
+        },
+        (clientId) => this.players.get(clientId)?.team
+      )
+
+      // Backward-compatible event for older clients
       this.network.broadcastToTeam(
         gadgetResult.spotterTeam,
         {

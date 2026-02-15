@@ -407,7 +407,13 @@ export class BattleRoom extends Room<GameState> {
     const safe = (colliders ?? [])
       .filter((c) => c && Number.isFinite(c.x) && Number.isFinite(c.z) && Number.isFinite(c.r) && c.r > 0)
       .slice(0, 2000)
-      .map((c, i) => ({ id: c.id || `c-${i}`, x: c.x, z: c.z, r: c.r }));
+      .map((c, i) => ({
+        id: c.id || `c-${i}`,
+        x: c.x,
+        z: c.z,
+        r: c.r,
+        destructible: c.destructible === true,
+      }));
     this.placementColliders = safe;
     this.broadcastLobbyState();
   }

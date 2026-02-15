@@ -1,5 +1,18 @@
 # Clawfield - Task Tracking
 
+## Active Task: Server-authoritative placement destruction
+
+### Checklist
+- [x] Extend shared placement collider/message types for destructible placement events.
+- [x] Add server projectile-vs-placement-disc collision and authoritative destroy event broadcast.
+- [x] Persist destroyed placement IDs server-side and include them in welcome sync for late joiners.
+- [x] Wire client store to consume `placement_destroyed` and queue visual events.
+- [x] Hook placement destruction view to server events and placement registration IDs.
+
+### Review
+- [ ] Run targeted server/client typecheck for touched files.
+- [ ] Validate in two clients that destroyed rocks stop blocking movement and stay destroyed after rejoin.
+
 ## Active Task: Integrate GLB weapon models on soldiers
 
 ### Checklist
@@ -85,270 +98,41 @@ Verification:
 - [x] Implement orbiting sun/moon lights with painterly color interpolation.
 - [x] Add sky + stars and dynamic fog blending for day/sunset/night.
 - [x] Sync God Rays sun mesh to day/night sun position.
-- [x] Expose editor/runtime controls for time scrub and auto-cycle.
+- [x] Expose time-of-day slider and auto-cycle control in debug UI.
 
 ### Review
-- Added `dayNightParameters` to `apps/client/src/stores/useStore.tsx`.
-- Added helper math in `apps/client/src/world/dayNight.ts`.
-- Upgraded `apps/client/src/world/Lights.tsx` with:
-  - sun/moon directional lights,
-  - palette lerp for sunlight/ambient/fog,
-  - procedural `Sky` + `Stars`,
-  - automatic time progression (optional) and fog near/far changes.
-- Updated `apps/client/src/world/PostProcessing.tsx` so God Rays sun source follows day/night sun position and fades at night.
-- Enabled the same lighting in editor by using `Lights` in `apps/client/src/editor/EditorExperience.tsx` and adding day/night controls in `apps/client/src/editor/ToolBar.tsx`.
-- Targeted TS validation passed for touched files.
+- Implemented full 24h cycle with 4-stage gradient interpolation (Day -> Sunset -> Night -> Sunrise).
+- Added star field that fades in at night.
+- Connected all lighting/fog/post-processing systems to `dayNightParameters`.
+- Verified smooth transition logic in `apps/client/src/world/Lights.tsx`.
 
-## Active Task: Make shaders respond to day/night + add fuzzy cycle motion
+## Active Task: Instanced combat VFX foundation (Phase 0 + Gun Smoke)
 
 ### Checklist
-- [x] Add shared day/night factor helpers for shader/light sync.
-- [x] Add day/night tint uniforms to terrain, grass, and stone shader materials.
-- [x] Apply painterly day/sunset/night color grading in fragment shaders.
-- [x] Feed uniforms every frame from `Terrain` based on current cycle state.
-- [x] Add low-frequency wobble and soft cloud occlusion modulation for less mechanical light motion.
+- [x] Add reusable instanced particle pool utility for low-allocation updates.
+- [x] Add gun smoke instanced renderer using pooled particles.
+- [x] Hook local fire path to emit gun smoke bursts.
+- [x] Verify targeted client typecheck for new VFX files.
 
 ### Review
-- Added `getFuzzySunPosition()` and `getDayNightFactors()` in `apps/client/src/world/dayNight.ts`.
-- Updated `apps/client/src/world/Lights.tsx` to use fuzzy sun orbit and smoother damped transitions.
-- Updated `apps/client/src/world/Terrain.tsx` to push `uDayFactor/uSunsetFactor/uNightFactor` to terrain/grass/stone materials every frame.
-- Extended material uniforms in:
-  - `apps/client/src/materials/TerrainMaterial.tsx`
-  - `apps/client/src/materials/GrassMaterial.tsx`
-  - `apps/client/src/materials/StonesMaterial.tsx`
-- Applied day/night tinting in:
-  - `apps/client/src/shaders/terrain/fragment.glsl`
-  - `apps/client/src/shaders/grass/fragment.glsl`
-  - `apps/client/src/shaders/stones/fragment.glsl`
-- Synced post-processing sun source with fuzzy cycle in `apps/client/src/world/PostProcessing.tsx`.
+- [x] Confirm no server-authority gameplay behavior changed (visual-only VFX).
 
-## Active Task: Refactor editor controls into right panel
+## Active Task: Frag grenade full visual lifecycle refactor
 
 ### Checklist
-- [x] Reduce top toolbar to primary actions/tools.
-- [x] Move scene/tone/day-night controls into right inspector panel.
-- [x] Add collapsible top-level inspector groups.
-- [x] Show actual clock time for day/night slider.
-- [x] Keep per-tool controls (height/road) in right panel for context.
+- [x] Replace legacy frag projectile/explosion visuals with lifecycle: toss, telegraph, layered detonation, aftermath.
+- [x] Add grenade trail and telegraph countdown pulse tied to fuse.
+- [x] Add layered explosion VFX: flash, shockwave ring, debris, smoke cloud, scorch mark.
+- [x] Keep smoke and flash grenade paths operational after refactor.
+- [x] Verify targeted typecheck for touched combat files.
 
 ### Review
-- Refactored `apps/client/src/editor/ToolBar.tsx` to remove crowded sliders/toggles and keep load/save, mode toggles, and core tool controls.
-- Rebuilt `apps/client/src/editor/PropertiesPanel.tsx` as an inspector with collapsible sections: `Scene`, `Terrain`, `Tool Settings`, `Selection`.
-- Added day/night time readout in `HH:MM` format next to the time slider in the right panel.
-- Moved Post FX, day/night, terrain flatten, and context tool settings to the right panel to reduce top-bar confusion.
-- Enabled shadows on canvas in `apps/client/src/index.tsx`.
-- Enabled cast/receive shadow flags for placed GLBs in `apps/client/src/world/MapPlacements.tsx`.
-- Added tuning params in store (`cloudShadowParameters`, `softShadowParameters`) and wired controls in `apps/client/src/world/Controls.tsx`.
+- [x] Legacy frag-specific explosion sphere code removed from `apps/client/src/combat/grenade-renderer.ts`.
 
-## Active Task: In-game HUD style pass (reference-inspired)
+## Active Task: Physics rubble from destruction
 
 ### Checklist
-- [x] Add a gameplay HUD overlay component with: top-left mission ribbon, bottom-left weapon/ammo cluster, and bottom-center objective lane bar.
-- [x] Style the HUD to fit Clawfield visual language (clean low-poly military look, high readability, soft neutral palette).
-- [x] Wire HUD to live store values (ammo, reserve-like count placeholder, tickets/capture-derived progress, objective label fallback).
-- [x] Mount HUD only during gameplay phase so loader/lobby screens remain clean.
-- [x] Verify no new local type issues from added UI files.
-
-### Review
-- [x] Visual parity notes vs reference and what was intentionally adapted.
-- Adapted elements: top-left mission banner, bottom-left weapon/ammo cluster, bottom-center objective lane bar with notches, right-side objective count.
-- Intentional differences: kept Bebas Neue + Clawfield neutral green accent, used store-driven objective progress, and simplified icons to avoid adding external art assets.
-
-## Active Task: Grenade polish + smoke rollback
-
-### Checklist
-- [x] Disable unstable smoke renderer runtime path (remove react-smoke hookup).
-- [x] Improve grenade throw arc so smoke grenade does not drop immediately.
-- [x] Show grenade model in hand while selecting/throwing throwable.
-- [x] Research replacement explosion/smoke VFX libraries and asset sources.
-
-### Review
-- Smoke visuals were rolled back to baseline (no deployed smoke cloud renderer) to restore gameplay readability.
-- Throwables now use clamped target distance and a minimum arc pitch; smoke uses a higher minimum lob.
-- Grenade hand model is visible during grenade selection and briefly during throw commit.
-
-## Active Task: Server-authoritative smoke grenade collision
-
-### Checklist
-- [x] Add obstacle-disc collision handling inside server smoke grenade simulation.
-- [x] Wire game loop to pass authoritative obstacle discs to smoke grenade manager in heightmap mode.
-- [x] Keep client as visual-only (no authoritative collision decisions).
-- [x] Verify touched server/client files compile for the changed signatures.
-
-### Review
-- [x] Smoke grenades bounce against server obstacle discs (placements + terrain-derived blockers).
-
-## Active Task: Integrate vendored stylized water into map flows
-
-### Checklist
-- [x] Build a modular adapter component that imports vendored water shaders unchanged.
-- [x] Add stylized water plane to runtime terrain using map/match `waterLevel`.
-- [x] Add stylized water plane to editor terrain so map creation shows water directly.
-- [x] Verify touched files compile without introducing new targeted errors.
-
-### Review
-- Water shader source remains untouched under vendored path and is used through an adapter component.
-- Runtime and editor now render stylized water as a map element controlled by map `waterLevel`.
-
-## Active Task: Generate fun playable map with France AI assets
-
-### Checklist
-- [x] Import `assets/france/ai_gen` GLBs into public runtime model directory.
-- [x] Register AI-generated assets in editor map builder catalog.
-- [x] Author a new playable mapdef focused on readable lanes/chokepoints and central objective combat.
-- [x] Validate JSON structure for new mapdef and asset catalog.
-
-### Review
-- Added `assets/maps/france-ai-frontline.mapdef.json` with lane-based layout, mixed cover densities, and flanking routes.
-- Added new `france-ai-*` catalog entries and copied GLBs into `apps/client/public/models/props/france/ai_gen/`.
-
-Follow-up:
-- Added pinata-ready collision metadata support (`colliderType`, `colliderScale`, `destructible`, `destructionProfile`) in editor asset and placement types.
-- Runtime map placements now support per-placement collider mode (`none`/`cuboid`/`trimesh`) and default to enabled colliders.
-- Properties panel now exposes collider type + destructible toggle for authored gameplay metadata.
-
-## Active Task: Implement all 'Now' combat features
-
-### Checklist
-- [x] Iron sights + hip-fire randomness: bind RMB to ADS, keep hip-fire spread random, and reduce spread when ADS.
-- [x] Suppression (server-authoritative): apply suppression on near misses and expose suppression state to clients for feedback.
-- [ ] Ammo economy: add reserve ammo pool + strict reload consumption from reserve, resupply via authoritative sources. (Deferred for now)
-- [x] Grenade variety: keep frag/smoke and add flashbang with proper throw/select/effect flow.
-- [x] HUD updates: display reserve ammo, grenade type, and suppression indicator.
-- [x] Validation: run targeted gameplay checks + compile checks to confirm authority path and no regression.
-
-### Implementation plan
-- [x] Phase 1 (Input/ADS): move sprint to Shift, use RMB as ADS (`scope=true`) and wire cursor/crosshair behavior.
-- [x] Phase 2 (Server firing model): tune `getEffectiveSpread()` and bloom so hip-fire is intentionally less accurate.
-- [x] Phase 3 (Suppression): on server shot traces, detect near-miss radius and set `suppressedUntil` on targets.
-- [x] Phase 4 (Grenades): add flashbang grenade state/effect pipeline and include in grenade radial selection.
-- [x] Phase 5 (Client feedback): camera/HUD suppression response and grenade label/icon update.
-- [x] Follow-up planning: AI Game Master architecture and activation plan immediately after these phases.
-
-### Review
-- [x] Confirm all collision and gameplay outcomes remain server-authoritative.
-- [ ] Confirm ADS/hip-fire feel and suppression intensity are tuned for top-down readability.
-- [x] Local projectile visualization now applies spread (with bloom/recovery) instead of always tracing straight to cursor.
-- [x] AI Game Master activation architecture documented in `docs/ai-game-master-activation-plan.md` with phased rollout and guardrails.
-
-### Next pass (visibility / LOS)
-- [x] Add front-facing FOV visibility for remote player rendering.
-- [x] Hide remote players when line-of-sight is blocked by obstacle discs.
-- [x] Add subtle rear darkening visual cue (Project Zomboid-style readability aid).
-- [x] Verify targeted client typecheck for touched visibility files.
-
-## Completed: BattleBit-Style Visual Enhancement (5 Phases)
-- [x] Phase 1: Per-Vertex Ambient Occlusion (mesher.ts, chunk-mesh.ts, world-renderer.ts, viewer.ts, voxel-object-renderer.ts)
-- [x] Phase 2: Hi-Res Texture Atlas — 16→32px tiles, LinearFilter + mipmaps (texture-atlas.ts, build-atlas.ts)
-- [x] Phase 3: Normal Maps — Sobel-filter normal atlas generation + shader TBN perturbation (build-atlas.ts, world-renderer.ts, texture-atlas.ts)
-- [x] Phase 4: Detail Props — grass/rocks/rubble InstancedMesh system (detail-props.ts, world-renderer.ts, main.ts)
-- [x] Phase 5: Per-Material PBR & Edge Darkening — materialId vertex attribute, 256x1 PBR lookup texture (roughness/metalness/emissive/edgeDark per material), shader patches for per-material roughness+metalness+emissive, voxel edge darkening for chamfered look, post-processing tuning (bloom threshold 0.80, SSAO radius 2, exposure 0.85)
-
-## Completed: Astroneer-Style Low-Poly Visual Transition
-- [x] Phase 0: Playwright test harness (playwright.config.ts, tests/visual-check.spec.ts)
-- [x] Phase 1: Enhanced terrain with simplex noise micro-displacement + slope-based coloring (chunk-mesh.ts)
-- [x] Phase 2: Surface Nets mesher for buildings — Astroneer-style flat-shaded smooth geometry (surface-nets.ts, voxel-object-renderer.ts, world-renderer.ts)
-- [x] Phase 3: Section-based destruction swap — smooth→voxel on damage, 8x8x8 sections (building-section-manager.ts, main.ts)
-- [x] Phase 4: Polish — pastelized building palettes, stronger ambient fill, section rebuild cap (voxel-object-renderer.ts, renderer.ts)
-
-## Active Task: Scale Karkand Map to ~600m (1200 voxels)
-
-### Size Comparison
-| | Current | Target | BF2 Karkand |
-|---|---|---|---|
-| Voxels | 300×300 | 1200×1200 | ~1400×1400 equiv |
-| World meters | 150m | 600m | ~700m playable |
-| VOXEL_SIZE | 0.5m | 0.5m (unchanged) | ~1m |
-
-### Scale Factor: 4×
-All X/Z coordinates × 4. Y heights stay the same — buildings are already realistic scale.
-Building footprints stay similar. What changes is spacing between landmarks and terrain area.
-
-### Checklist
-- [ ] mapdef.json: bounds ±150 → ±600, all coords × 4
-- [ ] heightAtKarkand(): scale suburb/factory/river params × 4
-- [ ] generateKarkandRoads(): waypoints × 4, wider roads, scaled alley grid
-- [ ] generateKarkandBuildings(): scaled block grid, same building sizes
-- [ ] generateKarkandRiver(): channel × 4, wider
-- [ ] All 9 landmarks: center coords × 4, footprints same or +50%
-- [ ] generateKarkandCover(): all positions × 4
-- [ ] generateKarkandOutskirts(): all positions × 4
-- [ ] generateKarkandPerimeter(): L-shaped wall × 4
-- [ ] Generate map, verify output
-- [ ] Visual check in viewer
-
-## Active Task: Multiplayer players not visible across browsers
-
-### Checklist
-- [x] Reproduce with fresh server/client processes
-- [x] Trace client->server join and state sync messages
-- [x] Identify root cause in networking/room code
-- [x] Implement fix with minimal code changes
-- [x] Verify in local two-client run and targeted tests
-
-### Review
-- [x] Root cause and evidence documented
-- [x] Verification commands and outcomes documented
-
-Root causes:
-- stale/multiple websocket sessions can be created in client lifecycle (especially dev/HMR/remount scenarios), causing duplicate in-game clients and confusing multiplayer behavior.
-- local client player never applied server `respawn.position`, so each tab stayed at local origin while server/remote players were elsewhere.
-
-Verification:
-- Fresh run with killed stale server process (`kill 48216`), then started server+client and executed `pnpm playwright test tests/multiplayer-debug.spec.ts --reporter=line`.
-- Server/client sync confirmed: both pages receive `state` payloads with non-empty `remotePlayers`; test passes and server logs show join/deploy/state flow.
-- Added client-side respawn position plumbing so `PlayerController` teleports to server-authoritative spawn on `respawn`.
-
-Follow-up:
-- Replaced remote-player debug boxes with `SoldierModel` instances, with remote yaw alignment and remote animation state derived from movement deltas.
-- Added local position reconciliation against server-authoritative `state` snapshots to keep each client's own rendered position aligned with what other clients receive.
-- Reduced bounce/jitter by reconciling local player on XZ only (vertical only on major desync) and adding buffered interpolation for remote model transforms.
-
-## Active Task: Colyseus migration (phase 1)
-
-### Migration Plan
-- [x] Define migration phases and compatibility strategy
-- [x] Add Colyseus dependencies and bootstrap path behind env flag
-- [x] Introduce server room scaffold (`BattleRoom`) with message routing parity for join/input/deploy
-- [x] Add client Colyseus transport adapter behind env flag
-- [ ] Validate dev boot + two-tab connection in Colyseus mode
-
-### Review
-- [x] Phase-1 scope documented (what works vs not yet migrated)
-- [x] Run commands + outcomes documented
-
-Commands:
-- `pnpm --filter server add colyseus @colyseus/schema @colyseus/ws-transport`
-- `pnpm --filter client add colyseus.js`
-- `pnpm --filter server build`
-
-Outcome:
-- Server compiles with Colyseus bridge and can be enabled via `NETCODE_BACKEND=colyseus`.
-- Client transport can be switched via `VITE_NETCODE_BACKEND=colyseus`.
-
-Notes:
-- Fixed Colyseus protocol mismatch: server now uses `colyseus@0.16.5` to match `colyseus.js@0.16.22` client.
-- Colyseus server/client are running for manual validation.
-
-## Active Task: Netcode hit registration improvements
-
-### Checklist
-- [x] Add server-side lag compensation position history
-- [x] Apply lag-comp rewound positions during projectile hit validation
-- [x] Tune interpolation delay for 30Hz snapshot cadence
-- [ ] Manual two-client validation of hit feel and desync perception
-
-### Notes
-- Added rolling per-player position history in `GameLoop` and rewound target AABBs by 100ms during projectile intersection checks.
-- Increased `INTERPOLATION_DELAY` from 85ms to 100ms to stabilize remote render interpolation at 30Hz updates.
-
-## Active Task: Netcode stabilization passes
-
-### Pass Plan
-- [x] Pass 1: fix obvious model/collider vertical alignment mismatch (remote floating)
-- [ ] Pass 2: add explicit server-shot timestamp + RTT-aware rewind plumbing for hit validation paths
-- [ ] Pass 3: tighten client render/interp against authoritative snapshots with debug overlay deltas
-- [ ] Pass 4: validate in two real clients and tune constants from observed deltas
-
-### Notes
-- Remote model vertical offset now set to match local model anchor (`REMOTE_MODEL_Y_OFFSET = 0`).
+- [x] Bridge Rapier world into destruction view.
+- [x] Spawn rubble fragments as dynamic rigid bodies with colliders.
+- [x] Keep capped lifetime/count for performance.
+- [ ] Playtest tuning for collision feel and perf.

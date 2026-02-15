@@ -4,6 +4,7 @@ import { SkeletonUtils } from 'three-stdlib'
 import { RigidBody, CuboidCollider, interactionGroups } from '@react-three/rapier'
 import * as THREE from 'three'
 import useStore from '../stores/useStore'
+import { placementDestructionView } from './placement-destruction-view'
 import assetCatalog from '../editor/asset-catalog.json'
 import type { MapdefPlacement } from '../editor/editor-types'
 import type { AssetEntry, EditorPlacement } from '../editor/editor-types'
@@ -19,13 +20,13 @@ import {
     patchMaterialWithDither,
 } from '../render/dither-reveal'
 
-function PlacedAsset({ placement, enableColliders }: { placement: MapdefPlacement; enableColliders: boolean }) {
+function PlacedAsset({ placement, colliderId, enableColliders, destroyed }: { placement: MapdefPlacement; colliderId: string; enableColliders: boolean; destroyed: boolean }) {
     const entry = assetCatalog.find((a) => a.id === placement.componentId) as AssetEntry | undefined
     if (!entry) return null
-    return <PlacedGLB asset={entry} path={entry.path} placement={placement} enableColliders={enableColliders} />
+    return <PlacedGLB asset={entry} path={entry.path} placement={placement} colliderId={colliderId} enableColliders={enableColliders} destroyed={destroyed} />
 }
 
-function PlacedGLB({ asset, path, placement, enableColliders }: { asset: AssetEntry; path: string; placement: MapdefPlacement; enableColliders: boolean }) {
+function PlacedGLB({ asset, path, placement, colliderId, enableColliders, destroyed }: { asset: AssetEntry; path: string; placement: MapdefPlacement; colliderId: string; enableColliders: boolean; destroyed: boolean }) {
     const { scene } = useGLTF(path)
     const cloned = useMemo(() => SkeletonUtils.clone(scene), [scene])
     const placementAsEditor = placement as unknown as EditorPlacement
@@ -128,6 +129,18 @@ function PlacedGLB({ asset, path, placement, enableColliders }: { asset: AssetEn
 
     const collidable = getPlacementCollidable(placementAsEditor, asset)
     const colliderType = getPlacementColliderType(placementAsEditor, asset)
+    const destructionRadius = Math.max(0.35, Math.max(halfExtents[0], halfExtents[2]))
+
+    useEffect(() => {
+        placementDestructionView.registerPlacement(colliderId, cloned, destructionRadius, {
+            groundY: placement.position[1],
+            destroyed,
+        })
+
+        return () => {
+            placementDestructionView.unregisterPlacement(colliderId)
+        }
+    }, [colliderId, cloned, destructionRadius, placement.position, destroyed])
 
     if (!enableColliders || !collidable || colliderType === 'none') {
         return (
@@ -166,6 +179,8 @@ function PlacedGLB({ asset, path, placement, enableColliders }: { asset: AssetEn
 
 export default function MapPlacements() {
     const placements = useStore((s) => s.mapPlacements)
+    const destroyedPlacementColliders = useStore((s: any) => s.destroyedPlacementColliders ?? [])
+    const destroyedSet = useMemo(() => new Set<string>(destroyedPlacementColliders), [destroyedPlacementColliders])
     const enableColliders = true
 
     if (!placements.length) return null
@@ -173,7 +188,13 @@ export default function MapPlacements() {
     return (
         <>
             {placements.map((p, i) => (
-                <PlacedAsset key={`${p.componentId}-${i}`} placement={p} enableColliders={enableColliders} />
+                <PlacedAsset
+                    key={`${p.componentId}-${i}`}
+                    placement={p}
+                    colliderId={`${p.componentId}-${i}`}
+                    enableColliders={enableColliders}
+                    destroyed={destroyedSet.has(`${p.componentId}-${i}`)}
+                />
             ))}
         </>
     )
