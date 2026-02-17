@@ -28,7 +28,7 @@ const PROFILE_DEFAULTS: Record<string, { colliderType: 'none' | 'cuboid' | 'trim
   building_large: { colliderType: 'trimesh', colliderScale: 0.5 },
 }
 
-type SectionKey = 'scene' | 'terrain' | 'tool' | 'selection'
+type SectionKey = 'scene' | 'terrain' | 'tool' | 'prefabs' | 'selection'
 
 export default function PropertiesPanel() {
   const activeTool = useEditorStore((s) => s.activeTool)
@@ -36,6 +36,20 @@ export default function PropertiesPanel() {
   const toggleRuntimePreview = useEditorStore((s) => s.toggleRuntimePreview)
   const showColliderDebug = useEditorStore((s) => s.showColliderDebug)
   const toggleColliderDebug = useEditorStore((s) => s.toggleColliderDebug)
+  const showCoverVisualizer = useEditorStore((s) => s.showCoverVisualizer)
+  const toggleCoverVisualizer = useEditorStore((s) => s.toggleCoverVisualizer)
+  const showNavGrid = useEditorStore((s) => s.showNavGrid)
+  const toggleNavGrid = useEditorStore((s) => s.toggleNavGrid)
+  const navGridCellSize = useEditorStore((s) => s.navGridCellSize)
+  const navGridRadius = useEditorStore((s) => s.navGridRadius)
+  const setNavGridCellSize = useEditorStore((s) => s.setNavGridCellSize)
+  const setNavGridRadius = useEditorStore((s) => s.setNavGridRadius)
+  const showLosProbe = useEditorStore((s) => s.showLosProbe)
+  const toggleLosProbe = useEditorStore((s) => s.toggleLosProbe)
+  const losProbeRange = useEditorStore((s) => s.losProbeRange)
+  const losProbeFovDeg = useEditorStore((s) => s.losProbeFovDeg)
+  const setLosProbeRange = useEditorStore((s) => s.setLosProbeRange)
+  const setLosProbeFovDeg = useEditorStore((s) => s.setLosProbeFovDeg)
 
   const waterLevel = useEditorStore((s) => s.waterLevel)
   const setWaterLevel = useEditorStore((s) => s.setWaterLevel)
@@ -56,12 +70,24 @@ export default function PropertiesPanel() {
   const roadWidth = useEditorStore((s) => s.roadWidth)
   const setRoadWidth = useEditorStore((s) => s.setRoadWidth)
   const finishRoadStroke = useEditorStore((s) => s.finishRoadStroke)
+  const placementJitterEnabled = useEditorStore((s) => s.placementJitterEnabled)
+  const placementJitterScalePct = useEditorStore((s) => s.placementJitterScalePct)
+  const placementJitterRotationDeg = useEditorStore((s) => s.placementJitterRotationDeg)
+  const setPlacementJitterEnabled = useEditorStore((s) => s.setPlacementJitterEnabled)
+  const setPlacementJitterScalePct = useEditorStore((s) => s.setPlacementJitterScalePct)
+  const setPlacementJitterRotationDeg = useEditorStore((s) => s.setPlacementJitterRotationDeg)
 
   const selectedId = useEditorStore((s) => s.selectedPlacementId)
   const placements = useEditorStore((s) => s.placements)
   const updatePlacement = useEditorStore((s) => s.updatePlacement)
   const removePlacement = useEditorStore((s) => s.removePlacement)
   const assets = useEditorStore((s) => s.assets)
+  const prefabs = useEditorStore((s) => s.prefabs)
+  const prefabCaptureRadius = useEditorStore((s) => s.prefabCaptureRadius)
+  const setPrefabCaptureRadius = useEditorStore((s) => s.setPrefabCaptureRadius)
+  const capturePrefabAroundCamera = useEditorStore((s) => s.capturePrefabAroundCamera)
+  const deletePrefab = useEditorStore((s) => s.deletePrefab)
+  const stampPrefabAtGhost = useEditorStore((s) => s.stampPrefabAtGhost)
 
   const postFx = useStore((s: any) => s.postProcessingParameters)
   const dayNight = useStore((s: any) => s.dayNightParameters)
@@ -73,8 +99,10 @@ export default function PropertiesPanel() {
     scene: true,
     terrain: false,
     tool: true,
+    prefabs: false,
     selection: true,
   })
+  const [prefabName, setPrefabName] = useState('')
 
   const patchPostFx = (updates: Record<string, number | boolean>) => {
     useStore.setState((state: any) => ({
@@ -123,6 +151,50 @@ export default function PropertiesPanel() {
           <input type="checkbox" checked={showColliderDebug} onChange={toggleColliderDebug} />
           <span style={valueStyle}>Collider debug (C)</span>
         </label>
+        <label style={checkRowStyle}>
+          <input type="checkbox" checked={showCoverVisualizer} onChange={toggleCoverVisualizer} />
+          <span style={valueStyle}>Cover visualizer (K)</span>
+        </label>
+        <label style={checkRowStyle}>
+          <input type="checkbox" checked={showLosProbe} onChange={toggleLosProbe} />
+          <span style={valueStyle}>LOS probe (Y)</span>
+        </label>
+        <SliderField
+          label="LOS Range"
+          min={10}
+          max={220}
+          step={1}
+          value={losProbeRange}
+          onChange={(v) => setLosProbeRange(v)}
+        />
+        <SliderField
+          label="LOS FOV"
+          min={10}
+          max={170}
+          step={1}
+          value={losProbeFovDeg}
+          onChange={(v) => setLosProbeFovDeg(v)}
+        />
+        <label style={checkRowStyle}>
+          <input type="checkbox" checked={showNavGrid} onChange={toggleNavGrid} />
+          <span style={valueStyle}>Nav grid overlay (G)</span>
+        </label>
+        <SliderField
+          label="Grid Cell"
+          min={0.5}
+          max={6}
+          step={0.1}
+          value={navGridCellSize}
+          onChange={(v) => setNavGridCellSize(v)}
+        />
+        <SliderField
+          label="Grid Radius"
+          min={6}
+          max={60}
+          step={1}
+          value={navGridRadius}
+          onChange={(v) => setNavGridRadius(v)}
+        />
 
         <div style={subSectionStyle}>
           <label style={checkRowStyle}>
@@ -228,7 +300,9 @@ export default function PropertiesPanel() {
         open={openSections.tool}
         onToggle={() => toggleSection('tool')}
       >
-        {activeTool === 'height' ? (
+        {activeTool === 'line' ? (
+          <LineToolSettings />
+        ) : activeTool === 'height' ? (
           <>
             <label style={labelStyle}>Mode</label>
             <select
@@ -280,8 +354,89 @@ export default function PropertiesPanel() {
               Finish Stroke (Enter)
             </button>
           </>
+        ) : activeTool === 'place' ? (
+          <>
+            <label style={checkRowStyle}>
+              <input
+                type="checkbox"
+                checked={placementJitterEnabled}
+                onChange={(e) => setPlacementJitterEnabled(e.target.checked)}
+              />
+              <span style={valueStyle}>Jitter placement</span>
+            </label>
+            <SliderField
+              label="Scale Jitter"
+              min={0}
+              max={0.5}
+              step={0.01}
+              value={placementJitterScalePct}
+              onChange={(v) => setPlacementJitterScalePct(v)}
+            />
+            <SliderField
+              label="Rotation Jitter"
+              min={0}
+              max={45}
+              step={1}
+              value={placementJitterRotationDeg}
+              onChange={(v) => setPlacementJitterRotationDeg(v)}
+            />
+          </>
         ) : (
-          <div style={emptyStyle}>Select Height or Road tool for context settings.</div>
+          <div style={emptyStyle}>Select Place, Line, Height, or Road tool for context settings.</div>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Prefabs"
+        open={openSections.prefabs}
+        onToggle={() => toggleSection('prefabs')}
+      >
+        <div style={sectionStyle}>
+          <label style={labelStyle}>Capture Name</label>
+          <input
+            type="text"
+            value={prefabName}
+            onChange={(e) => setPrefabName(e.target.value)}
+            placeholder="Defensive_Point_A"
+            style={inputStyle}
+          />
+        </div>
+        <SliderField
+          label="Capture Radius"
+          min={2}
+          max={120}
+          step={1}
+          value={prefabCaptureRadius}
+          onChange={(v) => setPrefabCaptureRadius(v)}
+        />
+        <button
+          onClick={() => {
+            capturePrefabAroundCamera(prefabName)
+            if (prefabName.trim()) setPrefabName('')
+          }}
+          style={neutralBtn}
+        >
+          Capture Around Camera
+        </button>
+        {prefabs.length === 0 ? (
+          <div style={emptyStyle}>No prefabs yet. Arrange objects and capture around the camera target.</div>
+        ) : (
+          <div style={prefabListStyle}>
+            {prefabs.map((prefab) => (
+              <div key={prefab.id} style={prefabItemStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <div>
+                    <div style={valueStyle}>{prefab.name}</div>
+                    <div style={hintStyle}>{prefab.items.length} items</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => stampPrefabAtGhost(prefab.id)} style={smallBtnStyle}>Stamp</button>
+                    <button onClick={() => deletePrefab(prefab.id)} style={smallDeleteBtnStyle}>Delete</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </CollapsibleSection>
 
@@ -594,6 +749,42 @@ function Vec3Input({
   )
 }
 
+function LineToolSettings() {
+  const lineSpacing = useEditorStore((s) => s.lineSpacing)
+  const setLineSpacing = useEditorStore((s) => s.setLineSpacing)
+  const lineAlignRotation = useEditorStore((s) => s.lineAlignRotation)
+  const setLineAlignRotation = useEditorStore((s) => s.setLineAlignRotation)
+  const selectedAssetId = useEditorStore((s) => s.selectedAssetId)
+  const assets = useEditorStore((s) => s.assets)
+  const asset = assets.find((a) => a.id === selectedAssetId)
+  const effectiveSpacing = lineSpacing > 0 ? lineSpacing : (asset?.defaultScale ?? 1) * 1.5
+
+  return (
+    <>
+      <div style={emptyStyle}>Click+drag to place objects along a line. Use [ ] to rotate base angle.</div>
+      <SliderField
+        label="Spacing"
+        min={0.5}
+        max={30}
+        step={0.25}
+        value={effectiveSpacing}
+        onChange={(v) => setLineSpacing(v)}
+      />
+      <label style={checkRowStyle}>
+        <input
+          type="checkbox"
+          checked={lineAlignRotation}
+          onChange={(e) => setLineAlignRotation(e.target.checked)}
+        />
+        <span style={valueStyle}>Align to line direction</span>
+      </label>
+      <div style={hintStyle}>
+        {asset ? `Asset: ${asset.name} (scale ${asset.defaultScale})` : 'Select an asset first'}
+      </div>
+    </>
+  )
+}
+
 const panelStyle: React.CSSProperties = {
   width: 280,
   background: '#1e1e2e',
@@ -732,6 +923,41 @@ const neutralBtn: React.CSSProperties = {
   color: '#d7e5ff',
   padding: '6px 10px',
   fontSize: 12,
+  cursor: 'pointer',
+}
+
+const prefabListStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 6,
+  maxHeight: 220,
+  overflowY: 'auto',
+  paddingRight: 2,
+}
+
+const prefabItemStyle: React.CSSProperties = {
+  background: '#24243a',
+  border: '1px solid #3b3b58',
+  borderRadius: 6,
+  padding: '8px 10px',
+}
+
+const smallBtnStyle: React.CSSProperties = {
+  background: '#2f3d62',
+  border: '1px solid #4a6fa5',
+  borderRadius: 4,
+  color: '#d7e5ff',
+  padding: '3px 8px',
+  fontSize: 11,
+  cursor: 'pointer',
+}
+
+const smallDeleteBtnStyle: React.CSSProperties = {
+  background: '#4e2a2a',
+  border: '1px solid #6b3a3a',
+  borderRadius: 4,
+  color: '#ffdede',
+  padding: '3px 8px',
+  fontSize: 11,
   cursor: 'pointer',
 }
 

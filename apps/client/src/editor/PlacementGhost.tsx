@@ -4,6 +4,7 @@ import { SkeletonUtils } from 'three-stdlib'
 import * as THREE from 'three'
 import useEditorStore from './useEditorStore'
 import type { PrimitiveGeometry } from './editor-types'
+import { computeLineGhosts } from './line-tool-utils'
 
 const ROTATE_STEP = Math.PI / 12 // 15 degrees
 
@@ -14,15 +15,32 @@ const ghostMat = new THREE.MeshBasicMaterial({
   depthWrite: false,
 })
 
+// Lightweight marker for line preview — shared geometry + material
+const markerGeo = new THREE.BoxGeometry(1, 1, 1)
+const markerMat = new THREE.MeshBasicMaterial({
+  color: 0x66aaff,
+  transparent: true,
+  opacity: 0.4,
+  depthWrite: false,
+  wireframe: false,
+})
+const markerEdgeMat = new THREE.LineBasicMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7 })
+const markerEdges = new THREE.EdgesGeometry(markerGeo)
+
 export default function PlacementGhost() {
   const activeTool = useEditorStore((s) => s.activeTool)
   const selectedAssetId = useEditorStore((s) => s.selectedAssetId)
   const assets = useEditorStore((s) => s.assets)
   const ghostPosition = useEditorStore((s) => s.ghostPosition)
   const ghostRotation = useEditorStore((s) => s.ghostRotation)
+  const lineStart = useEditorStore((s) => s.lineStart)
+  const lineEnd = useEditorStore((s) => s.lineEnd)
+  const lineSpacing = useEditorStore((s) => s.lineSpacing)
+  const lineAlignRotation = useEditorStore((s) => s.lineAlignRotation)
 
   const asset = assets.find((a) => a.id === selectedAssetId)
-  const visible = activeTool === 'place' && !!asset
+  const visibleSingle = activeTool === 'place' && !!asset
+  const visibleLine = activeTool === 'line' && !!asset
 
   // Listen for [ ] rotation keys
   useEffect(() => {
@@ -35,7 +53,35 @@ export default function PlacementGhost() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  if (!visible || !asset) return null
+  if (!asset) return null
+
+  // Line tool: show lightweight markers along the line while dragging
+  if (visibleLine) {
+    const isDragging = lineStart && lineEnd
+    if (isDragging) {
+      const spacing = lineSpacing > 0 ? lineSpacing : asset.defaultScale * 1.5
+      const ghosts = computeLineGhosts(lineStart, lineEnd, spacing, lineAlignRotation, ghostRotation)
+      const s = asset.defaultScale
+      return (
+        <>
+          {ghosts.map((g, i) => (
+            <group key={i} position={g.position} rotation={[0, g.rotationY, 0]}>
+              <mesh geometry={markerGeo} material={markerMat} scale={[s, s, s]} position={[0, s * 0.5, 0]} />
+              <lineSegments geometry={markerEdges} material={markerEdgeMat} scale={[s, s, s]} position={[0, s * 0.5, 0]} />
+            </group>
+          ))}
+        </>
+      )
+    }
+
+    // Not dragging yet — show single real ghost at cursor
+    if (asset.primitive) {
+      return <GhostPrimitive primitive={asset.primitive} position={ghostPosition} rotationY={ghostRotation} scale={asset.defaultScale} />
+    }
+    return <GhostModel path={asset.path} position={ghostPosition} rotationY={ghostRotation} scale={asset.defaultScale} />
+  }
+
+  if (!visibleSingle) return null
 
   if (asset.primitive) {
     return (

@@ -3,9 +3,10 @@ import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import useEditorStore from './useEditorStore'
 
-const POLAR_ANGLE = Math.PI * 0.2 // ~36° overhead
+const POLAR_ANGLE_DEFAULT = Math.PI * 0.2 // ~36° overhead
 const PAN_SPEED = 30
 const ZOOM_STEP = 3
+const ZOOM_STEP_BIRDS_EYE = 15
 
 const _offset = new THREE.Vector3()
 const _target = new THREE.Vector3()
@@ -16,7 +17,6 @@ export default function EditorCamera() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      // Don't capture if user is typing in an input
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return
       keys.current.add(e.code)
     }
@@ -25,7 +25,8 @@ export default function EditorCamera() {
     }
     const onWheel = (e: WheelEvent) => {
       const store = useEditorStore.getState()
-      store.setCameraZoom(store.cameraZoom + (e.deltaY > 0 ? ZOOM_STEP : -ZOOM_STEP))
+      const step = store.birdsEye ? ZOOM_STEP_BIRDS_EYE : ZOOM_STEP
+      store.setCameraZoom(store.cameraZoom + (e.deltaY > 0 ? step : -step))
     }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
@@ -51,22 +52,32 @@ export default function EditorCamera() {
       const len = Math.sqrt(dx * dx + dz * dz)
       dx /= len
       dz /= len
-      const speed = PAN_SPEED * dt
+      // Pan faster in birds-eye since map is zoomed out more
+      const speedMul = store.birdsEye ? 2.5 : 1
+      const speed = PAN_SPEED * speedMul * dt
       const [tx, ty, tz] = store.cameraTarget
       store.setCameraTarget([tx + dx * speed, ty, tz + dz * speed])
     }
 
-    // Position camera at polar offset from target
     const [tx, ty, tz] = store.cameraTarget
     const zoom = store.cameraZoom
-    const sinP = Math.sin(POLAR_ANGLE)
-    const cosP = Math.cos(POLAR_ANGLE)
-    _offset.set(0, cosP * zoom, sinP * zoom)
-
     const cam = camera as unknown as THREE.PerspectiveCamera
-    cam.position.set(tx + _offset.x, ty + _offset.y, tz + _offset.z)
-    _target.set(tx, ty, tz)
-    cam.lookAt(_target)
+
+    if (store.birdsEye) {
+      // Straight-down top view: camera directly above target
+      cam.position.set(tx, ty + zoom, tz + 0.001) // tiny Z offset so lookAt doesn't degenerate
+      _target.set(tx, ty, tz)
+      cam.lookAt(_target)
+      cam.far = 2000
+      cam.updateProjectionMatrix()
+    } else {
+      const sinP = Math.sin(POLAR_ANGLE_DEFAULT)
+      const cosP = Math.cos(POLAR_ANGLE_DEFAULT)
+      _offset.set(0, cosP * zoom, sinP * zoom)
+      cam.position.set(tx + _offset.x, ty + _offset.y, tz + _offset.z)
+      _target.set(tx, ty, tz)
+      cam.lookAt(_target)
+    }
   })
 
   return null

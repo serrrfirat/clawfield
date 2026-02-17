@@ -23,6 +23,7 @@ export function exportMapdef(): MapdefJson {
     editorState: {
       cameraTarget: state.cameraTarget,
       cameraZoom: state.cameraZoom,
+      prefabs: state.prefabs,
     },
   }
 }
@@ -35,6 +36,9 @@ export function importMapdef(json: MapdefJson) {
   if (json.editorState) {
     store.setCameraTarget(json.editorState.cameraTarget)
     store.setCameraZoom(json.editorState.cameraZoom)
+    store.setPrefabs(json.editorState.prefabs ?? [])
+  } else {
+    store.setPrefabs([])
   }
   store.setWaterLevel(json.terrain?.waterLevel ?? -0.5)
   store.setHeightCells(fromSparseHeightmap(json.heightmap))

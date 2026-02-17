@@ -55,7 +55,7 @@ export interface ScatterConfig {
   seed: number
 }
 
-export type EditorTool = 'select' | 'place' | 'scatter' | 'height' | 'road'
+export type EditorTool = 'select' | 'place' | 'line' | 'scatter' | 'height' | 'road'
 export type GizmoMode = 'translate' | 'rotate' | 'scale'
 
 export type RoadTextureId = 'road_1' | 'road_2'
@@ -65,6 +65,21 @@ export interface RoadSpline {
   textureId: RoadTextureId
   width: number
   points: [number, number][]
+}
+
+export interface EditorPrefabItem {
+  assetId: string
+  offset: [number, number, number]
+  rotation: [number, number, number]
+  scale: [number, number, number]
+  metadata?: Record<string, unknown>
+}
+
+export interface EditorPrefab {
+  id: string
+  name: string
+  createdAt: number
+  items: EditorPrefabItem[]
 }
 
 export interface HeightmapCell {
@@ -88,6 +103,7 @@ export interface MapdefJson {
   editorState?: {
     cameraTarget: [number, number, number]
     cameraZoom: number
+    prefabs?: EditorPrefab[]
   }
 }
 

@@ -11,8 +11,16 @@ export default function ToolBar() {
   const setGizmoMode = useEditorStore((s) => s.setGizmoMode)
   const showColliderDebug = useEditorStore((s) => s.showColliderDebug)
   const toggleColliderDebug = useEditorStore((s) => s.toggleColliderDebug)
+  const showCoverVisualizer = useEditorStore((s) => s.showCoverVisualizer)
+  const toggleCoverVisualizer = useEditorStore((s) => s.toggleCoverVisualizer)
+  const showLosProbe = useEditorStore((s) => s.showLosProbe)
+  const toggleLosProbe = useEditorStore((s) => s.toggleLosProbe)
+  const showNavGrid = useEditorStore((s) => s.showNavGrid)
+  const toggleNavGrid = useEditorStore((s) => s.toggleNavGrid)
   const runtimePreview = useEditorStore((s) => s.runtimePreview)
   const toggleRuntimePreview = useEditorStore((s) => s.toggleRuntimePreview)
+  const birdsEye = useEditorStore((s) => s.birdsEye)
+  const toggleBirdsEye = useEditorStore((s) => s.toggleBirdsEye)
   const finishRoadStroke = useEditorStore((s) => s.finishRoadStroke)
 
   // Keyboard shortcuts
@@ -29,6 +37,9 @@ export default function ToolBar() {
           break
         case 'KeyH':
           setActiveTool('height')
+          break
+        case 'KeyL':
+          setActiveTool('line')
           break
         case 'KeyT':
           setActiveTool('road')
@@ -56,8 +67,20 @@ export default function ToolBar() {
         case 'KeyC':
           toggleColliderDebug()
           break
+        case 'KeyK':
+          toggleCoverVisualizer()
+          break
+        case 'KeyY':
+          toggleLosProbe()
+          break
+        case 'KeyG':
+          toggleNavGrid()
+          break
         case 'KeyP':
           toggleRuntimePreview()
+          break
+        case 'KeyM':
+          toggleBirdsEye()
           break
         case 'Enter':
           if (activeTool === 'road') finishRoadStroke()
@@ -77,7 +100,18 @@ export default function ToolBar() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeTool, setActiveTool, setGizmoMode, toggleColliderDebug, toggleRuntimePreview, finishRoadStroke])
+  }, [
+    activeTool,
+    setActiveTool,
+    setGizmoMode,
+    toggleColliderDebug,
+    toggleCoverVisualizer,
+    toggleLosProbe,
+    toggleNavGrid,
+    toggleRuntimePreview,
+    toggleBirdsEye,
+    finishRoadStroke,
+  ])
 
   return (
     <div style={toolbarStyle}>
@@ -95,10 +129,15 @@ export default function ToolBar() {
         onClick={() => document.dispatchEvent(new CustomEvent('editor-save'))}
       />
       <ToolButton label="Runtime Look (P)" active={runtimePreview} onClick={toggleRuntimePreview} />
+      <ToolButton label="Birds Eye (M)" active={birdsEye} onClick={toggleBirdsEye} />
       <ToolButton label="Colliders (C)" active={showColliderDebug} onClick={toggleColliderDebug} />
+      <ToolButton label="Cover (K)" active={showCoverVisualizer} onClick={toggleCoverVisualizer} />
+      <ToolButton label="LOS Probe (Y)" active={showLosProbe} onClick={toggleLosProbe} />
+      <ToolButton label="Nav Grid (G)" active={showNavGrid} onClick={toggleNavGrid} />
       <div style={divider} />
       <ToolButton label="Select (V)" active={activeTool === 'select'} onClick={() => setActiveTool('select')} />
       <ToolButton label="Place (B)" active={activeTool === 'place'} onClick={() => setActiveTool('place')} />
+      <ToolButton label="Line (L)" active={activeTool === 'line'} onClick={() => setActiveTool('line')} />
       <ToolButton label="Height (H)" active={activeTool === 'height'} onClick={() => setActiveTool('height')} />
       <ToolButton label="Road (T)" active={activeTool === 'road'} onClick={() => setActiveTool('road')} />
       <ToolButton label="Scatter" active={activeTool === 'scatter'} onClick={() => setActiveTool('scatter')} />
@@ -108,6 +147,11 @@ export default function ToolBar() {
           <ToolButton label="Move (W)" active={gizmoMode === 'translate'} onClick={() => setGizmoMode('translate')} />
           <ToolButton label="Rot (E)" active={gizmoMode === 'rotate'} onClick={() => setGizmoMode('rotate')} />
           <ToolButton label="Scale (R)" active={gizmoMode === 'scale'} onClick={() => setGizmoMode('scale')} />
+        </>
+      )}
+      {activeTool === 'line' && (
+        <>
+          <span style={hintStyle}>Click+drag to place along line. [ ] to rotate. Settings in right panel</span>
         </>
       )}
       {activeTool === 'height' && (

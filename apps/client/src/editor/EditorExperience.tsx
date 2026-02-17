@@ -7,9 +7,13 @@ import EditorCamera from './EditorCamera'
 import EditorTerrain, { getTerrainHeight } from './EditorTerrain'
 import PlacedObjectsLayer from './PlacedObjectsLayer'
 import PlacementGhost from './PlacementGhost'
+import EditorCoverVisualizer from './EditorCoverVisualizer'
+import EditorLosOverlay from './EditorLosOverlay'
+import EditorNavGridOverlay from './EditorNavGridOverlay'
 import useEditorStore from './useEditorStore'
 import { downloadMapdef, loadMapdef } from './mapdef-adapter'
 import { getDefaultCollidableForAsset, getDefaultGrassSuppressRadius, getDefaultSuppressGrassForAsset } from './collision-defaults'
+import { computeLineGhosts } from './line-tool-utils'
 import Terrain from '../world/Terrain'
 import Lights from '../world/Lights'
 import useStore from '../stores/useStore'
@@ -33,6 +37,11 @@ export default function EditorExperience() {
   const heightCellSize = useEditorStore((s) => s.heightCellSize)
   const heightCells = useEditorStore((s) => s.heightCells)
   const roads = useEditorStore((s) => s.roads)
+  const setLosProbeAim = useEditorStore((s) => s.setLosProbeAim)
+  const setLosProbeOrigin = useEditorStore((s) => s.setLosProbeOrigin)
+  const placementJitterEnabled = useEditorStore((s) => s.placementJitterEnabled)
+  const placementJitterScalePct = useEditorStore((s) => s.placementJitterScalePct)
+  const placementJitterRotationDeg = useEditorStore((s) => s.placementJitterRotationDeg)
 
   const runtimePlacements = useMemo<MapdefPlacement[]>(() => {
     return placements.map((p) => ({
@@ -82,17 +91,12 @@ export default function EditorExperience() {
     const canvas = gl.domElement
     const cam = camera as unknown as THREE.Camera
 
-    const onPointerMove = (e: PointerEvent) => {
-      const store = useEditorStore.getState()
-      if (store.activeTool !== 'place' && store.activeTool !== 'height' && store.activeTool !== 'road') return
-
+    const hitTerrain = (e: PointerEvent | MouseEvent): [number, number, number] | null => {
       const rect = canvas.getBoundingClientRect()
       _mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       _mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
-
       _raycaster.setFromCamera(_mouse, cam)
 
-      // Raycast against terrain meshes
       const terrainMeshes: THREE.Object3D[] = []
       ;(scene as unknown as THREE.Scene).traverse((child: THREE.Object3D) => {
         if ((child as any).isMesh && child.userData.editorTerrain) {
@@ -103,53 +107,130 @@ export default function EditorExperience() {
       const hits = _raycaster.intersectObjects(terrainMeshes, false)
       if (hits.length > 0) {
         const p = hits[0].point
-        if (store.activeTool === 'place' || store.activeTool === 'road') {
-          store.setGhostPosition([p.x, p.y, p.z])
-        } else if (store.activeTool === 'height' && isPaintingRef.current) {
-          store.applyHeightBrushAt(p.x, p.z)
+        return [p.x, p.y, p.z]
+      }
+      const hit = _raycaster.ray.intersectPlane(_groundPlane, _hitPoint)
+      if (hit) {
+        const y = getTerrainHeight(_hitPoint.x, _hitPoint.z)
+        return [_hitPoint.x, y, _hitPoint.z]
+      }
+      return null
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      const store = useEditorStore.getState()
+      const tool = store.activeTool
+      const needsHover = tool === 'select' && store.showLosProbe
+      if (tool !== 'place' && tool !== 'line' && tool !== 'height' && tool !== 'road' && !needsHover) return
+
+      const pos = hitTerrain(e)
+      if (!pos) return
+
+      if (tool === 'place' || tool === 'road') {
+        store.setGhostPosition(pos)
+      } else if (tool === 'line') {
+        store.setGhostPosition(pos)
+        // Update line end while dragging
+        if (store.lineStart) {
+          store.setLineEnd(pos)
         }
-      } else {
-        // Fallback: intersect ground plane
-        const hit = _raycaster.ray.intersectPlane(_groundPlane, _hitPoint)
-        if (hit) {
-          const y = getTerrainHeight(_hitPoint.x, _hitPoint.z)
-          if (store.activeTool === 'place' || store.activeTool === 'road') {
-            store.setGhostPosition([_hitPoint.x, y, _hitPoint.z])
-          } else if (store.activeTool === 'height' && isPaintingRef.current) {
-            store.applyHeightBrushAt(_hitPoint.x, _hitPoint.z)
-          }
-        }
+      } else if (tool === 'select' && store.showLosProbe) {
+        store.setGhostPosition(pos)
+        setLosProbeAim(pos)
+      } else if (tool === 'height' && isPaintingRef.current) {
+        store.applyHeightBrushAt(pos[0], pos[2])
       }
     }
 
-    const onPointerDown = () => {
+    const onPointerDown = (e: PointerEvent) => {
       const store = useEditorStore.getState()
       if (store.activeTool === 'height') {
         isPaintingRef.current = true
+      } else if (store.activeTool === 'line' && store.selectedAssetId) {
+        const pos = hitTerrain(e)
+        if (pos) {
+          store.setLineStart(pos)
+          store.setLineEnd(pos)
+        }
       }
     }
 
-    const onPointerUp = () => {
+    const onPointerUp = (e: PointerEvent) => {
       isPaintingRef.current = false
+
+      const store = useEditorStore.getState()
+      if (store.activeTool === 'line' && store.lineStart && store.lineEnd && store.selectedAssetId) {
+        const asset = store.assets.find((a) => a.id === store.selectedAssetId)
+        if (!asset) { store.setLineStart(null); store.setLineEnd(null); return }
+
+        const s = asset.defaultScale
+        const spacing = store.lineSpacing > 0 ? store.lineSpacing : s * 1.5
+        const ghosts = computeLineGhosts(store.lineStart, store.lineEnd, spacing, store.lineAlignRotation, store.ghostRotation)
+
+        const collidable = getDefaultCollidableForAsset(asset)
+        const suppressGrass = getDefaultSuppressGrassForAsset(asset)
+
+        for (const g of ghosts) {
+          const py = getTerrainHeight(g.position[0], g.position[2])
+          const jitterScaleMul = placementJitterEnabled
+            ? (1 + (Math.random() * 2 - 1) * placementJitterScalePct)
+            : 1
+          const jitterRot = placementJitterEnabled
+            ? THREE.MathUtils.degToRad((Math.random() * 2 - 1) * placementJitterRotationDeg)
+            : 0
+          const scale = [s * jitterScaleMul, s * jitterScaleMul, s * jitterScaleMul] as [number, number, number]
+          store.addPlacement({
+            id: crypto.randomUUID(),
+            assetId: store.selectedAssetId,
+            position: [g.position[0], py, g.position[2]],
+            rotation: [0, g.rotationY + jitterRot, 0],
+            scale,
+            source: 'manual',
+            metadata: {
+              collidable,
+              suppressGrass,
+              grassSuppressRadius: getDefaultGrassSuppressRadius(asset, scale),
+            },
+          })
+        }
+
+        store.setLineStart(null)
+        store.setLineEnd(null)
+      }
     }
 
     const onClick = (e: MouseEvent) => {
       const store = useEditorStore.getState()
+
+      // Line tool commits on pointerup, not click
+      if (store.activeTool === 'line') return
+
+      if (store.activeTool === 'select' && store.showLosProbe) {
+        setLosProbeOrigin([...store.ghostPosition])
+        return
+      }
 
       if (store.activeTool === 'place' && store.selectedAssetId) {
         const asset = store.assets.find((a) => a.id === store.selectedAssetId)
         if (!asset) return
 
         const s = asset.defaultScale
+        const jitterScaleMul = placementJitterEnabled
+          ? (1 + (Math.random() * 2 - 1) * placementJitterScalePct)
+          : 1
+        const jitterRot = placementJitterEnabled
+          ? THREE.MathUtils.degToRad((Math.random() * 2 - 1) * placementJitterRotationDeg)
+          : 0
+        const scale = [s * jitterScaleMul, s * jitterScaleMul, s * jitterScaleMul] as [number, number, number]
         const collidable = getDefaultCollidableForAsset(asset)
         const suppressGrass = getDefaultSuppressGrassForAsset(asset)
-        const grassSuppressRadius = getDefaultGrassSuppressRadius(asset, [s, s, s])
+        const grassSuppressRadius = getDefaultGrassSuppressRadius(asset, scale)
         store.addPlacement({
           id: crypto.randomUUID(),
           assetId: store.selectedAssetId,
           position: [...store.ghostPosition],
-          rotation: [0, store.ghostRotation, 0],
-          scale: [s, s, s],
+          rotation: [0, store.ghostRotation + jitterRot, 0],
+          scale,
           source: 'manual',
           metadata: { collidable, suppressGrass, grassSuppressRadius },
         })
@@ -181,7 +262,16 @@ export default function EditorExperience() {
       canvas.removeEventListener('click', onClick)
       canvas.removeEventListener('dblclick', onDoubleClick)
     }
-  }, [camera, gl, scene])
+  }, [
+    camera,
+    gl,
+    scene,
+    setLosProbeAim,
+    setLosProbeOrigin,
+    placementJitterEnabled,
+    placementJitterScalePct,
+    placementJitterRotationDeg,
+  ])
 
   // Listen for save/load custom events from ToolBar
   useEffect(() => {
@@ -216,6 +306,9 @@ export default function EditorExperience() {
         ) : <EditorTerrain />}
         {!runtimePreview && <RoadLayer roads={roads} heightGetter={getTerrainHeight} />}
         <PlacedObjectsLayer />
+        {!runtimePreview && <EditorCoverVisualizer />}
+        {!runtimePreview && <EditorNavGridOverlay />}
+        {!runtimePreview && <EditorLosOverlay />}
         <PlacementGhost />
       </group>
       <SelectedTransform />

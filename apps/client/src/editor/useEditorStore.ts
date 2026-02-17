@@ -1,6 +1,14 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import type { EditorPlacement, EditorTool, GizmoMode, AssetEntry, RoadSpline, RoadTextureId } from './editor-types'
+import type {
+  EditorPlacement,
+  EditorPrefab,
+  EditorTool,
+  GizmoMode,
+  AssetEntry,
+  RoadSpline,
+  RoadTextureId,
+} from './editor-types'
 import catalog from './asset-catalog.json'
 import { cellKey, quantizeToCell, sampleHeightDelta } from './heightmap-utils'
 
@@ -82,13 +90,64 @@ interface EditorState {
   addRoadPointAt: (x: number, z: number) => void
   finishRoadStroke: () => void
 
+  // Line tool
+  lineStart: [number, number, number] | null
+  lineEnd: [number, number, number] | null
+  lineSpacing: number
+  lineAlignRotation: boolean
+  setLineStart: (pos: [number, number, number] | null) => void
+  setLineEnd: (pos: [number, number, number] | null) => void
+  setLineSpacing: (v: number) => void
+  setLineAlignRotation: (v: boolean) => void
+
   // Debug visualization
   showColliderDebug: boolean
   toggleColliderDebug: () => void
 
+  // Tactical readability overlays
+  showCoverVisualizer: boolean
+  toggleCoverVisualizer: () => void
+  showNavGrid: boolean
+  toggleNavGrid: () => void
+  navGridCellSize: number
+  navGridRadius: number
+  setNavGridCellSize: (v: number) => void
+  setNavGridRadius: (v: number) => void
+  showLosProbe: boolean
+  toggleLosProbe: () => void
+  losProbeOrigin: [number, number, number] | null
+  losProbeAim: [number, number, number] | null
+  losProbeRange: number
+  losProbeFovDeg: number
+  setLosProbeOrigin: (pos: [number, number, number] | null) => void
+  setLosProbeAim: (pos: [number, number, number] | null) => void
+  setLosProbeRange: (v: number) => void
+  setLosProbeFovDeg: (v: number) => void
+
+  // Placement jitter
+  placementJitterEnabled: boolean
+  placementJitterScalePct: number
+  placementJitterRotationDeg: number
+  setPlacementJitterEnabled: (v: boolean) => void
+  setPlacementJitterScalePct: (v: number) => void
+  setPlacementJitterRotationDeg: (v: number) => void
+
+  // Prefabs
+  prefabs: EditorPrefab[]
+  prefabCaptureRadius: number
+  setPrefabs: (prefabs: EditorPrefab[]) => void
+  setPrefabCaptureRadius: (v: number) => void
+  capturePrefabAroundCamera: (name: string) => void
+  deletePrefab: (id: string) => void
+  stampPrefabAtGhost: (id: string) => void
+
   // Runtime look preview
   runtimePreview: boolean
   toggleRuntimePreview: () => void
+
+  // Birds-eye (top-down 2D) view
+  birdsEye: boolean
+  toggleBirdsEye: () => void
 }
 
 const useEditorStore = create<EditorState>()(
@@ -98,7 +157,7 @@ const useEditorStore = create<EditorState>()(
     setActiveTool: (tool) => set({ activeTool: tool }),
     setGizmoMode: (mode) => set({ gizmoMode: mode }),
 
-    assets: (catalog as AssetEntry[]).filter(isAiGenAsset),
+    assets: catalog as AssetEntry[],
     selectedAssetId: null,
     selectAsset: (id) => set({ selectedAssetId: id, activeTool: id ? 'place' : 'select' }),
 
@@ -128,7 +187,10 @@ const useEditorStore = create<EditorState>()(
     cameraTarget: [0, 0, 0] as [number, number, number],
     cameraZoom: 40,
     setCameraTarget: (target) => set({ cameraTarget: target }),
-    setCameraZoom: (zoom) => set({ cameraZoom: Math.max(10, Math.min(100, zoom)) }),
+    setCameraZoom: (zoom) => set((s) => {
+      const maxZoom = s.birdsEye ? 500 : 100
+      return { cameraZoom: Math.max(10, Math.min(maxZoom, zoom)) }
+    }),
 
     mapName: 'untitled',
     setMapName: (name) => set({ mapName: name }),
@@ -289,11 +351,125 @@ const useEditorStore = create<EditorState>()(
         return { draftRoadId: null }
       }),
 
+    lineStart: null,
+    lineEnd: null,
+    lineSpacing: 0,
+    lineAlignRotation: true,
+    setLineStart: (lineStart) => set({ lineStart }),
+    setLineEnd: (lineEnd) => set({ lineEnd }),
+    setLineSpacing: (lineSpacing) => set({ lineSpacing: Math.max(0, lineSpacing) }),
+    setLineAlignRotation: (lineAlignRotation) => set({ lineAlignRotation }),
+
     showColliderDebug: false,
     toggleColliderDebug: () => set((s) => ({ showColliderDebug: !s.showColliderDebug })),
 
+    showCoverVisualizer: false,
+    toggleCoverVisualizer: () => set((s) => ({ showCoverVisualizer: !s.showCoverVisualizer })),
+
+    showNavGrid: false,
+    toggleNavGrid: () => set((s) => ({ showNavGrid: !s.showNavGrid })),
+    navGridCellSize: 1.5,
+    navGridRadius: 18,
+    setNavGridCellSize: (v) => set({ navGridCellSize: Math.max(0.5, Math.min(6, v)) }),
+    setNavGridRadius: (v) => set({ navGridRadius: Math.max(6, Math.min(60, Math.round(v))) }),
+
+    showLosProbe: false,
+    toggleLosProbe: () => set((s) => {
+      const next = !s.showLosProbe
+      return {
+        showLosProbe: next,
+        losProbeOrigin: next ? s.losProbeOrigin : null,
+        losProbeAim: next ? s.losProbeAim : null,
+      }
+    }),
+    losProbeOrigin: null,
+    losProbeAim: null,
+    losProbeRange: 70,
+    losProbeFovDeg: 70,
+    setLosProbeOrigin: (pos) => set({ losProbeOrigin: pos }),
+    setLosProbeAim: (pos) => set({ losProbeAim: pos }),
+    setLosProbeRange: (v) => set({ losProbeRange: Math.max(5, Math.min(220, v)) }),
+    setLosProbeFovDeg: (v) => set({ losProbeFovDeg: Math.max(10, Math.min(170, v)) }),
+
+    placementJitterEnabled: true,
+    placementJitterScalePct: 0.1,
+    placementJitterRotationDeg: 10,
+    setPlacementJitterEnabled: (placementJitterEnabled) => set({ placementJitterEnabled }),
+    setPlacementJitterScalePct: (placementJitterScalePct) => set({ placementJitterScalePct: Math.max(0, Math.min(0.5, placementJitterScalePct)) }),
+    setPlacementJitterRotationDeg: (placementJitterRotationDeg) => set({ placementJitterRotationDeg: Math.max(0, Math.min(45, placementJitterRotationDeg)) }),
+
+    prefabs: [],
+    prefabCaptureRadius: 18,
+    setPrefabs: (prefabs) => set({ prefabs: prefabs ?? [] }),
+    setPrefabCaptureRadius: (prefabCaptureRadius) => set({ prefabCaptureRadius: Math.max(2, Math.min(120, prefabCaptureRadius)) }),
+    capturePrefabAroundCamera: (name) =>
+      set((s) => {
+        const captureName = (name || '').trim() || `Prefab ${s.prefabs.length + 1}`
+        const [cx, cy, cz] = s.cameraTarget
+        const radius = Math.max(1, s.prefabCaptureRadius)
+        const r2 = radius * radius
+        const picked = s.placements.filter((p) => {
+          const dx = p.position[0] - cx
+          const dz = p.position[2] - cz
+          return dx * dx + dz * dz <= r2
+        })
+        if (picked.length === 0) return {}
+
+        const items = picked.map((p) => ({
+          assetId: p.assetId,
+          offset: [p.position[0] - cx, p.position[1] - cy, p.position[2] - cz] as [number, number, number],
+          rotation: [...p.rotation] as [number, number, number],
+          scale: [...p.scale] as [number, number, number],
+          metadata: p.metadata ? { ...p.metadata } : undefined,
+        }))
+
+        const prefab: EditorPrefab = {
+          id: crypto.randomUUID(),
+          name: captureName,
+          createdAt: Date.now(),
+          items,
+        }
+
+        return {
+          prefabs: [prefab, ...s.prefabs],
+          dirty: true,
+        }
+      }),
+    deletePrefab: (id) => set((s) => ({ prefabs: s.prefabs.filter((p) => p.id !== id), dirty: true })),
+    stampPrefabAtGhost: (id) =>
+      set((s) => {
+        const prefab = s.prefabs.find((p) => p.id === id)
+        if (!prefab || prefab.items.length === 0) return {}
+
+        const [gx, gy, gz] = s.ghostPosition
+        const spawned: EditorPlacement[] = prefab.items.map((item) => ({
+          id: crypto.randomUUID(),
+          assetId: item.assetId,
+          position: [gx + item.offset[0], gy + item.offset[1], gz + item.offset[2]],
+          rotation: [...item.rotation],
+          scale: [...item.scale],
+          source: 'manual',
+          metadata: item.metadata ? { ...item.metadata } : undefined,
+        }))
+
+        return {
+          placements: [...s.placements, ...spawned],
+          dirty: true,
+        }
+      }),
+
     runtimePreview: false,
     toggleRuntimePreview: () => set((s) => ({ runtimePreview: !s.runtimePreview })),
+
+    birdsEye: false,
+    toggleBirdsEye: () => set((s) => {
+      const birdsEye = !s.birdsEye
+      const maxZoom = birdsEye ? 500 : 100
+      return {
+        birdsEye,
+        cameraZoom: Math.max(10, Math.min(maxZoom, s.cameraZoom)),
+      }
+    }),
   }))
 )
 
